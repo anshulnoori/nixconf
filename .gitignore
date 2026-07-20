@@ -2,6 +2,7 @@ node_modules/
 result
 result-*
 .direnv/
+.pre-commit-config.yaml
 .claude/
 .agents/
 .DS_Store
