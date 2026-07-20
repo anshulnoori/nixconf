@@ -8,6 +8,13 @@
 
 **Tech Stack:** Nix flakes, `flake-utils`, `numtide/treefmt-nix`, `cachix/git-hooks.nix`, alejandra, statix, deadnix, commitizen, Cachix, GitHub Actions.
 
+> **As-built note:** Tasks 2–3 were implemented with **flake-parts** instead of
+> `flake-utils` (maintainer's request). treefmt + git-hooks are wired via their
+> `flakeModule`s, treefmt is inline in `perSystem` (no `treefmt.nix`), systems are
+> `["aarch64-darwin" "x86_64-linux"]`, commitizen is overridden with `doCheck = false`
+> (nixpkgs py3.14 test breakage), the branch-name hook sets `always_run = true`, and
+> the devShell adds `nil`/`git`. See the design doc's "As-built deltas" for details.
+
 ## Global Constraints
 
 - Default/protected branch is `master` (not `main`) — everywhere: CI trigger, branch-name hook exemption.
@@ -20,9 +27,11 @@
 - Config folders `hosts/ modules/ overlays/ users/` are empty placeholders only — no NixOS/home-manager content this session.
 
 **Prerequisite check (run once before Task 1):**
+
 ```bash
 command -v nix && nix --version
 ```
+
 Expected: Nix present with flakes usable (`nix flake --help` works). If `nix` is missing, stop — this plan cannot be verified without it.
 
 ---
@@ -30,9 +39,11 @@ Expected: Nix present with flakes usable (`nix flake --help` works). If `nix` is
 ### Task 1: Remove the husky/Bun tooling layer
 
 **Files:**
+
 - Delete: `package.json`, `bun.lock`, `commitlint.config.js`, `.husky/` (whole dir)
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces: a repo with no JS tooling and no active git hooks, ready for native Nix wiring.
 
@@ -65,10 +76,12 @@ git commit -m "chore: remove husky/bun tooling layer"
 ### Task 2: Flake formatting via treefmt-nix
 
 **Files:**
+
 - Create: `treefmt.nix`
 - Modify: `flake.nix` (full rewrite of inputs + outputs; keep `nixConfig`, add treefmt formatter + formatting check)
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces: `formatter.<system>`, `checks.<system>.formatting`, and a `treefmtEval` binding reused by Task 3.
 
@@ -149,10 +162,12 @@ git commit -m "build: format via treefmt-nix, drop placeholder flake"
 ### Task 3: git-hooks (lint, format, commit, branch) + devShell
 
 **Files:**
+
 - Modify: `flake.nix` (add `git-hooks` input, `pre-commit-check`, `branchNameCheck`, `checks.pre-commit`, `devShells.default`)
 - Create: `.cz.toml`
 
 **Interfaces:**
+
 - Consumes: `treefmtEval` from Task 2.
 - Produces: `checks.<system>.pre-commit`, `devShells.<system>.default` (with hook-installing `shellHook`).
 
@@ -260,21 +275,27 @@ Expected: `.git/hooks/pre-commit` now exists (installed by the devShell shellHoo
 - [ ] **Step 6: Verify commit-msg and branch-name enforcement**
 
 Run (bad message must fail):
+
 ```bash
 nix develop -c bash -c 'echo "bad message no type" > /tmp/msg && cz check --commit-msg-file /tmp/msg'
 ```
+
 Expected: non-zero exit / validation failure.
 
 Run (good message must pass):
+
 ```bash
 nix develop -c bash -c 'echo "feat: add thing" > /tmp/msg && cz check --commit-msg-file /tmp/msg'
 ```
+
 Expected: passes.
 
 Run (branch check on a bad name must fail):
+
 ```bash
 nix develop -c bash -c 'git checkout -b nonsense 2>/dev/null; '"$(git rev-parse --show-toplevel)"'/.git/hooks/pre-push . . </dev/null; echo "exit=$?"' ; git checkout master ; git branch -D nonsense
 ```
+
 Expected: the pre-push branch-name hook reports the naming violation. (Manual alternative: run `branchNameCheck` logic — the key check is that a non-conforming branch name is rejected and `master` is exempt.)
 
 - [ ] **Step 7: Commit**
@@ -289,9 +310,11 @@ git commit -m "build: add git-hooks (format/lint/commit/branch) via git-hooks.ni
 ### Task 4: direnv `.envrc`
 
 **Files:**
+
 - Create: `.envrc`
 
 **Interfaces:**
+
 - Consumes: `devShells.default` from Task 3.
 - Produces: auto-loading devShell on `cd` (hooks self-install).
 
@@ -318,9 +341,11 @@ git commit -m "chore: auto-load devShell with direnv"
 ### Task 5: Scaffold empty config folders
 
 **Files:**
+
 - Create: `hosts/.gitkeep`, `modules/.gitkeep`, `overlays/.gitkeep`, `users/.gitkeep`
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces: empty top-level dirs for future NixOS/home-manager content.
 
@@ -347,9 +372,11 @@ git commit -m "chore: scaffold hosts/modules/overlays/users folders"
 ### Task 6: CI workflow
 
 **Files:**
+
 - Create: `.github/workflows/ci.yml`
 
 **Interfaces:**
+
 - Consumes: `checks` from Task 3 (run via `nix flake check`).
 - Produces: CI that formats/lints/validates on push to `master` and PRs.
 
@@ -393,11 +420,13 @@ git commit -m "ci: run nix flake check with cachix on master and prs"
 ### Task 7: Documentation (README, CONTRIBUTING, CLAUDE.md)
 
 **Files:**
+
 - Modify: `README.md`
 - Create: `CONTRIBUTING.md`
 - Modify: `CLAUDE.md` (full replacement)
 
 **Interfaces:**
+
 - Consumes: all conventions established above.
 - Produces: human + agent onboarding docs.
 
@@ -405,7 +434,7 @@ git commit -m "ci: run nix flake check with cachix on master and prs"
 
 Add before the final `Maintained by` line:
 
-```markdown
+````markdown
 ## Development
 
 This repo uses native Nix tooling — no Node/Bun.
@@ -418,10 +447,12 @@ nix develop         # enter the devShell (installs git hooks)
 nix fmt             # format everything (alejandra + prettier + shfmt)
 nix flake check     # run all checks: formatting, statix, deadnix, commit hooks
 ```
+````
 
 Commits follow **Conventional Commits** and branches follow `type/kebab-description`.
 See [CONTRIBUTING.md](./CONTRIBUTING.md).
-```
+
+````
 
 Also remove any lingering Bun/Node references from `README.md` if present.
 
@@ -434,7 +465,7 @@ Also remove any lingering Bun/Node references from `README.md` if present.
 
 ```sh
 direnv allow    # or: nix develop
-```
+````
 
 This loads a devShell with `alejandra`, `statix`, `deadnix`, `commitizen`, and
 `cachix`, and installs the git hooks (via git-hooks.nix).
@@ -480,7 +511,8 @@ GitHub Actions runs `nix flake check` on push to `master` and on PRs, using the
 - `cachix use anshulnoori`, then paste the printed public key into
   `flake.nix`'s `extra-trusted-public-keys` (replace `REPLACE_ME`).
 - Add the `CACHIX_AUTH_TOKEN` repository secret on GitHub.
-```
+
+````
 
 - [ ] **Step 3: Replace `CLAUDE.md`**
 
@@ -509,7 +541,7 @@ Personal NixOS configuration managed with Nix flakes. **No Node/Bun** — toolin
 - `flake.nix` — inputs, dev tooling, Cachix substituters.
 - `treefmt.nix` — formatter config.
 - `hosts/`, `modules/`, `overlays/`, `users/` — NixOS/home-manager content (grown as needed).
-```
+````
 
 - [ ] **Step 4: Format, verify, and confirm the docs pass checks**
 
