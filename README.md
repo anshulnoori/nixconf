@@ -10,6 +10,10 @@ My personal, declarative **NixOS** configuration, managed with **Nix flakes** â€
 - **Flake-based** with pinned inputs
 - Clean, conventional structure (hence the rename from an earlier config repo)
 
+The planned desktop, applications, terminal tools, theming, networking, audio,
+gaming, and private-package boundaries are documented in the
+[application and desktop stack](./docs/application-stack.md).
+
 ## Usage
 
 ```sh
