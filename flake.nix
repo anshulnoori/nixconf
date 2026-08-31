@@ -4,8 +4,7 @@
   nixConfig = {
     extra-substituters = ["https://anshulnoori.cachix.org"];
     extra-trusted-public-keys = [
-      # TODO: replace with the real key printed by `cachix use anshulnoori`
-      "anshulnoori.cachix.org-1:REPLACE_ME"
+      "anshulnoori.cachix.org-1:jzLsepTKLr8/jDh8WdI4uhyimUTDSmxN5ispn1uN/Q0="
     ];
   };
 
@@ -47,6 +46,55 @@
         # the tool itself works. Drop this override once nixpkgs is fixed.
         commitizen = pkgs.commitizen.overridePythonAttrs (_: {doCheck = false;});
 
+        ampCliRelease = {
+          version = "0.0.1788134497-gb6ce09";
+          sources = {
+            aarch64-darwin = {
+              platform = "darwin-arm64";
+              hash = "sha256-TEm+ao9++nsGmQ7D/4q7AWDPKLoDPoyRSrcSm8/731o=";
+            };
+            x86_64-linux = {
+              platform = "linux-x64-baseline";
+              hash = "sha256-ZwoZF9xl93hVEtC2fygcE9ccvJMPZJt0Ih+zmec9w7w=";
+            };
+          };
+        };
+        ampCliSource = ampCliRelease.sources.${pkgs.stdenv.hostPlatform.system};
+        ampCli = pkgs.amp-cli.overrideAttrs (_: {
+          inherit (ampCliRelease) version;
+          src = pkgs.fetchurl {
+            url = "https://static.ampcode.com/cli/${ampCliRelease.version}/amp-${ampCliSource.platform}.gz";
+            inherit (ampCliSource) hash;
+          };
+        });
+        installerShell = pkgs.mkShellNoCC {
+          packages = with pkgs; [
+            ampCli
+            git
+            tmux
+            rsync
+            curl
+            jq
+            less
+            gnugrep
+            ripgrep
+            bat
+            openssh
+            iproute2
+            iputils
+            ethtool
+            kmod
+            util-linux
+            pciutils
+            usbutils
+            dmidecode
+            smartmontools
+            nvme-cli
+            fwupd
+            lm_sensors
+          ];
+        };
+
         branchNameCheck = pkgs.writeShellScript "branch-name-check" ''
           set -eu
           branch="$(git rev-parse --abbrev-ref HEAD)"
@@ -62,6 +110,8 @@
           fi
         '';
       in {
+        packages.amp-cli = ampCli;
+
         treefmt = {
           projectRootFile = "flake.nix";
           programs = {
@@ -92,18 +142,24 @@
           };
         };
 
-        devShells.default = pkgs.mkShell {
-          shellHook = config.pre-commit.installationScript;
-          buildInputs = with pkgs; [
-            nil
-            alejandra
-            statix
-            deadnix
-            commitizen
-            cachix
-            git
-          ];
-        };
+        devShells =
+          {
+            default = pkgs.mkShell {
+              shellHook = config.pre-commit.installationScript;
+              buildInputs = with pkgs; [
+                nil
+                alejandra
+                statix
+                deadnix
+                commitizen
+                cachix
+                git
+              ];
+            };
+          }
+          // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+            installer = installerShell;
+          };
       };
     };
 }

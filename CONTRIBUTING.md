@@ -47,6 +47,7 @@ GitHub Actions runs `nix flake check` on push to `master` and on PRs, using the
 
 ## First-time setup (maintainer)
 
-- `cachix use anshulnoori`, then paste the printed public key into `flake.nix`'s
-  `extra-trusted-public-keys` (replace `REPLACE_ME`).
+- Configure the Nix daemon to trust the maintainer account so it can accept the
+  flake's Cachix settings. Multi-user Nix ignores restricted client settings
+  from accounts absent from `trusted-users`.
 - Add the `CACHIX_AUTH_TOKEN` repository secret on GitHub.
