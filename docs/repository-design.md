@@ -41,6 +41,207 @@ overlays/     local package overlays, added only for real consumers
 Underscore-prefixed files or directories can hold helpers that import-tree must
 not load as modules.
 
+### Target topology
+
+The host implementation uses the following target tree. This is an ownership
+map, not an instruction to create empty directories. A directory exists only
+when multiple files share a clear responsibility. An independent feature with
+no honest grouping remains a directly named module rather than being forced
+into a generic `apps`, `tools`, or `utilities` directory.
+
+```text
+modules/
+├── flake/
+│   ├── systems.nix
+│   ├── configurations.nix
+│   ├── packages.nix
+│   ├── development.nix
+│   └── checks.nix
+│
+├── nixos/
+│   ├── profiles/
+│   │   ├── base.nix
+│   │   ├── desktop.nix
+│   │   ├── gaming.nix
+│   │   └── vm.nix
+│   ├── core/
+│   │   ├── lix.nix
+│   │   ├── nixpkgs.nix
+│   │   ├── accounts.nix
+│   │   ├── locale.nix
+│   │   ├── state-version.nix
+│   │   └── journald.nix
+│   ├── boot/
+│   │   ├── kernel.nix
+│   │   ├── limine.nix
+│   │   ├── plymouth.nix
+│   │   ├── recovery.nix
+│   │   └── secure-boot.nix
+│   ├── storage/
+│   │   ├── btrfs.nix
+│   │   ├── snapper.nix
+│   │   ├── swap.nix
+│   │   ├── maintenance.nix
+│   │   └── health.nix
+│   ├── hardware/
+│   │   ├── amd.nix
+│   │   ├── graphics.nix
+│   │   ├── firmware.nix
+│   │   └── cooling.nix
+│   ├── networking/
+│   │   ├── ethernet.nix
+│   │   ├── wifi.nix
+│   │   ├── bluetooth.nix
+│   │   ├── tailscale.nix
+│   │   ├── resolved.nix
+│   │   └── firewall.nix
+│   ├── security/
+│   │   ├── sops.nix
+│   │   ├── sudo-pam.nix
+│   │   ├── onepassword.nix
+│   │   └── keyring.nix
+│   ├── desktop/
+│   │   ├── session.nix
+│   │   ├── login.nix
+│   │   ├── portals.nix
+│   │   ├── audio.nix
+│   │   ├── removable-media.nix
+│   │   ├── polkit.nix
+│   │   └── stylix.nix
+│   ├── gaming/
+│   │   ├── steam.nix
+│   │   ├── gamemode.nix
+│   │   └── gamescope.nix
+│   └── containers/
+│       └── podman.nix
+│
+└── home/
+    ├── profiles/
+    │   ├── base.nix
+    │   ├── desktop.nix
+    │   ├── workstation.nix
+    │   └── gaming.nix
+    ├── shell/
+    │   ├── zsh.nix
+    │   ├── kitty.nix
+    │   ├── zmx.nix
+    │   ├── prompt.nix
+    │   ├── history.nix
+    │   ├── navigation.nix
+    │   ├── cli-tools.nix
+    │   ├── network-tools.nix
+    │   ├── git.nix
+    │   ├── direnv.nix
+    │   ├── nix-direnv.nix
+    │   ├── nh.nix
+    │   ├── nix-output-monitor.nix
+    │   ├── nvd.nix
+    │   ├── nix-tree.nix
+    │   ├── nix-index.nix
+    │   └── comma.nix
+    ├── ai/
+    │   └── amp.nix
+    ├── desktop/
+    │   ├── appearance.nix
+    │   ├── hyprland.nix
+    │   ├── waybar.nix
+    │   ├── notifications.nix
+    │   ├── launchers.nix
+    │   ├── leader-menu.nix
+    │   ├── idle-lock.nix
+    │   ├── wallpaper.nix
+    │   ├── capture.nix
+    │   ├── clipboard.nix
+    │   ├── controls.nix
+    │   ├── removable-media.nix
+    │   ├── health-warning.nix
+    │   └── _assets/
+    ├── browsers/
+    │   ├── brave-origin.nix
+    │   ├── browsh.nix
+    │   └── web-apps.nix
+    ├── messaging/
+    │   ├── signal.nix
+    │   ├── discord.nix
+    │   └── bluebubbles.nix
+    ├── productivity/
+    │   ├── mail.nix
+    │   ├── notion-calendar.nix
+    │   ├── todoist.nix
+    │   ├── obsidian.nix
+    │   └── tldraw.nix
+    ├── media/
+    │   ├── spotify.nix
+    │   ├── mpv.nix
+    │   ├── davinci-resolve.nix
+    │   └── localsend.nix
+    ├── gaming/
+    │   ├── mangohud.nix
+    │   ├── prism-launcher.nix
+    │   └── protontricks.nix
+    ├── containers/
+    │   └── lazydocker.nix
+    ├── services/
+    │   └── update-notifier.nix
+    ├── neovim.nix
+    ├── _neovim/
+    │   ├── core.nix
+    │   ├── interface.nix
+    │   ├── completion.nix
+    │   ├── editing.nix
+    │   ├── git.nix
+    │   ├── syntax.nix
+    │   ├── languages.nix
+    │   ├── documents.nix
+    │   ├── testing.nix
+    │   ├── integrations.nix
+    │   └── diagnostics.nix
+    ├── impala.nix
+    ├── bluetui.nix
+    ├── wiremix.nix
+    ├── yazi.nix
+    ├── btop.nix
+    ├── nvtop.nix
+    └── lazyjournal.nix
+
+hosts/
+└── t1/
+    ├── default.nix
+    ├── hardware.nix
+    ├── disko.nix
+    ├── networking.nix
+    └── secrets.nix
+
+users/
+└── mvs/
+    ├── default.nix
+    └── hosts/
+        └── t1.nix
+
+packages/
+├── amp-cli.nix
+└── ttfx.nix
+
+secrets/
+└── t1.yaml
+```
+
+The grouping rule follows ownership rather than presentation. Kitty and zmx
+belong to the shell session. Git and each Nix workflow tool have explicit shell
+modules. Amp belongs to the AI domain. Neovim is the only editor, so its public
+module stays directly under `home/` and its cohesive nvf implementation is
+colocated in the ignored `_neovim/` helper directory. Impala, Bluetui, WireMix,
+Yazi, btop, nvtop, and LazyJournal are independent user tools; the fact that
+they render in a terminal does not make them shell or desktop configuration.
+
+There is no root theme directory for one standard scheme. Stylix owns the
+shared Gruvbox palette; application-specific adapters remain with their
+consumers. There is no local overlay directory until a package genuinely needs
+to participate in the global package set. `packages/` contains only actual
+local derivations: the pinned Amp release and TTFX, which is absent from the
+pinned nixpkgs package set. Brave Origin, zmx, Proton-GE, MangoHud, and the
+other available applications come from pinned inputs or nixpkgs.
+
 ## Ownership boundaries
 
 NixOS owns hardware, boot, storage, accounts, networking, security, and system

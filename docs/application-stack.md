@@ -175,48 +175,48 @@ audio is required when Bluetooth latency is unacceptable.
 
 ## Credentials
 
-| Role                | Selection                     | Notes                                             |
-| ------------------- | ----------------------------- | ------------------------------------------------- |
-| Password manager    | 1Password                     | Human-managed secrets                             |
-| CLI                 | `op`                          | Runtime secret access                             |
-| SSH agent           | 1Password SSH agent           | Git and outbound SSH authentication               |
-| Browser integration | 1Password extension for Brave | Primary web credential flow                       |
-| Secret Service      | GNOME Keyring                 | Battle-tested Freedesktop Secret Service provider |
+| Role                | Selection                            | Notes                                             |
+| ------------------- | ------------------------------------ | ------------------------------------------------- |
+| Password manager    | 1Password                            | Human-managed secrets                             |
+| CLI                 | `op`                                 | Runtime secret access                             |
+| SSH agent           | 1Password SSH agent                  | Git and outbound SSH authentication               |
+| Browser integration | 1Password extension for Brave Origin | Primary web credential flow                       |
+| Secret Service      | GNOME Keyring                        | Battle-tested Freedesktop Secret Service provider |
 
 Secrets must not be written into the Nix store. Resolve them at runtime through
 1Password, protected files, or an appropriate secrets module.
 
 ## Browsers, search, and launcher
 
-| Role                | Selection                   | Notes                                                                                        |
-| ------------------- | --------------------------- | -------------------------------------------------------------------------------------------- |
-| Primary browser     | Brave, official Linux build | Authenticated browsing, web apps, and Brave Sync                                             |
-| Terminal browser    | Browsh                      | Low-bandwidth and remote terminal browsing                                                   |
-| Launcher            | Vicinae                     | Applications, files, calculator, conversion, web search, clipboard, snippets, and extensions |
-| Launcher fallback   | Fuzzel                      | Minimal application and dmenu launcher                                                       |
-| Graphing calculator | Desmos in Brave             | Do not add a terminal substitute                                                             |
+| Role                | Selection                          | Notes                                                                                        |
+| ------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------- |
+| Primary browser     | Brave Origin, standalone Linux app | Minimal Brave build; free Linux activation, authenticated browsing, web apps, and Brave Sync |
+| Terminal browser    | Browsh                             | Low-bandwidth and remote terminal browsing                                                   |
+| Launcher            | Vicinae                            | Applications, files, calculator, conversion, web search, clipboard, snippets, and extensions |
+| Launcher fallback   | Fuzzel                             | Minimal application and dmenu launcher                                                       |
+| Graphing calculator | Desmos in Brave Origin             | Do not add a terminal substitute                                                             |
 
-Vicinae should send web searches to Brave rather than render its own search UI.
-Its browser extension may provide Brave tab switching.
+Vicinae should send web searches to Brave Origin rather than render its own
+search UI. Its browser extension may provide Brave Origin tab switching.
 
-Browsh runs a separate Firefox profile and cannot share Brave Sync, Brave
-cookies, history, or authenticated sessions. Treat it as an independent browser.
-If shared bookmarks become necessary, add a browser-independent bookmark
-service rather than copying browser profile files.
+Browsh runs a separate Firefox profile and cannot share Brave Origin Sync,
+cookies, history, or authenticated sessions. Treat it as an independent
+browser. If shared bookmarks become necessary, add a browser-independent
+bookmark service rather than copying browser profile files.
 
 ## Communication and productivity
 
-| Role             | Selection                                | Packaging notes                                                   |
-| ---------------- | ---------------------------------------- | ----------------------------------------------------------------- |
-| Secure messaging | Signal Desktop                           | Native Linux client                                               |
-| Community chat   | Discord Canary + Vencord                 | Package declaratively; accept client-mod compatibility risk       |
-| WhatsApp         | WhatsApp Web installed as a Brave app    | No unofficial credential-holding wrapper                          |
-| iMessage         | BlueBubbles client                       | Connect only to the Mac over Tailscale                            |
-| Mail             | Private custom client                    | Existing application                                              |
-| Calendar         | Private Notion Calendar Electron package | Personal distribution only; Waybar integration over a Unix socket |
-| Tasks            | Todoist                                  | Native client or Brave app selected during packaging              |
-| Notes            | Obsidian                                 | Unfree package allowed explicitly                                 |
-| Canvas           | tldraw                                   | Offline package or Brave app selected during packaging            |
+| Role             | Selection                                    | Packaging notes                                                   |
+| ---------------- | -------------------------------------------- | ----------------------------------------------------------------- |
+| Secure messaging | Signal Desktop                               | Native Linux client                                               |
+| Community chat   | Discord Canary + Vencord                     | Package declaratively; accept client-mod compatibility risk       |
+| WhatsApp         | WhatsApp Web installed as a Brave Origin app | No unofficial credential-holding wrapper                          |
+| iMessage         | BlueBubbles client                           | Connect only to the Mac over Tailscale                            |
+| Mail             | Private custom client                        | Existing application                                              |
+| Calendar         | Private Notion Calendar Electron package     | Personal distribution only; Waybar integration over a Unix socket |
+| Tasks            | Todoist                                      | Native client or Brave Origin app selected during packaging       |
+| Notes            | Obsidian                                     | Unfree package allowed explicitly                                 |
+| Canvas           | tldraw                                       | Offline package or Brave Origin app selected during packaging     |
 
 ### iMessage bridge
 
@@ -333,7 +333,7 @@ package set. Add proprietary NVIDIA modules only after the GPU is installed.
 | -------------------------- | -------------------------------------------------------------------------------------------- |
 | Notion Calendar            | Package the tested Electron application privately and do not redistribute copyrighted assets |
 | Mail client                | Keep private implementation and credentials out of the public flake                          |
-| tldraw offline application | Reuse existing personal packaging or install as a Brave app                                  |
+| tldraw offline application | Reuse existing personal packaging or install as a Brave Origin app                           |
 | TTFX                       | Add a local package only if the pinned nixpkgs does not provide it                           |
 
 Private source, credentials, license material, and application data must never
@@ -350,7 +350,7 @@ enter the public repository or Nix store unintentionally.
 | Global development language toolchains | Projects own their complete environments                 |
 | Zed                                    | Neovim is the selected editor                            |
 | GeForce Now                            | Not part of the migrated gaming stack                    |
-| Terminal Desmos replacement            | Use Desmos itself in Brave                               |
+| Terminal Desmos replacement            | Use Desmos itself in Brave Origin                        |
 | NetworkManager for Wi-Fi               | Conflicts with the selected standalone iwd/Impala design |
 | BlueBubbles Private API initially      | Requires disabling macOS SIP                             |
 
@@ -361,6 +361,7 @@ enter the public repository or Nix store unintentionally.
 | Omarchy screensaver implementation | [basecamp/omarchy](https://github.com/basecamp/omarchy)                                                    |
 | BlueBubbles                        | [Installation](https://bluebubbles.app/install)                                                            |
 | BlueBubbles over Tailscale         | [Tailscale guide](https://tailscale.com/blog/bluebubbles-tailscale-imessage-android-pc-no-port-forwarding) |
+| Brave Origin                       | [Official product page](https://brave.com/origin/)                                                         |
 | Vicinae                            | [Documentation](https://docs.vicinae.com/)                                                                 |
 | Browsh profiles                    | [Configuration](https://www.brow.sh/docs/config/)                                                          |
 | CachyOS kernel packages            | [xddxdd/nix-cachyos-kernel](https://github.com/xddxdd/nix-cachyos-kernel)                                  |
