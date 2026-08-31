@@ -97,13 +97,14 @@ firmware inspection tools:
 
 ```sh
 cd "$HOME/Projects/nixconf"
-nix --extra-experimental-features 'nix-command flakes' \
-  develop .#installer
+NIXPKGS_ALLOW_UNFREE=1 nix \
+  --extra-experimental-features 'nix-command flakes' \
+  develop --impure .#installer
 ```
 
 Keep this shell open through the live inspection and runner bootstrap. If it is
-closed, return to the checkout and run the same `nix develop .#installer`
-command; the flake and its lock remain unchanged.
+closed, return to the checkout and run the same `NIXPKGS_ALLOW_UNFREE=1 nix
+develop --impure .#installer` command; the flake and its lock remain unchanged.
 
 Collect read-only inventory before preparing any installation plan:
 
