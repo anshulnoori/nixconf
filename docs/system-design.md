@@ -24,8 +24,8 @@ the user rather than silently choosing one.
 - The user has already flashed the latest BIOS. The live inspection verifies
   its version read-only and also checks the Samsung 990 Pro and other device
   firmware and driver state before installation.
-- The Apple Silicon MacBook remains a later target and is not part of the first
-  installation.
+- The Apple Silicon MacBook remains a later Asahi Linux target and is not part
+  of the first installation.
 - Only the live facts still awaiting confirmation are listed at the end of this
   file.
 
@@ -65,7 +65,8 @@ account-password material available to the installed configuration.
 
 - `nixos-unstable` is the package-set foundation.
 - Moving main/nightly inputs are pinned to exact revisions in `flake.lock`.
-- Lix tracks `main`, with its NixOS module pinned to a compatible revision.
+- Lix nightly tracks `main`, with its NixOS module pinned to a compatible
+  revision.
 - Home Manager tracks `master` and follows the system nixpkgs input.
 - Hyprland and deliberately selected nightly-capable applications track pinned
   upstream revisions rather than unpinned branches.
@@ -86,8 +87,10 @@ Both `system.stateVersion` and `home.stateVersion` are `"26.05"`. These values
 preserve stateful compatibility defaults; they do not pin packages or prevent
 the flake from using pinned unstable and nightly inputs.
 
-Lix main is the normal package manager. A stable-Lix recovery configuration and
-previous NixOS generations remain available from the boot menu.
+Lix nightly is the normal package manager. If a regression blocks operation,
+pin Lix and its NixOS module to the last known-good compatible revisions.
+Previous NixOS generations remain available from the boot menu; there is no
+separately maintained stable-Lix configuration.
 
 ## Boot and recovery
 
@@ -115,8 +118,8 @@ previous NixOS generations remain available from the boot menu.
 - Snapper snapshots are for file recovery and manual rollback; they are not
   synthesized into Limine boot entries.
 - One Limine `recovery` specialization combines the standard NixOS kernel,
-  stable Lix, `tuigreet`, no graphical automatic login, and an authenticated
-  `mvs` text-shell repair path. It never bypasses the account password.
+  `tuigreet`, no graphical automatic login, and an authenticated `mvs`
+  text-shell repair path. It never bypasses the account password.
 
 ## Storage and memory
 
@@ -378,13 +381,14 @@ and dotfiles.
 
 Additional decisions:
 
-- Nixvim owns the Neovim configuration.
-- Neovim uses a pinned nightly build. Nixvim tracks pinned upstream main and
-  includes pinned `amp.nvim`, despite that plugin's upstream deprecation.
+- nvf owns the Neovim configuration through the integrated Home Manager user
+  module.
+- Neovim uses a pinned nightly build. nvf includes pinned `amp.nvim`, despite
+  that plugin's upstream deprecation.
 - `amp.nvim` starts automatically.
 - Snacks, Blink completion, Treesitter, Gitsigns, Lazygit integration,
   render-markdown, Markdown preview, VimTeX, Neovim which-key, linting, and
-  format-on-save are retained as Nixvim-managed behavior.
+  format-on-save are retained as nvf-managed behavior.
 - Flash, mini.ai, mini.pairs, Yanky, Dial, inc-rename, TODO Comments, Neotest,
   and DAP are retained.
 - Reproduce the current Mac's visible editor layout: Gruvbox, Bufferline,
@@ -542,10 +546,10 @@ expose their useful actions without carrying over Omarchy-specific shell
 architecture.
 
 Update state is checked by a lightweight user timer every six hours. It detects
-an open update pull request and a merged configuration newer than the running
-revision. Waybar shows the state and Mako sends at most one notification per
-revision. Clicking the module opens a floating Kitty window with the pull
-request, diff, and deliberate update action. Nothing auto-merges or switches.
+new `renovate/*` branch revisions and a merged configuration newer than the
+running revision. Waybar shows the state and Mako sends at most one notification
+per branch SHA. Clicking the module opens a floating Kitty window with the
+branch, diff, and deliberate update action. Nothing auto-merges or switches.
 
 ## Git identity
 
@@ -581,7 +585,7 @@ desktop expansion and again where full desktop activation changes the result:
 
 - the typed LUKS unlock and encrypted-root boundary;
 - current and recovery Limine entries;
-- Lix main as the normal package manager;
+- Lix nightly as the normal package manager;
 - the selected CachyOS BORE ThinLTO `zen4` kernel;
 - AMD P-state in active EPP mode with the confirmed performance policy;
 - the expected Btrfs subvolume mounts, zram, and encrypted swapfile;

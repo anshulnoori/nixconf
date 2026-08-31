@@ -1,45 +1,36 @@
 # nixconf
 
-My personal, declarative **NixOS** configuration, managed with **Nix flakes** — an actively evolving setup for a reproducible Linux environment.
+Declarative NixOS and Home Manager configuration for Anshul's physical Linux
+devices. The repository uses pinned flakes and a dendritic flake-parts layout.
 
-> **Status:** work in progress, updated continuously.
+Repository infrastructure is ready. Host roots and hardware configuration will
+be added from each target machine after live inspection.
 
-## Goals
+## Design
 
-- A fully **declarative, reproducible** system defined in Nix
-- **Flake-based** with pinned inputs
-- Clean, conventional structure (hence the rename from an earlier config repo)
-
-The planned desktop, applications, terminal tools, theming, networking, audio,
-gaming, and private-package boundaries are documented in the
-[application and desktop stack](./docs/application-stack.md).
-
-## Usage
-
-```sh
-# Build & switch to the configuration
-sudo nixos-rebuild switch --flake .
-
-# Update pinned inputs
-nix flake update
-```
+- [`docs/repository-design.md`](./docs/repository-design.md) describes module
+  boundaries, CI, caching, and update automation.
+- [`docs/system-design.md`](./docs/system-design.md) records the confirmed `t1`
+  system design and remaining live facts.
+- [`docs/application-stack.md`](./docs/application-stack.md) records the planned
+  desktop and application stack.
+- [`docs/pc-runner-bootstrap.md`](./docs/pc-runner-bootstrap.md) describes the
+  non-destructive live-runner bootstrap for `t1`.
 
 ## Development
 
-Tooling is native Nix — no Node/Bun.
+The flake exposes Linux outputs only: `x86_64-linux` and `aarch64-linux`.
 
 ```sh
-direnv allow        # first time: loads the devShell, installs the git hooks
-# or, without direnv:
-nix develop         # enter the devShell (installs the git hooks)
+direnv allow
+# or
+nix develop
 
-nix fmt             # format everything (alejandra + prettier + shfmt)
-nix flake check     # all checks: formatting, statix, deadnix, commit hooks
+nix fmt
+nix flake check --all-systems --no-build
 ```
 
-Commits follow **Conventional Commits** and branches follow `type/kebab-description`.
-See [CONTRIBUTING.md](./CONTRIBUTING.md).
-
----
-
-Maintained by [Anshul Noori](https://github.com/anshulnoori).
+Local pre-push validation evaluates without realizing host systems. Full host
+builds will run only in CI after host configurations exist. See
+[`docs/development.md`](./docs/development.md) for repository conventions and
+external setup.

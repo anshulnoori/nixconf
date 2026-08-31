@@ -2,7 +2,13 @@ node_modules/
 result
 result-*
 .direnv/
+.envrc.local
 .pre-commit-config.yaml
 .claude/
-.agents/
 .DS_Store
+
+.agents/*
+!.agents/setup
+!.agents/resume
+
+.amp/state/

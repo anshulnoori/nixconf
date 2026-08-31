@@ -100,7 +100,6 @@ Use the `sensors` command from `lm_sensors` for terminal sensor readings.
 | Command-output parsing | jc                   |
 | Git output             | delta                |
 | Benchmarking           | hyperfine            |
-| Task execution         | just                 |
 | GitHub                 | gh                   |
 | Environment activation | direnv + nix-direnv  |
 | Disk inspection        | dust, duf            |
@@ -121,6 +120,8 @@ Use the `sensors` command from `lm_sensors` for terminal sensor readings.
 | Flake composition        | flake-parts                    | Top-level flake framework                                                  |
 | Recursive module imports | import-tree                    | Discover modules without maintaining manual import lists                   |
 | User configuration       | Home Manager                   | User services, packages, and dotfiles                                      |
+| Neovim configuration     | nvf                            | Home Manager owns one integrated editor configuration                      |
+| Selective package wraps  | Lassulus/wrappers              | Add fixed flags or environment only when a package needs them              |
 | Project environments     | Per-project `devShells`        | No global Rust, Go, Zig, OCaml, Java, Android, Python, or C/C++ toolchains |
 | Automatic activation     | direnv + nix-direnv            | Enter project shells on directory change                                   |
 | Rebuild frontend         | nh                             | Wrap rebuild, update, and cleanup workflows                                |
@@ -363,3 +364,7 @@ enter the public repository or Nix store unintentionally.
 | Vicinae                            | [Documentation](https://docs.vicinae.com/)                                                                 |
 | Browsh profiles                    | [Configuration](https://www.brow.sh/docs/config/)                                                          |
 | CachyOS kernel packages            | [xddxdd/nix-cachyos-kernel](https://github.com/xddxdd/nix-cachyos-kernel)                                  |
+| Recursive Nix module imports       | [vic/import-tree](https://github.com/vic/import-tree)                                                      |
+| Neovim configuration               | [NotAShelf/nvf](https://github.com/NotAShelf/nvf)                                                          |
+| Selective package wrappers         | [Lassulus/wrappers](https://github.com/Lassulus/wrappers)                                                  |
+| Discoverable Wayland leader menu   | [wlr-which-key](https://github.com/eepp/wlr-which-key)                                                     |

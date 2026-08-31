@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+lix_user="${SUDO_USER:-$(id -un)}"
+cachix_url="https://anshulnoori.cachix.org"
+cachix_key="anshulnoori.cachix.org-1:jzLsepTKLr8/jDh8WdI4uhyimUTDSmxN5ispn1uN/Q0="
+tools_profile="$HOME/.local/state/nixconf/orb-profile"
+
+as_root() {
+  if [[ $(id -u) -eq 0 ]]; then
+    "$@"
+  elif command -v sudo >/dev/null 2>&1 && sudo -n true; then
+    sudo -n "$@"
+  else
+    printf 'Root access is required to prepare the Amp Orb.\n' >&2
+    exit 1
+  fi
+}
+
+if [[ $(uname -s) != Linux ]]; then
+  printf 'Amp Orb setup supports Linux only.\n' >&2
+  exit 1
+fi
+
+as_root apt-get update
+as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+  ca-certificates curl direnv git xz-utils
+
+if ! command -v nix >/dev/null 2>&1 || \
+  ! nix --version 2>/dev/null | grep -F '(Lix, like Nix)' >/dev/null; then
+  installer=$(mktemp)
+  trap 'rm -f "$installer"' EXIT
+  curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+    https://install.lix.systems/lix -o "$installer"
+  sh "$installer" install --no-confirm
+  rm -f "$installer"
+  trap - EXIT
+fi
+
+export PATH="/nix/var/nix/profiles/default/bin:$HOME/.nix-profile/bin:$PATH"
+hash -r
+if ! nix --version | grep -F '(Lix, like Nix)' >/dev/null; then
+  printf 'Lix installation failed.\n' >&2
+  exit 1
+fi
+
+config_tmp=$(mktemp)
+trap 'rm -f "$config_tmp"' EXIT
+as_root cat /etc/nix/nix.conf \
+  | sed '/^# begin nixconf Amp Orb settings$/,/^# end nixconf Amp Orb settings$/d' \
+    >"$config_tmp"
+cat >>"$config_tmp" <<EOF
+
+# begin nixconf Amp Orb settings
+experimental-features = nix-command flakes
+accept-flake-config = true
+trusted-users = root $lix_user
+trusted-substituters = $cachix_url
+extra-trusted-public-keys = $cachix_key
+# end nixconf Amp Orb settings
+EOF
+as_root install -m 0644 "$config_tmp" /etc/nix/nix.conf
+rm -f "$config_tmp"
+trap - EXIT
+
+if command -v systemctl >/dev/null 2>&1; then
+  as_root systemctl restart nix-daemon.socket
+fi
+
+cd "$repo_root"
+rm -rf "$tools_profile"
+nix profile install \
+  --profile "$tools_profile" \
+  --accept-flake-config \
+  "$repo_root#orb-tools"
+export PATH="$tools_profile/bin:$PATH"
+
+mkdir -p "$HOME/.config/direnv"
+printf 'source "%s/share/nix-direnv/direnvrc"\n' "$tools_profile" \
+  >"$HOME/.config/direnv/direnvrc"
+direnv allow "$repo_root"
+direnv export bash >/dev/null
+
+printf 'Amp Orb setup complete.\n'

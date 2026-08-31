@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ -z ${AMP_ORB:-} ]]; then
+  printf 'Orb resume is inactive outside an Amp Orb.\n'
+  exit 0
+fi
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+tools_profile="$HOME/.local/state/nixconf/orb-profile"
+export PATH="/nix/var/nix/profiles/default/bin:$tools_profile/bin:$PATH"
+
+if ! nix --version | grep -F '(Lix, like Nix)' >/dev/null; then
+  printf 'Lix is unavailable; rerun .agents/setup.\n' >&2
+  exit 1
+fi
+if ! command -v direnv >/dev/null 2>&1; then
+  printf 'direnv is unavailable; rerun .agents/setup.\n' >&2
+  exit 1
+fi
+if [[ ! -r $tools_profile/share/nix-direnv/direnvrc ]]; then
+  printf 'nix-direnv is unavailable; rerun .agents/setup.\n' >&2
+  exit 1
+fi
+
+direnv allow "$repo_root"
+direnv export bash >/dev/null
+printf 'Lix and the nixconf development shell are ready.\n'

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "branchPrefix": "renovate/",
+  "dependencyDashboard": true,
+  "prCreation": "approval",
+  "semanticCommits": "enabled",
+  "schedule": ["before 6am"],
+  "vulnerabilityAlerts": {
+    "enabled": false
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on monday"],
+    "branchTopic": "nix-lock-file-maintenance"
+  },
+  "nix": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "description": "Group Nix flake inputs",
+      "matchManagers": ["nix"],
+      "groupName": "Nix flake inputs",
+      "groupSlug": "nix-flake-inputs",
+      "separateMajorMinor": false,
+      "separateMultipleMajor": false,
+      "semanticCommitType": "flake"
+    },
+    {
+      "description": "Group GitHub Actions",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "groupSlug": "github-actions",
+      "separateMajorMinor": false,
+      "separateMultipleMajor": false,
+      "semanticCommitType": "ci"
+    }
+  ]
+}

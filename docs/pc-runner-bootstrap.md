@@ -70,7 +70,7 @@ Boot decision rather than changing firmware security settings silently.
 
 The official live ISO uses CppNix. Keep it for the temporary live environment;
 a custom installer image is not required. The target flake imports pinned Lix
-main, so only the installed system switches to Lix.
+nightly, so only the installed system switches to Lix.
 
 Obtain the repository with the live ISO's nixpkgs Git package. For a new
 checkout, run:
@@ -226,7 +226,7 @@ amp --no-tui --runner-id t1 --remote-control-terminal
 ```
 
 The post-install thread follows the confirmed first-boot checklist in
-`system-design.md`: LUKS, current and recovery Limine entries, Lix main, the
+`system-design.md`: LUKS, current and recovery Limine entries, Lix nightly, the
 CachyOS kernel, AMD P-state, mounts, zram and swap, Ethernet and DNS, integrated
 graphics, audio, automatic login, lock behavior, firewall state, and the absence
 of SSH and Mosh listeners. Secure Boot stays disabled through base and recovery

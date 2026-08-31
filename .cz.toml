@@ -3,4 +3,4 @@ name = "cz_customize"
 
 [tool.commitizen.customize]
 # `cz check` validates the commit message against this pattern.
-schema_pattern = '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|flake|host|module)(\([\w-]+\))?!?: .+$'
+schema_pattern = '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|flake|host|module)(\([\w-]+\))?!?: [^\r\n]+(?:\r?\n|$)'
