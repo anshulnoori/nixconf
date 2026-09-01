@@ -89,9 +89,10 @@ workflow, actor, branch, commit, and signature before starting a private,
 read-only review thread. Only a later direct owner message may authorize a
 fast-forward merge and push.
 
-The optional Home Manager module `homeModules.renovate-notifier` polls GitHub
-every six hours and sends one desktop notification for each new branch SHA. It
-does not expose an inbound device webhook.
+The deferred module `modules.homeManager.base` defines the disabled
+`services.nixconf-renovate-notifier` option. When enabled, the service polls
+GitHub every six hours and sends one desktop notification for each new branch
+SHA. It does not expose an inbound device webhook.
 
 ## External setup
 

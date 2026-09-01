@@ -13,17 +13,17 @@ the user rather than silently choosing one.
 - The installation starts from the official NixOS 26.05 minimal ISO, verified
   and flashed to USB with Balena Etcher.
 - Work proceeds in this order: read-only inspection; an exact destructive disk
-  plan and fresh approval; encrypted base installation; first-boot and recovery
-  validation with Secure Boot disabled; full desktop activation; and Secure
-  Boot enrollment and verification.
+  plan and fresh approval; encrypted base installation; base first-boot
+  validation with Secure Boot disabled; full desktop and recovery-specialization
+  activation; validation of both; and Secure Boot enrollment and verification.
 - The user reports that the new target SSD is empty. This workflow has not
   performed a destructive action or consumed approval for one. The live
   successor must identify the target disk, show the existing data, exact
   partition plan, encryption boundary, and recovery path, and obtain fresh
   approval before any write.
-- The user has already flashed the latest BIOS. The live inspection verifies
-  its version read-only and also checks the Samsung 990 Pro and other device
-  firmware and driver state before installation.
+- Live inspection confirmed MSI BIOS `1.A42` dated 2026-06-26. It did not
+  establish whether a newer vendor release exists. The Samsung 990 Pro and
+  other device firmware and driver states were also inspected read-only.
 - The Apple Silicon MacBook remains a later Asahi Linux target and is not part
   of the first installation.
 - Only the live facts still awaiting confirmation are listed at the end of this
@@ -40,8 +40,8 @@ the user rather than silently choosing one.
 | CPU          | AMD Ryzen 7 9850X3D (Zen 5)                                |
 | GPU          | None initially; use the CPU's integrated graphics          |
 | Future GPU   | RTX 5080 or 5090 FE with proprietary NVIDIA kernel modules |
-| Storage      | New Samsung 990 Pro 4 TB; exact device identity required   |
-| Memory       | Exact installed capacity must be detected                  |
+| Storage      | Empty Samsung 990 Pro 4 TB; only internal disk             |
+| Memory       | 32 GiB, 2 × 16 GiB DDR5-6000                               |
 | Locale       | `en_US.UTF-8`                                              |
 | Keyboard     | Standard US PC keyboard                                    |
 | Timezone     | Automatically selected from the current region             |
@@ -49,8 +49,8 @@ the user rather than silently choosing one.
 One memorized secret serves as both the passphrase typed at every cold-boot
 LUKS prompt and the `mvs` Linux account password. LUKS has no TPM-backed or
 automatic unlock. The plaintext is never stored in the repository, Nix store,
-1Password, or shell history. Only the salted yescrypt account-password hash is
-provided through sops-nix.
+1Password, or shell history. The salted account-password hash exists only in
+`/etc/shadow` below encrypted root.
 
 Direct root login is disabled. `mvs` belongs to `wheel` and uses the account
 password for `sudo`; passwordless sudo is disabled. Keep PAM modular so a
@@ -58,8 +58,10 @@ FIDO2 key or biometric factor can be explicitly enrolled as supplemental
 authentication later, but configure neither initially and never use either for
 LUKS unlock.
 
-Set `users.mutableUsers = false`. The declarative yescrypt hash remains the only
-account-password material available to the installed configuration.
+Set `users.mutableUsers = true`. NixOS declares the `mvs` account, groups, and
+shell. During installation, set its password interactively inside the mounted
+system after activation and before reboot. Later system activations preserve
+the password in `/etc/shadow`.
 
 ## Release and update policy
 
@@ -97,8 +99,8 @@ separately maintained stable-Lix configuration.
 - Limine is the bootloader.
 - The official installer boots with Secure Boot temporarily disabled. The first
   installed boot also keeps Secure Boot disabled while the user validates the
-  base system, recovery path, and then the full desktop. Enrollment follows
-  only after those checks pass.
+  base system. The full desktop and its recovery specialization come after that
+  gate. Enrollment follows only after both stages pass.
 - Secure Boot setup follows the current CachyOS process where it fits NixOS and
   Limine. The current [CachyOS Secure Boot guide](https://wiki.cachyos.org/configuration/secure_boot_setup/)
   is a process reference, not a source of Arch-specific commands. On the MSI
@@ -111,15 +113,14 @@ separately maintained stable-Lix configuration.
 - The normal kernel package is
   `pkgs.cachyosKernels.linuxPackages-cachyos-bore-lto-zen4` from
   `xddxdd/nix-cachyos-kernel`.
-- A standard NixOS kernel remains bootable as a recovery path.
-- Boot is quiet and uses a Gruvbox-themed Plymouth spinner where supported.
+- The base install does not configure Plymouth. Add quiet boot and a
+  Gruvbox-themed Plymouth spinner with the graphics and desktop stage.
 - Set `boot.loader.limine.maxGenerations = 6`; Limine exposes the current
   generation and five previous generations.
-- Snapper snapshots are for file recovery and manual rollback; they are not
-  synthesized into Limine boot entries.
-- One Limine `recovery` specialization combines the standard NixOS kernel,
-  `tuigreet`, no graphical automatic login, and an authenticated `mvs`
-  text-shell repair path. It never bypasses the account password.
+- The base install does not include a recovery specialization. Add one with the
+  desktop and login stage, when it can meaningfully combine a standard NixOS
+  kernel, `tuigreet`, no graphical automatic login, and an authenticated `mvs`
+  text-shell repair path. It must never bypass the account password.
 
 ## Storage and memory
 
@@ -133,14 +134,17 @@ GPT
     └── Btrfs
         ├── @root → /
         ├── @home → /home
-        ├── @nix  → /nix
+        ├── @games → /home/mvs/Games
+        ├── @nix → /nix
         └── @swap → /swap
 ```
 
-No speculative `games`, `cache`, `log`, or `projects` subvolumes are created.
-`~/Projects` remains in the snapshotted home subvolume. The dedicated swap
-subvolume exists because an active Btrfs swapfile prevents snapshots of its
-containing subvolume.
+`@games` contains Steam libraries, Prism Launcher instances, Minecraft worlds,
+and other game data. This data has a separate backup method and no local
+snapshot policy. `~/Projects` remains in `@home` and uses remote Git
+repositories for recovery. No `cache`, `log`, `projects`, or snapshot
+subvolumes are created. The dedicated swap subvolume isolates the Btrfs
+swapfile from normal compressed data.
 
 LUKS2 uses the interactively entered passphrase, Argon2id key derivation,
 AES-XTS-512, and discard propagation. Btrfs uses `noatime`; asynchronous discard
@@ -151,16 +155,11 @@ recovery path.
 Storage policy:
 
 - Btrfs mounts use `compress=zstd:3` for normal data;
-- Snapper root retention is 7 daily, 4 weekly, and 3 monthly snapshots, with no
-  hourly snapshots and at most 10 pre/post pairs;
-- Snapper home retention is 6 hourly, 7 daily, and 4 weekly snapshots, with no
-  monthly snapshots;
-- `/nix` and `/swap` excluded from snapshots;
-- pre/post system snapshots where they provide useful mutable-file recovery;
-- automatic snapshot cleanup;
+- no Snapper service or local filesystem snapshots;
+- six NixOS system generations for system rollback;
 - automatic Nix store optimization;
-- weekly Nix cleanup that retains the current system profile and five previous
-  profiles;
+- weekly Nix cleanup that retains the current system generation and five
+  previous generations;
 - no hibernation initially.
 
 Maintenance is automatic: run `fstrim` weekly, Btrfs scrub monthly, and Btrfs
@@ -173,10 +172,10 @@ leaves a persistent Waybar warning until it is acknowledged or resolved.
 Firmware checks never install an update automatically.
 
 Keep Btrfs `autodefrag` disabled: it is not general maintenance and can reduce
-snapshot and reflink efficiency while increasing writes. Do not schedule
-defragmentation or balance operations. Use either only as a targeted response
-to measured trouble. The system should perform its routine maintenance without
-manual intervention. Same-disk snapshots remain recovery points, not backups.
+reflink efficiency while increasing writes. Do not schedule defragmentation or
+balance operations. Use either only as a targeted response to measured
+trouble. The system should perform its routine maintenance without manual
+intervention.
 
 Memory pressure uses two swap tiers:
 
@@ -282,12 +281,11 @@ viewer.
 
 ## Firmware, BIOS, and cooling
 
-The user has already updated the MSI motherboard to the latest BIOS. Live
-inspection verifies its reported version without writing firmware. Before
-installation, also inspect the Samsung 990 Pro firmware and all detected device
-firmware and active drivers. Drivers are managed declaratively by the pinned
-kernel, `linux-firmware`, and selected kernel package set; do not install them
-imperatively.
+Live inspection confirmed MSI BIOS `1.A42` dated 2026-06-26 and Samsung 990 Pro
+firmware `4B2QJXD7`. It did not establish whether newer vendor releases exist
+because the live fwupd daemon was unavailable. Drivers are managed
+declaratively by the pinned kernel, `linux-firmware`, and selected kernel
+package set; do not install them imperatively.
 
 No firmware check authorizes a firmware write. Before any BIOS, SSD, or other
 device update, present the exact official artifact, current and target versions,
@@ -301,6 +299,10 @@ Preserve these existing BIOS settings exactly:
 - PBO scalar: 10x;
 - PBO limits: automatic;
 - EXPO: enabled.
+
+The live CPU exposes 8 cores and 8 threads, so SMT is disabled or not exposed.
+Do not change that policy until the user explicitly decides between the current
+state and enabling SMT.
 
 The CPU cooler is a Thermalright AXP90-X47. Stability testing is observational:
 any failure stops the test, reports the evidence, and waits for user direction;
@@ -333,6 +335,9 @@ measurements; the user may later copy a proven runtime curve into BIOS manually.
   configuration.
 - GameMode, Gamescope, and Protontricks are installed.
 - Prism Launcher remains the Minecraft launcher.
+- Steam libraries and all Prism Launcher data use `/home/mvs/Games`.
+- The game subvolume has no local snapshots. Minecraft worlds use a separate
+  backup method.
 - Moonlight, Heroic, Lutris, UMU, Proton-CachyOS, and Wine-CachyOS are not
   installed initially.
 - GPU-specific DLSS and shader-cache settings wait until the NVIDIA GPU is
@@ -340,28 +345,16 @@ measurements; the user may later copy a proven runtime curve into BIOS manually.
 
 ## Secrets
 
-Use the smallest sops-nix design that preserves host isolation:
+The base system has no machine-secrets framework or encrypted secret files.
+The `mvs` password is entered interactively, and Wi-Fi, Tailscale, and
+1Password authenticate interactively after installation. Their mutable state
+stays below LUKS and never enters the repository or Nix store.
 
-- encrypted files remain in this public repository;
-- no private submodule or separate secret flake;
-- each host receives one hybrid ML-KEM-768 and X25519 identity;
-- the host identity and Secure Boot signing keys remain below LUKS encryption;
-- host files are encrypted only to their intended host identities;
-- plaintext and private identities are never committed;
-- conventional age, SSH, RSA, and Ed25519 recipients are not added to protected
-  files;
-- SOPS contains only noninteractive machine secrets and the salted yescrypt
-  `mvs` account-password hash, never the human-readable password or LUKS
-  passphrase;
-- secret files are added only when a real consumer exists.
-
-sops-nix decrypts runtime files beneath `/run/secrets`. Adding another host
-requires another recipient and host file; it does not change repository
-topology. 1Password remains a user-facing credential, SSH-agent, and Git-signing
-tool. It is not the store for machine keys. The normal installation does not
-create an offline administrator-key USB. A high-entropy LUKS recovery key is
-printed on paper. After total disk loss, replace the host and Secure Boot
-identities and reissue affected machine secrets.
+Add a runtime secrets mechanism only with the first real noninteractive
+consumer. Do not add a private submodule or separate secret flake preemptively.
+Secure Boot signing keys remain below encrypted root when that later stage is
+implemented. The normal installation does not create an offline
+administrator-key USB. A high-entropy LUKS recovery key is printed on paper.
 
 ## User environment
 
@@ -412,12 +405,11 @@ Additional decisions:
   is Minuet's OpenAI-compatible default, `deepseek/deepseek-v4-flash`, subject
   to validation against the authenticated LiteLLM model list. Streaming and the
   other Minuet completion defaults remain unchanged. The endpoint requires an
-  API token. sops-nix decrypts that token to
-  `/run/secrets/litellm-api-key`; Minuet reads the file through its synchronous
-  key callback. Virtual-text suggestions trigger automatically after a short
-  idle period. Blink exposes Minuet through a manual keybinding so that both
-  interfaces do not request automatic completions concurrently. GitHub Copilot
-  is excluded.
+  API token. Add its runtime secret delivery with Minuet rather than selecting
+  a secrets framework preemptively; the token must remain outside the Nix store.
+  Virtual-text suggestions trigger automatically after a short idle period.
+  Blink exposes Minuet through a manual keybinding so that both interfaces do
+  not request automatic completions concurrently. GitHub Copilot is excluded.
 - Atuin history is local only; no Atuin account or sync credentials.
 - Rootless Podman is the container engine.
 - Lazydocker uses the Podman Docker-compatible socket where compatible.
@@ -427,8 +419,9 @@ Additional decisions:
   disabled initially.
 - No incoming SSH or Mosh service is enabled. The outbound OpenSSH client
   remains available for Git and administering other tailnet hosts.
-- No data backup is configured initially. Local Snapper snapshots are recovery
-  points on the same disk, not backups.
+- No general local-data backup is configured initially. Projects use remote Git
+  repositories, documents use cloud services, and Minecraft worlds use a
+  separate backup method.
 
 The interactive shell is Zsh in vi editing mode. Yazi is the only file manager
 and its `y` wrapper changes the parent shell's working directory. Preserve
@@ -446,13 +439,14 @@ systemd-resolved owns DNS, and Tailscale is the only VPN.
 
 Tailscale is installed declaratively but authenticated interactively after
 first boot. Its mutable state remains below LUKS; no reusable Tailscale auth key
-is stored in SOPS.
+is stored in the repository.
 
-The firewall defaults to denying inbound traffic. Configure no trusted
-interfaces and open no SSH, Mosh, or application ports. Allow only the Tailscale
-transport required by its NixOS module; each future service must open its own
-ports deliberately. CoolerControl remains loopback-only. Amp and the OpenSSH
-client make outbound connections and need no inbound exception.
+The firewall defaults to denying inbound traffic. Trust only the loopback
+interface that NixOS adds by default; trust no physical or VPN interface. Open
+no SSH, Mosh, or application ports. Allow only the Tailscale transport required
+by its NixOS module; each future service must open its own ports deliberately.
+CoolerControl remains loopback-only. Amp and the OpenSSH client make outbound
+connections and need no inbound exception.
 
 ## Graphical session and login
 
@@ -476,7 +470,8 @@ typed LUKS unlock
 - Explicit logout presents ReGreet under the small Cage compositor and requires
   the `mvs` password before starting another session.
 - `tuigreet` or an equivalent text greeter remains an independent fallback.
-- TTY login and the recovery specialization always require the `mvs` password.
+- TTY login and the later recovery specialization always require the `mvs`
+  password.
 - The account password authenticates hyprlock, ReGreet, and privileged actions.
 - Passwordless sudo is not enabled on the physical PC.
 
@@ -578,36 +573,34 @@ Shared behavior:
 - Neovim editor;
 - aliases `co`, `br`, `ci`, and `st`.
 
-## First-boot validation
+## Base first-boot gate
 
-With Secure Boot still disabled, collect concrete evidence for every item before
-desktop expansion and again where full desktop activation changes the result:
+With Secure Boot still disabled, collect concrete evidence for every item
+before starting graphics and desktop work:
 
 - the typed LUKS unlock and encrypted-root boundary;
-- current and recovery Limine entries;
+- current and previous-generation Limine entries;
 - Lix nightly as the normal package manager;
 - the selected CachyOS BORE ThinLTO `zen4` kernel;
 - AMD P-state in active EPP mode with the confirmed performance policy;
 - the expected Btrfs subvolume mounts, zram, and encrypted swapfile;
 - primary Ethernet, DNS resolution, and the optional Wi-Fi fallback;
-- integrated graphics and audio;
-- one-time cold-boot automatic login, explicit logout authentication, and
-  hyprlock authentication;
+- integrated graphics and audio hardware detection;
 - default-deny firewall state; and
 - absence of incoming SSH and Mosh listeners.
 
-Secure Boot enrollment remains a later stage and requires its own post-enrollment
-verification.
+The later desktop stage must separately validate Plymouth, graphical automatic
+login, explicit logout authentication, hyprlock, audio services, and the
+standard-kernel recovery specialization. Secure Boot enrollment remains a final
+stage and requires its own post-enrollment verification.
 
-## Remaining live facts
+## Remaining physical facts
 
-Only these facts remain to be collected on the physical system:
-
-- exact memory and disk identities, detected firmware versions, devices, active
-  drivers, and network-interface names;
+- official latest-version status for the BIOS, SSD, and other fwupd devices;
+- the motherboard Super-I/O driver, if one is exposed after installation;
 - exact NixOS and Limine Secure Boot commands for the discovered system;
 - authenticated validation that the LiteLLM endpoint exposes Minuet's selected
   model alias; and
-- concrete evidence from the confirmed live verification checks.
+- concrete evidence from the base first-boot checks.
 
 Remote game-server deployment is outside this system's scope.

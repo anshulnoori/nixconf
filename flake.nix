@@ -38,15 +38,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    nvf = {
-      url = "github:NotAShelf/nvf";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    wrappers = {
-      url = "github:Lassulus/wrappers";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    nix-cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/release";
 
     lix = {
       url = "https://git.lix.systems/lix-project/lix/archive/main.tar.gz";

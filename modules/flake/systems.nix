@@ -5,6 +5,7 @@
   ];
 
   imports = [
+    inputs.flake-parts.flakeModules.modules
     inputs.git-hooks-nix.flakeModule
     inputs.treefmt-nix.flakeModule
   ];

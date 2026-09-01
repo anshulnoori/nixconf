@@ -23,6 +23,8 @@ if [[ $(uname -s) != Linux ]]; then
   exit 1
 fi
 
+export PATH="/nix/var/nix/profiles/default/bin:$HOME/.nix-profile/bin:$PATH"
+
 as_root apt-get update
 as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y \
   ca-certificates curl direnv git xz-utils
@@ -38,7 +40,6 @@ if ! command -v nix >/dev/null 2>&1 || \
   trap - EXIT
 fi
 
-export PATH="/nix/var/nix/profiles/default/bin:$HOME/.nix-profile/bin:$PATH"
 hash -r
 if ! nix --version | grep -F '(Lix, like Nix)' >/dev/null; then
   printf 'Lix installation failed.\n' >&2
@@ -69,6 +70,7 @@ if command -v systemctl >/dev/null 2>&1; then
 fi
 
 cd "$repo_root"
+mkdir -p "$(dirname "$tools_profile")"
 rm -rf "$tools_profile"
 nix profile install \
   --profile "$tools_profile" \

@@ -12,8 +12,9 @@ reboots:
 1. inspect hardware, firmware, drivers, interfaces, and disks read-only;
 2. present the exact destructive disk plan and obtain fresh approval;
 3. install the encrypted base system;
-4. validate first boot and recovery with Secure Boot disabled;
-5. activate and validate the full desktop;
+4. validate the base system's first boot with Secure Boot disabled;
+5. activate Plymouth and the full desktop, add its recovery specialization,
+   and validate them;
 6. enroll and verify Secure Boot.
 
 This runbook provides commands only through starting the outbound live Amp
@@ -233,6 +234,8 @@ account or thread.
 Before rebooting, the installation thread must:
 
 - commit or otherwise preserve all intended configuration changes;
+- set the `mvs` password interactively inside the installed system and verify
+  that direct root login remains disabled;
 - ensure `amp-cli`, Git, networking, the outbound OpenSSH client, and the
   repository checkout are available in the installed system;
 - verify that no incoming SSH or Mosh service is enabled;
@@ -247,10 +250,10 @@ cd "$HOME/Projects/nixconf"
 amp --no-tui --runner-id t1 --remote-control-terminal
 ```
 
-The post-install thread follows the confirmed first-boot checklist in
-`system-design.md`: LUKS, current and recovery Limine entries, Lix nightly, the
-CachyOS kernel, AMD P-state, mounts, zram and swap, Ethernet and DNS, integrated
-graphics, audio, automatic login, lock behavior, firewall state, and the absence
-of SSH and Mosh listeners. Secure Boot stays disabled through base and recovery
-validation and full desktop activation. Enrollment and active-state verification
-come last.
+The post-install thread follows the base-gate checklist in `system-design.md`:
+LUKS, Limine generations, Lix nightly, the CachyOS kernel, AMD P-state, mounts,
+zram and swap, Ethernet and DNS, integrated graphics and audio hardware,
+firewall state, and the absence of SSH and Mosh listeners. Plymouth, automatic
+login, lock behavior, and a standard-kernel recovery specialization belong to
+the later desktop and login stage. Secure Boot stays disabled through both
+stages. Enrollment and active-state verification come last.

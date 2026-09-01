@@ -8,11 +8,9 @@ no submodule, nested checkout, or continuous file synchronization. A shared
 module should move to a dedicated flake only after both repositories have a
 real consumer with the same contract.
 
-Current work establishes repository infrastructure only. Host roots, hardware
-facts, disk layouts, and device activation wait for live work on each machine.
-The intended targets are an `x86_64-linux` PC named `t1` and an
-`aarch64-linux` Apple Silicon MacBook running Asahi Linux. Darwin outputs are
-not part of this repository.
+Current work prepares the inspected `x86_64-linux` PC named `t1` for its base
+installation. The later target is an `aarch64-linux` Apple Silicon MacBook with
+Asahi Linux. Darwin outputs are not part of this repository.
 
 ## Dendritic layout
 
@@ -30,8 +28,8 @@ import list while keeping ownership visible:
 ```text
 modules/
 ├── flake/    repository tooling, systems, checks, shells, and packages
-├── nixos/    reusable NixOS module exports
-└── home/     reusable Home Manager module exports
+├── nixos/    deferred NixOS module contributions
+└── home/     deferred Home Manager module contributions
 
 hosts/        actual machine roots, added after live inspection
 users/        integrated Home Manager user roots, added with hosts
@@ -41,13 +39,24 @@ overlays/     local package overlays, added only for real consumers
 Underscore-prefixed files or directories can hold helpers that import-tree must
 not load as modules.
 
+The flake enables the upstream `flake.modules` option from flake-parts. Each
+base NixOS file contributes to `flake.modules.nixos.base`. Each base Home
+Manager file contributes to `flake.modules.homeManager.base`. Deferred-module
+merging composes files that use the same class and name.
+
+This pattern is the repository standard. A module does not read sibling outputs
+through `inputs.self` while those outputs are under construction. A host imports
+one completed base module for each module class. A profile exists only for a
+real optional layer, such as `desktop` or `gaming`; no aggregator-only base
+profile exists.
+
 ### Target topology
 
 The host implementation uses the following target tree. This is an ownership
-map, not an instruction to create empty directories. A directory exists only
-when multiple files share a clear responsibility. An independent feature with
-no honest grouping remains a directly named module rather than being forced
-into a generic `apps`, `tools`, or `utilities` directory.
+map, not an instruction to create empty directories. Create the listed files
+only when their feature is implemented. The reusable NixOS base keeps boot
+concerns split, but merges system, hardware, storage, networking, and security
+policy into one file each.
 
 ```text
 modules/
@@ -59,47 +68,18 @@ modules/
 │   └── checks.nix
 │
 ├── nixos/
-│   ├── profiles/
-│   │   ├── base.nix
-│   │   ├── desktop.nix
-│   │   ├── gaming.nix
-│   │   └── vm.nix
-│   ├── core/
-│   │   ├── lix.nix
-│   │   ├── nixpkgs.nix
-│   │   ├── accounts.nix
-│   │   ├── locale.nix
-│   │   ├── state-version.nix
-│   │   └── journald.nix
 │   ├── boot/
 │   │   ├── kernel.nix
 │   │   ├── limine.nix
 │   │   ├── plymouth.nix
-│   │   ├── recovery.nix
 │   │   └── secure-boot.nix
-│   ├── storage/
-│   │   ├── btrfs.nix
-│   │   ├── snapper.nix
-│   │   ├── swap.nix
-│   │   ├── maintenance.nix
-│   │   └── health.nix
-│   ├── hardware/
-│   │   ├── amd.nix
-│   │   ├── graphics.nix
-│   │   ├── firmware.nix
-│   │   └── cooling.nix
-│   ├── networking/
-│   │   ├── ethernet.nix
-│   │   ├── wifi.nix
-│   │   ├── bluetooth.nix
-│   │   ├── tailscale.nix
-│   │   ├── resolved.nix
-│   │   └── firewall.nix
-│   ├── security/
-│   │   ├── sops.nix
-│   │   ├── sudo-pam.nix
-│   │   ├── onepassword.nix
-│   │   └── keyring.nix
+│   ├── hardware.nix
+│   ├── home-manager.nix
+│   ├── networking.nix
+│   ├── security.nix
+│   ├── storage.nix
+│   ├── system.nix
+│   ├── graphics.nix
 │   ├── desktop/
 │   │   ├── session.nix
 │   │   ├── login.nix
@@ -116,11 +96,6 @@ modules/
 │       └── podman.nix
 │
 └── home/
-    ├── profiles/
-    │   ├── base.nix
-    │   ├── desktop.nix
-    │   ├── workstation.nix
-    │   └── gaming.nix
     ├── shell/
     │   ├── zsh.nix
     │   ├── kitty.nix
@@ -209,30 +184,31 @@ hosts/
     ├── default.nix
     ├── hardware.nix
     ├── disko.nix
-    ├── networking.nix
-    └── secrets.nix
+    └── networking.nix
 
 users/
 └── mvs/
-    ├── default.nix
-    └── hosts/
-        └── t1.nix
+    └── default.nix
 
 packages/
 ├── amp-cli.nix
 └── ttfx.nix
-
-secrets/
-└── t1.yaml
 ```
 
-The grouping rule follows ownership rather than presentation. Kitty and zmx
-belong to the shell session. Git and each Nix workflow tool have explicit shell
-modules. Amp belongs to the AI domain. Neovim is the only editor, so its public
-module stays directly under `home/` and its cohesive nvf implementation is
-colocated in the ignored `_neovim/` helper directory. Impala, Bluetui, WireMix,
-Yazi, btop, nvtop, and LazyJournal are independent user tools; the fact that
-they render in a terminal does not make them shell or desktop configuration.
+`networking.nix` owns the complete reusable network policy; device names and
+links stay in the host's `networking.nix`. `storage.nix` owns Disko integration,
+runtime storage, swap, maintenance, and health; the destructive host layout
+stays in the host's `disko.nix`. `hardware.nix`, `security.nix`, and
+`system.nix` similarly keep their related base policy together. Boot remains a
+directory because the kernel, bootloader, Plymouth, and later Secure Boot work
+are independent responsibilities. Plymouth is added with the graphics and
+desktop stage rather than the base installation.
+
+Home Manager keeps visible domain directories from the agreed tree. Amp stays
+under `ai/`; shell programs and tools stay under `shell/`; user services stay
+under `services/`. Neovim's public module remains directly under `home/`, with
+an ignored `_neovim/` directory only when the real nvf implementation is large
+enough to justify it.
 
 There is no root theme directory for one standard scheme. Stylix owns the
 shared Gruvbox palette; application-specific adapters remain with their
@@ -249,15 +225,15 @@ services. Home Manager is integrated into each NixOS system and owns the user
 session, Hyprland configuration, user services, packages, and dotfiles. There
 is no standalone Home Manager activation path.
 
-The flake currently exports these reusable boundaries without creating a host:
+The flake exports two reusable deferred modules:
 
-- `nixosModules.lix` installs pinned Lix nightly from upstream `main`.
-- `nixosModules.home-manager` integrates Home Manager with the system package
-  set and passes flake inputs to user modules.
-- `nixosModules.disko` exposes disko for later host storage definitions.
-- `homeModules.neovim` gives nvf sole ownership of Neovim.
-- `homeModules.renovate-notifier` provides the disabled-by-default update
-  notification timer.
+- `modules.nixos.base` contains the current base-system policies.
+- `modules.homeManager.base` contains the current base-user policies.
+
+Future desktop and gaming files contribute to separately named deferred
+modules. A host can add those layers after the base installation passes its
+first-boot gate. The recovery specialization is deferred until the desktop and
+login layer gives it a meaningful distinction from the base system.
 
 `Lassulus/wrappers` is not a Home Manager replacement. Use it selectively when
 a package genuinely needs fixed flags, environment, or store-backed
