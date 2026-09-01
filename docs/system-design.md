@@ -14,8 +14,9 @@ the user rather than silently choosing one.
   and flashed to USB with Balena Etcher.
 - Work proceeds in this order: read-only inspection; an exact destructive disk
   plan and fresh approval; encrypted base installation; base first-boot
-  validation with Secure Boot disabled; full desktop and recovery-specialization
-  activation; validation of both; and Secure Boot enrollment and verification.
+  validation with Secure Boot disabled; desktop activation and validation; and
+  Secure Boot enrollment and verification. A separate recovery specialization
+  is deferred; previous Limine generations are the current rollback path.
 - The user reports that the new target SSD is empty. This workflow has not
   performed a destructive action or consumed approval for one. The live
   successor must identify the target disk, show the existing data, exact
@@ -99,8 +100,8 @@ separately maintained stable-Lix configuration.
 - Limine is the bootloader.
 - The official installer boots with Secure Boot temporarily disabled. The first
   installed boot also keeps Secure Boot disabled while the user validates the
-  base system. The full desktop and its recovery specialization come after that
-  gate. Enrollment follows only after both stages pass.
+  base system. The full desktop comes after that gate. Enrollment follows only
+  after the desktop stage passes.
 - Secure Boot setup follows the current CachyOS process where it fits NixOS and
   Limine. The current [CachyOS Secure Boot guide](https://wiki.cachyos.org/configuration/secure_boot_setup/)
   is a process reference, not a source of Arch-specific commands. On the MSI
@@ -113,14 +114,12 @@ separately maintained stable-Lix configuration.
 - The normal kernel package is
   `pkgs.cachyosKernels.linuxPackages-cachyos-bore-lto-zen4` from
   `xddxdd/nix-cachyos-kernel`.
-- The base install does not configure Plymouth. Add quiet boot and a
-  Gruvbox-themed Plymouth spinner with the graphics and desktop stage.
+- The graphics and desktop stage adds quiet boot and a custom unbranded,
+  Gruvbox-themed Plymouth LUKS prompt and progress bar.
 - Set `boot.loader.limine.maxGenerations = 6`; Limine exposes the current
   generation and five previous generations.
-- The base install does not include a recovery specialization. Add one with the
-  desktop and login stage, when it can meaningfully combine a standard NixOS
-  kernel, `tuigreet`, no graphical automatic login, and an authenticated `mvs`
-  text-shell repair path. It must never bypass the account password.
+- Do not add a separate recovery specialization yet. Previous Limine
+  generations and authenticated TTY login are the current recovery paths.
 
 ## Storage and memory
 
@@ -469,9 +468,7 @@ typed LUKS unlock
 - hyprlock locks the existing session and authenticates wake.
 - Explicit logout presents ReGreet under the small Cage compositor and requires
   the `mvs` password before starting another session.
-- `tuigreet` or an equivalent text greeter remains an independent fallback.
-- TTY login and the later recovery specialization always require the `mvs`
-  password.
+- TTY login remains an independent fallback and requires the `mvs` password.
 - The account password authenticates hyprlock, ReGreet, and privileged actions.
 - Passwordless sudo is not enabled on the physical PC.
 
@@ -589,10 +586,10 @@ before starting graphics and desktop work:
 - default-deny firewall state; and
 - absence of incoming SSH and Mosh listeners.
 
-The later desktop stage must separately validate Plymouth, graphical automatic
-login, explicit logout authentication, hyprlock, audio services, and the
-standard-kernel recovery specialization. Secure Boot enrollment remains a final
-stage and requires its own post-enrollment verification.
+The desktop stage must separately validate Plymouth, graphical automatic login,
+explicit logout authentication, hyprlock, and audio services. Secure Boot
+enrollment remains a final stage and requires its own post-enrollment
+verification.
 
 ## Remaining physical facts
 

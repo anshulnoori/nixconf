@@ -230,10 +230,10 @@ The flake exports two reusable deferred modules:
 - `modules.nixos.base` contains the current base-system policies.
 - `modules.homeManager.base` contains the current base-user policies.
 
-Future desktop and gaming files contribute to separately named deferred
+Desktop and future gaming files contribute to separately named deferred
 modules. A host can add those layers after the base installation passes its
-first-boot gate. The recovery specialization is deferred until the desktop and
-login layer gives it a meaningful distinction from the base system.
+first-boot gate. A separate recovery specialization remains deferred; previous
+Limine generations are the current rollback path.
 
 `Lassulus/wrappers` is not a Home Manager replacement. Use it selectively when
 a package genuinely needs fixed flags, environment, or store-backed

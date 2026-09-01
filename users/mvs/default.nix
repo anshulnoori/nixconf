@@ -12,7 +12,10 @@
 
   programs.zsh.enable = true;
   home-manager.users.mvs = {
-    imports = [inputs.self.modules.homeManager.base];
+    imports = [
+      inputs.self.modules.homeManager.base
+      inputs.self.modules.homeManager.desktop
+    ];
     home = {
       username = "mvs";
       homeDirectory = "/home/mvs";

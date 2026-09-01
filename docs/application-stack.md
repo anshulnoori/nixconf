@@ -19,7 +19,7 @@ must return to the user rather than being resolved silently.
 | Configuration          | Declarative NixOS and Home Manager modules                                        |
 | Development toolchains | Per-project Nix development shells; no global language toolchains                 |
 | Package channel        | NixOS unstable, with pinned flake inputs                                          |
-| Kernel                 | CachyOS BORE ThinLTO Zen 4; standard recovery kernel added with the desktop       |
+| Kernel                 | CachyOS BORE ThinLTO Zen 4; previous Limine generations provide rollback          |
 
 ## Desktop
 
@@ -313,19 +313,19 @@ password; activity after hyprlock starts still requires the account password.
 
 ## Kernel
 
-| Role                 | Selection                                      | Notes                                            |
-| -------------------- | ---------------------------------------------- | ------------------------------------------------ |
-| Kernel family        | CachyOS                                        | Desktop responsiveness and scheduler tuning      |
-| Normal package       | `linuxPackages-cachyos-bore-lto-zen4`          | Clang ThinLTO, BORE, 1000 Hz, dynamic preemption |
-| CPU target           | `zen4`                                         | Fixed target until the input supports Zen 5      |
-| Profile optimization | Disabled                                       | No AutoFDO or Propeller profile                  |
-| Real-time mode       | Disabled                                       | Normal BORE kernel                               |
-| TCP congestion       | BBR3 with FQ                                   | Default TCP policy                               |
-| Binder               | Compiled but dormant                           | No BinderFS mount or Android service             |
-| v4l2loopback         | Available on demand                            | Do not load the module at boot                   |
-| ZFS                  | Excluded                                       | Btrfs is the only root filesystem                |
-| Flake source         | `xddxdd/nix-cachyos-kernel`                    | Use its pinned overlay                           |
-| Recovery             | Standard NixOS kernel specialization, deferred | Add with the desktop and login stage             |
+| Role                 | Selection                                 | Notes                                            |
+| -------------------- | ----------------------------------------- | ------------------------------------------------ |
+| Kernel family        | CachyOS                                   | Desktop responsiveness and scheduler tuning      |
+| Normal package       | `linuxPackages-cachyos-bore-lto-zen4`     | Clang ThinLTO, BORE, 1000 Hz, dynamic preemption |
+| CPU target           | `zen4`                                    | Fixed target until the input supports Zen 5      |
+| Profile optimization | Disabled                                  | No AutoFDO or Propeller profile                  |
+| Real-time mode       | Disabled                                  | Normal BORE kernel                               |
+| TCP congestion       | BBR3 with FQ                              | Default TCP policy                               |
+| Binder               | Compiled but dormant                      | No BinderFS mount or Android service             |
+| v4l2loopback         | Available on demand                       | Do not load the module at boot                   |
+| ZFS                  | Excluded                                  | Btrfs is the only root filesystem                |
+| Flake source         | `xddxdd/nix-cachyos-kernel`               | Use its pinned overlay                           |
+| Recovery             | Previous Limine generations and TTY login | Separate recovery specialization is deferred     |
 
 GPU and other out-of-tree kernel modules must come from the selected kernel
 package set. Add proprietary NVIDIA modules only after the GPU is installed.
