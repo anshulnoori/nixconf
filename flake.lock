@@ -834,6 +834,23 @@
         "type": "github"
       }
     },
+    "omarchy-rice": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1778743515,
+        "narHash": "sha256-OU7/Q0Q8EFLIO+q0xcGURcByfkpwBpLAvqIbi5hOdOk=",
+        "owner": "basecamp",
+        "repo": "omarchy",
+        "rev": "a7f8f2495f4990044b7791d8f11a32cf14d34b39",
+        "type": "github"
+      },
+      "original": {
+        "owner": "basecamp",
+        "repo": "omarchy",
+        "rev": "a7f8f2495f4990044b7791d8f11a32cf14d34b39",
+        "type": "github"
+      }
+    },
     "pre-commit-hooks": {
       "inputs": {
         "flake-compat": "flake-compat_2",
@@ -868,6 +885,7 @@
         "lix-module": "lix-module",
         "nix-cachyos-kernel": "nix-cachyos-kernel",
         "nixpkgs": "nixpkgs_3",
+        "omarchy-rice": "omarchy-rice",
         "stylix": "stylix",
         "treefmt-nix": "treefmt-nix"
       }

@@ -14,8 +14,8 @@ must return to the user rather than being resolved silently.
 | Desktop                | Square, minimal Hyprland environment assembled from focused components            |
 | Primary interaction    | Terminal and TUIs wherever they remain practical                                  |
 | Graphical applications | Keep applications that benefit from graphics, rich media, or proprietary services |
-| Theme                  | Gruvbox from one shared palette                                                   |
-| Font                   | JetBrains Mono Nerd Font, with Symbols Nerd Font as icon fallback                 |
+| Theme                  | Gruvbox Dark Hard from one shared palette                                         |
+| Font                   | JetBrains Mono Nerd Font with Nerd Font glyphs                                    |
 | Configuration          | Declarative NixOS and Home Manager modules                                        |
 | Development toolchains | Per-project Nix development shells; no global language toolchains                 |
 | Package channel        | NixOS unstable, with pinned flake inputs                                          |
@@ -27,22 +27,29 @@ must return to the user rather than being resolved silently.
 | -------------------- | ---------------------------------------------------- | --------------------------------------------------------------- |
 | Compositor           | Hyprland                                             | Owns windows, workspaces, displays, keybindings, and animations |
 | Bar                  | Waybar                                               | Square CSS; launches system TUIs in Kitty                       |
-| Command launcher     | Vicinae                                              | Primary launcher and Raycast replacement                        |
-| Minimal launcher     | Fuzzel                                               | Fallback and dmenu-style workflows                              |
-| Notifications        | Mako                                                 | Minimal notification daemon with Gruvbox styling                |
-| Wallpaper            | TTFX in Kitty background panels                      | Live, unbranded random terminal effects per output              |
-| Lock screen          | hyprlock                                             | Secure lock boundary                                            |
-| Idle management      | hypridle                                             | Screensaver, lock, and display power; no automatic suspend      |
+| Command launcher     | Walker + Elephant                                    | One launcher UI with one provider backend                       |
+| Notifications        | Mako                                                 | Only notification daemon; Gruvbox styling and DND mode          |
+| Wallpaper            | swaybg                                               | Pinned Omarchy Gruvbox wallpaper                                |
+| Lock screen          | hyprlock                                             | Visible password field over the matching wallpaper              |
+| Idle management      | hypridle                                             | Lock and display power; no automatic suspend                    |
 | Authentication agent | hyprpolkitagent                                      | Graphical Polkit prompts                                        |
-| Screenshots          | grim + slurp                                         | Capture outputs, windows, and regions                           |
-| Screenshot editor    | Satty                                                | Annotation and export                                           |
+| Screenshots          | grim + slurp + Satty                                 | Region capture, clipboard copy, annotation, and export          |
 | OSD                  | SwayOSD                                              | Volume and brightness feedback                                  |
-| Clipboard            | wl-clipboard + cliphist                              | Clipboard commands and searchable history                       |
-| Media control        | playerctl                                            | Keybindings and Waybar controls                                 |
-| Night light          | hyprsunset                                           | Color-temperature control                                       |
+| Clipboard            | Elephant + wl-clipboard                              | Searchable history through Walker and direct clipboard commands |
+| Media control        | playerctl                                            | Hardware keybindings                                            |
 | Portals              | xdg-desktop-portal-hyprland + xdg-desktop-portal-gtk | Screen sharing, file dialogs, URI opening, and screenshots      |
 | Removable media      | udisks2 + udiskie                                    | Device access and automounting                                  |
 | Cooling GUI          | CoolerControl                                        | Manual GUI; daemon starts at boot without GUI or tray autostart |
+
+The visual baseline is the last fully modular, pre-Quickshell
+Omarchy snapshot at commit `a7f8f2495f4990044b7791d8f11a32cf14d34b39`.
+The flake pins that source. This configuration does not follow later Omarchy
+desktop changes. It retains Walker and Elephant while deliberately substituting
+Kitty for Alacritty and hyprpolkitagent for polkit-gnome. Omarchy is not the
+source for bindings or feature policy.
+
+Elephant's clipboard provider owns clipboard history. Do not also run cliphist;
+that would duplicate the clipboard watcher and history database.
 
 ## Terminal environment
 
@@ -143,18 +150,18 @@ underneath it.
 
 ## Theme and typography
 
-| Layer               | Decision                                                                             |
-| ------------------- | ------------------------------------------------------------------------------------ |
-| Palette source      | Stylix with a selected Gruvbox dark scheme                                           |
-| Shared colors       | Custom modules consume `config.lib.stylix.colors`                                    |
-| GTK and Qt          | Stylix targets                                                                       |
-| Terminal            | Stylix Kitty target                                                                  |
-| Editor              | Stylix Neovim target or a generated Gruvbox configuration                            |
-| Desktop components  | Generate Waybar, Fuzzel, Mako, hyprlock, and Hyprland colors from the shared palette |
-| Custom applications | Consume the same generated palette rather than embedding hex values                  |
-| Primary font        | JetBrains Mono Nerd Font                                                             |
-| Icon fallback       | Symbols Nerd Font                                                                    |
-| Shape language      | Zero corner radius and minimal or no shadows where applications allow it             |
+| Layer               | Decision                                                                               |
+| ------------------- | -------------------------------------------------------------------------------------- |
+| Palette source      | Stylix with a selected Gruvbox dark scheme                                             |
+| Shared colors       | Custom modules consume `config.lib.stylix.colors`                                      |
+| GTK and Qt          | Stylix targets                                                                         |
+| Terminal            | Stylix Kitty target                                                                    |
+| Editor              | Stylix Neovim target or a generated Gruvbox configuration                              |
+| Desktop components  | Generate Waybar, Walker, Mako, SwayOSD, hyprlock, and Hyprland colors from the palette |
+| Custom applications | Consume the same generated palette rather than embedding hex values                    |
+| Primary font        | JetBrains Mono Nerd Font                                                               |
+| Icon glyphs         | Symbols Nerd Font                                                                      |
+| Shape language      | Zero corner radius and minimal or no shadows where applications allow it               |
 
 Stylix owns palette values. Application-specific adapters may exist, but they
 must consume the shared palette rather than define a second theme source.
@@ -198,12 +205,12 @@ Secrets must not be written into the Nix store. Resolve them at runtime through
 | ------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------- |
 | Primary browser     | Brave Origin, standalone Linux app | Minimal Brave build; free Linux activation, authenticated browsing, web apps, and Brave Sync |
 | Terminal browser    | Browsh                             | Low-bandwidth and remote terminal browsing                                                   |
-| Launcher            | Vicinae                            | Applications, files, calculator, conversion, web search, clipboard, snippets, and extensions |
-| Launcher fallback   | Fuzzel                             | Minimal application and dmenu launcher                                                       |
+| Launcher UI         | Walker                             | Applications and Elephant-backed providers                                                   |
+| Launcher backend    | Elephant                           | Files, calculator, web search, clipboard, and symbols                                        |
 | Graphing calculator | Desmos in Brave Origin             | Do not add a terminal substitute                                                             |
 
-Vicinae should send web searches to Brave Origin rather than render its own
-search UI. Its browser extension may provide Brave Origin tab switching.
+Elephant web-search results should open in Brave Origin rather than render a
+second browser surface.
 
 Browsh runs a separate Firefox profile and cannot share Brave Origin Sync,
 cookies, history, or authenticated sessions. Treat it as an independent
@@ -289,33 +296,24 @@ The Amp runner uses an outbound connection. It does not require an incoming SSH
 service. Wi-Fi credentials are entered interactively and stored as mutable state
 below LUKS.
 
-## Live wallpaper, idle animation, and locking
+## Wallpaper, idle, and locking
 
-The live wallpaper and screensaver reproduce Omarchy's TTFX behavior without
-its Quickshell shell, branding, or lock implementation.
+The desktop uses one static wallpaper and one lock implementation. It does not
+run a shell framework, live wallpaper, or separate screensaver.
 
-| Behavior              | Decision                                                       |
-| --------------------- | -------------------------------------------------------------- |
-| Wallpaper engine      | TTFX with random effects at 30 FPS                             |
-| Wallpaper rendering   | One `kitty +kitten panel --edge=background` surface per output |
-| Animation input       | Generated unbranded ASCII/Unicode character pattern            |
-| Idle scheduler        | hypridle                                                       |
-| Screensaver deadline  | 5 minutes                                                      |
-| Lock deadline         | 10 minutes from the beginning of inactivity                    |
-| Display-off deadline  | 20 minutes from the beginning of inactivity                    |
-| Automatic suspend     | Disabled; suspend is an explicit desktop control action        |
-| Screensaver rendering | One fullscreen 60 FPS TTFX Kitty instance per output           |
-| Window classes        | Neutral `org.nixconf.ttfx-*` classes                           |
-| Styling               | Gruvbox palette, JetBrains Mono Nerd Font, zero padding        |
-| Dismissal             | Keyboard/mouse activity or loss of screensaver focus           |
-| Lock transition       | Stop foreground TTFX, close its windows, then start hyprlock   |
-| Idle inhibitors       | Respect media and application inhibitors                       |
+| Behavior             | Decision                                                    |
+| -------------------- | ----------------------------------------------------------- |
+| Wallpaper engine     | swaybg                                                      |
+| Wallpaper source     | Omarchy Gruvbox `1-the-backwater.jpg` from the pinned input |
+| Idle scheduler       | hypridle                                                    |
+| Lock deadline        | 10 minutes from the beginning of inactivity                 |
+| Display-off deadline | 20 minutes from the beginning of inactivity                 |
+| Automatic suspend    | Disabled; suspend remains an explicit action                |
+| Lock styling         | Matching wallpaper and a centered visible password field    |
+| Idle inhibitors      | Respect media and application inhibitors                    |
 
-TTFX may require a local package if it is unavailable in the pinned nixpkgs.
-The background panels run as a Home Manager user service. hyprpaper does not
-run concurrently. The screensaver is decorative; hyprlock remains the security
-boundary. Activity before the lock deadline dismisses the screensaver without a
-password; activity after hyprlock starts still requires the account password.
+hyprlock is the security boundary. swaybg owns the wallpaper surface and no
+other wallpaper daemon runs concurrently.
 
 ## Kernel
 
@@ -365,16 +363,17 @@ enter the public repository or Nix store unintentionally.
 
 ## References
 
-| Project                            | Reference                                                                                                  |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Omarchy screensaver implementation | [basecamp/omarchy](https://github.com/basecamp/omarchy)                                                    |
-| BlueBubbles                        | [Installation](https://bluebubbles.app/install)                                                            |
-| BlueBubbles over Tailscale         | [Tailscale guide](https://tailscale.com/blog/bluebubbles-tailscale-imessage-android-pc-no-port-forwarding) |
-| Brave Origin                       | [Official product page](https://brave.com/origin/)                                                         |
-| Vicinae                            | [Documentation](https://docs.vicinae.com/)                                                                 |
-| Browsh profiles                    | [Configuration](https://www.brow.sh/docs/config/)                                                          |
-| CachyOS kernel packages            | [xddxdd/nix-cachyos-kernel](https://github.com/xddxdd/nix-cachyos-kernel)                                  |
-| Recursive Nix module imports       | [vic/import-tree](https://github.com/vic/import-tree)                                                      |
-| Neovim configuration               | [NotAShelf/nvf](https://github.com/NotAShelf/nvf)                                                          |
-| Selective package wrappers         | [Lassulus/wrappers](https://github.com/Lassulus/wrappers)                                                  |
-| Discoverable Wayland leader menu   | [wlr-which-key](https://github.com/eepp/wlr-which-key)                                                     |
+| Project                          | Reference                                                                                                           |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Frozen classic Omarchy desktop   | [basecamp/omarchy at `a7f8f249`](https://github.com/basecamp/omarchy/tree/a7f8f2495f4990044b7791d8f11a32cf14d34b39) |
+| BlueBubbles                      | [Installation](https://bluebubbles.app/install)                                                                     |
+| BlueBubbles over Tailscale       | [Tailscale guide](https://tailscale.com/blog/bluebubbles-tailscale-imessage-android-pc-no-port-forwarding)          |
+| Brave Origin                     | [Official product page](https://brave.com/origin/)                                                                  |
+| Walker                           | [Documentation](https://github.com/abenz1267/walker)                                                                |
+| Elephant                         | [Documentation](https://github.com/abenz1267/elephant)                                                              |
+| Browsh profiles                  | [Configuration](https://www.brow.sh/docs/config/)                                                                   |
+| CachyOS kernel packages          | [xddxdd/nix-cachyos-kernel](https://github.com/xddxdd/nix-cachyos-kernel)                                           |
+| Recursive Nix module imports     | [vic/import-tree](https://github.com/vic/import-tree)                                                               |
+| Neovim configuration             | [NotAShelf/nvf](https://github.com/NotAShelf/nvf)                                                                   |
+| Selective package wrappers       | [Lassulus/wrappers](https://github.com/Lassulus/wrappers)                                                           |
+| Discoverable Wayland leader menu | [wlr-which-key](https://github.com/eepp/wlr-which-key)                                                              |

@@ -52,6 +52,11 @@
 
     nix-cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/release";
 
+    omarchy-rice = {
+      url = "github:basecamp/omarchy/a7f8f2495f4990044b7791d8f11a32cf14d34b39";
+      flake = false;
+    };
+
     stylix = {
       url = "github:nix-community/stylix";
       inputs.nixpkgs.follows = "nixpkgs";

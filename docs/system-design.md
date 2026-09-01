@@ -73,8 +73,8 @@ the password in `/etc/shadow`.
 - Home Manager tracks `master` and follows the system nixpkgs input.
 - Hyprland and deliberately selected nightly-capable applications track pinned
   upstream revisions rather than unpinned branches.
-- Upstream `wlr-which-key` is pinned directly rather than using its older
-  nixpkgs release.
+- `wlr-which-key`, Walker, and Elephant come from the pinned nixpkgs revision;
+  all three are available on both `x86_64-linux` and `aarch64-linux`.
 - Amp CLI is pinned as a local flake package to an exact upstream release and
   source hash rather than taken from the slower nixpkgs package update cycle.
 - Update automation may propose changes daily, but never activates or merges
@@ -462,22 +462,18 @@ typed LUKS unlock
 - Automatic login applies only to the first graphical session after each cold
   boot. It does not remove the LUKS prompt or account password.
 - UWSM owns the systemd user session and starts Hyprland.
-- hypridle handles screensaver, lock, and display-power transitions. It does
-  not suspend automatically; suspend is available only as an explicit desktop
-  control action.
+- hypridle handles lock and display-power transitions. It does not suspend
+  automatically; suspend is available only as an explicit desktop action.
 - hyprlock locks the existing session and authenticates wake.
 - Explicit logout presents ReGreet under the small Cage compositor and requires
   the `mvs` password before starting another session.
-- TTY login remains an independent fallback and requires the `mvs` password.
+- TTY login remains an independent recovery path and requires the `mvs`
+  password.
 - The account password authenticates hyprlock, ReGreet, and privileged actions.
 - Passwordless sudo is not enabled on the physical PC.
 
-After 5 minutes of inactivity, replace the wallpaper with the unlocked
-fullscreen TTFX screensaver. Activity before the lock deadline dismisses it
-without authentication. At 10 minutes, stop the screensaver and start
-hyprlock; subsequent activity still requires the account password. At 20
-minutes, turn displays off while keeping the session locked. No idle deadline
-suspends the machine.
+After 10 minutes of inactivity, start hyprlock. At 20 minutes, turn displays
+off while keeping the session locked. No idle deadline suspends the machine.
 
 1Password system authentication allows Linux PAM authentication to unlock
 1Password. It does not make 1Password an operating-system login or PAM
@@ -486,56 +482,56 @@ signing integration, and required polkit policy. Initial sign-in remains
 interactive.
 
 Use official Hyprland ecosystem components where they directly fit, including
-Hyprland, hypridle, hyprlock, hyprsunset, hyprpolkitagent, and the Hyprland
-portal. Previously confirmed focused components such as Waybar, Mako, Vicinae,
-Fuzzel, and SwayOSD remain selected.
+Hyprland, hypridle, hyprlock, hyprpolkitagent, and the Hyprland portal. Waybar,
+Mako, Walker, Elephant, SwayOSD, swaybg, and Kitty complete the modular desktop.
+Do not install parallel launchers, provider backends, notification daemons,
+bars, or wallpaper daemons.
 
 ## Interaction and keybindings
 
-`wlr-which-key` is the discoverable leader menu. Home Manager's
-`programs.wlr-which-key` module generates its configuration, while a pinned
-upstream package supplies the executable.
-
-- Keep only essential direct Hyprland bindings.
-- Reserve `Super+Space` as the leader.
-- Do not invent menu categories or actions during scaffolding.
-- Add menu actions organically as real use establishes muscle memory.
+- `Super+Space` opens wlr-which-key.
+- `Super+D` opens Walker.
+- `Super+Return` opens Kitty.
+- `Super+L` starts hyprlock.
+- `Print` starts region capture and offers Satty editing.
+- Hardware media keys use SwayOSD.
+- Keep one direct binding for each action; do not add aliases.
 - Hardware media keys and recovery-critical bindings remain direct.
 
 ## Theme and bar
 
 - Stylix is the shared palette source.
-- Use a Gruvbox dark palette throughout the desktop.
+- Use Gruvbox Dark Hard throughout the desktop.
 - Use no logo, name, or custom branding.
-- TTFX renders a continuous live wallpaper in one Kitty layer-shell panel per
-  output. Kitty uses its background layer, so the panels are not normal
-  Hyprland windows. The wallpaper runs at 30 FPS. No hyprpaper service runs
-  concurrently.
-- At the idle deadline, hypridle replaces the background instances with
-  foreground fullscreen TTFX instances. User activity restores the background
-  instances. The screensaver runs at 60 FPS. Both modes use random effects and
-  an unbranded generated character pattern.
-- Preserve square geometry and minimal or absent shadows.
+- swaybg displays Omarchy's Gruvbox `1-the-backwater.jpg` wallpaper from the
+  pinned source input. No other wallpaper service runs concurrently.
+- Preserve square geometry and the classic Omarchy shadow and animation
+  treatment.
 
-Waybar reproduces the behavior of Omarchy's current top bar without adopting
-its Quickshell shell. Current Omarchy no longer uses Waybar, so this is a
-behavioral translation rather than a copied configuration.
+The desktop is based on Omarchy commit
+`a7f8f2495f4990044b7791d8f11a32cf14d34b39`, the last fully modular snapshot
+before its Quickshell migration. It is a frozen reference, not an update
+source. Only its visual language is carried over: palette, wallpaper, component
+styling, gaps, borders, shadows, and animations. Bindings and command hierarchy
+remain local. Walker and Elephant are retained; local substitutions are Kitty
+for Alacritty and hyprpolkitagent for polkit-gnome.
 
 Confirmed placement:
 
 ```text
-left:   menu, workspaces
-center: empty
-right:  updates, indicators, Tailscale, Bluetooth, network, clock
+left:   Walker launcher, workspaces
+center: clock
+right:  tray drawer, Bluetooth, network, audio, CPU
 ```
 
-The right-hand list is written from left to right; the clock is the rightmost
-module. `indicators` is a collapsed Waybar drawer containing the tray, audio and
-microphone, media, display and power, privacy, and recording state. There are no
-weather, keyboard-layout, agent, or separate power and audio modules. Widgets
-hide when irrelevant. Network, Bluetooth, Tailscale, and update modules should
-expose their useful actions without carrying over Omarchy-specific shell
-architecture.
+The tray remains collapsed until requested. Network, Bluetooth, audio, and CPU
+widgets open Impala, Bluetui, WireMix, and btop in one consistently floating
+Kitty class. There are no weather, keyboard-layout, agent, or duplicate power
+widgets.
+
+Elephant's clipboard provider owns clipboard history and Walker presents it.
+Cliphist is not enabled because a second watcher and history store would be
+duplicate infrastructure.
 
 Update state is checked by a lightweight user timer every six hours. It detects
 new `renovate/*` branch revisions and a merged configuration newer than the
