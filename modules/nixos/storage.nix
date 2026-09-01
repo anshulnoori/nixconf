@@ -1,9 +1,5 @@
 {inputs, ...}: {
-  flake.modules.nixos.base = {
-    config,
-    pkgs,
-    ...
-  }: {
+  flake.modules.nixos.base = {pkgs, ...}: {
     imports = [inputs.disko.nixosModules.disko];
 
     boot = {
@@ -25,10 +21,14 @@
       priority = 100;
     };
 
-    nix.gc = {
-      automatic = true;
-      dates = "weekly";
-      persistent = true;
+    programs.nh = {
+      enable = true;
+      flake = "/etc/nixos";
+      clean = {
+        enable = true;
+        dates = "weekly";
+        extraArgs = "--keep 6 --keep-one";
+      };
     };
 
     environment.systemPackages = [
@@ -59,7 +59,6 @@
       ];
 
       services = {
-        nix-gc.serviceConfig.ExecStartPre = "${config.nix.package}/bin/nix-env --profile /nix/var/nix/profiles/system --delete-generations +6";
         nixconf-storage-health = {
           description = "Check Btrfs and NVMe health";
           after = ["local-fs.target"];

@@ -157,8 +157,8 @@ Storage policy:
 - no Snapper service or local filesystem snapshots;
 - six NixOS system generations for system rollback;
 - automatic Nix store optimization;
-- weekly Nix cleanup that retains the current system generation and five
-  previous generations;
+- weekly `nh clean all` that retains six generations in every profile and
+  active direnv roots;
 - no hibernation initially.
 
 Maintenance is automatic: run `fstrim` weekly, Btrfs scrub monthly, and Btrfs

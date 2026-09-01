@@ -126,14 +126,20 @@ Use the `sensors` command from `lm_sensors` for terminal sensor readings.
 | Automatic activation     | direnv + nix-direnv            | Enter project shells on directory change                                   |
 | Rebuild frontend         | nh                             | Wrap rebuild, update, and cleanup workflows                                |
 | Build visualization      | nix-output-monitor             | Used directly and through nh                                               |
+| Activation comparison    | dix                            | Built into nh and shown during system activation                           |
 | Generation comparison    | nvd                            | Summarize package changes between generations                              |
 | Closure inspection       | nix-tree                       | Explain store dependencies                                                 |
 | Package index            | nix-index                      | Find packages that provide files and commands                              |
 | Missing-command lookup   | comma                          | Run commands through nix-index results                                     |
 | Documentation search     | Native Nix/NixOS documentation | Do not add manix initially                                                 |
 
-`nh` is not part of `nix gc`; it is a separate frontend around rebuild and
-cleanup operations. Native Nix commands remain available underneath it.
+The NixOS `nh` module sets `/etc/nixos` as the default flake, allowing `nh os`
+to select `t1` from the hostname and rebuild the integrated Home Manager
+configuration with the system. Its nix-output-monitor build tree and dix
+activation diff remain enabled. A persistent weekly `nh clean all` timer
+replaces native automatic garbage collection, retains six generations in every
+profile, and retains active direnv roots. Native Nix commands remain available
+underneath it.
 
 ## Theme and typography
 
