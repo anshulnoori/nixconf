@@ -164,8 +164,30 @@ The installed system and a verified current checkout use the same package as
 `nix shell .#amp-cli`. Updating Amp requires changing the pinned version and
 both platform hashes in `flake.nix`; no package updates itself imperatively.
 
-Run `amp` once and follow its sign-in flow. Authentication and configuration in
-the live environment disappear when it reboots.
+Use the tracked two-device wizard to authenticate without typing a long token,
+copying through a text-only console, or persisting an API key. Start the Mac
+side first so Magic Wormhole and its dependencies are ready before Amp creates
+the short-lived login URL:
+
+```sh
+nix --extra-experimental-features 'nix-command flakes' \
+  shell nixpkgs#magic-wormhole --command \
+  ./scripts/amp-login-wizard.sh mac
+```
+
+Leave it waiting for a Wormhole code. On `t1`, from the installer shell, run:
+
+```sh
+./scripts/amp-login-wizard.sh t1
+```
+
+The `t1` wizard starts a fresh `amp login`, sends its exact URL through a
+four-word Magic Wormhole exchange, and waits for the return code. Enter the
+codes shown by each wizard on the other device. The Mac asks for the Amp code
+through hidden input. The `t1` wizard sends that code directly to the same Amp
+process that created the URL; it does not use tmux scrollback or paste buffers.
+Authentication and configuration in the live environment disappear when it
+reboots.
 
 After signing in, start a detachable terminal:
 

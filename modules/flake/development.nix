@@ -150,6 +150,7 @@
         kmod
         less
         lm_sensors
+        magic-wormhole
         nvme-cli
         openssh
         pciutils
@@ -177,6 +178,7 @@
         };
         shfmt.enable = true;
       };
+      settings.formatter.shfmt.excludes = ["scripts/amp-login-wizard.sh"];
     };
 
     pre-commit.check.enable = false;
