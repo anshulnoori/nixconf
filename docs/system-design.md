@@ -141,11 +141,10 @@ GPT
 
 `@games` contains Steam libraries, Prism Launcher instances, Minecraft worlds,
 and other game data. This data has a separate backup method and no local
-snapshot policy. The NixOS configuration checkout lives at `~/.config/nixos`;
-other projects remain under `~/projects` and use remote Git repositories for
-recovery. No `cache`, `log`, `projects`, or snapshot subvolumes are created.
-The dedicated swap subvolume isolates the Btrfs swapfile from normal compressed
-data.
+snapshot policy. The NixOS configuration checkout lives at `/etc/nixos`; other
+projects remain under `~/projects` and use remote Git repositories for recovery.
+No `cache`, `log`, `projects`, or snapshot subvolumes are created. The dedicated
+swap subvolume isolates the Btrfs swapfile from normal compressed data.
 
 LUKS2 uses the interactively entered passphrase, Argon2id key derivation,
 AES-XTS-512, and discard propagation. Btrfs uses `noatime`; asynchronous discard
