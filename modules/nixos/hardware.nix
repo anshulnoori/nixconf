@@ -5,7 +5,6 @@ _: {
 
     hardware = {
       enableRedistributableFirmware = true;
-      graphics.enable = true;
     };
 
     environment.systemPackages = [
