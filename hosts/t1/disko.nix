@@ -57,7 +57,7 @@ _: {
                 };
 
                 "@games" = {
-                  mountpoint = "/home/mvs/Games";
+                  mountpoint = "/home/mvs/games";
                   mountOptions = [
                     "noatime"
                     "compress=zstd:3"
@@ -93,5 +93,5 @@ _: {
     };
   };
 
-  systemd.tmpfiles.rules = ["d /home/mvs/Games 0755 mvs users -"];
+  systemd.tmpfiles.rules = ["d /home/mvs/games 0755 mvs users -"];
 }

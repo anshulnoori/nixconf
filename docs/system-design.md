@@ -134,17 +134,18 @@ GPT
     └── Btrfs
         ├── @root → /
         ├── @home → /home
-        ├── @games → /home/mvs/Games
+        ├── @games → /home/mvs/games
         ├── @nix → /nix
         └── @swap → /swap
 ```
 
 `@games` contains Steam libraries, Prism Launcher instances, Minecraft worlds,
 and other game data. This data has a separate backup method and no local
-snapshot policy. `~/Projects` remains in `@home` and uses remote Git
-repositories for recovery. No `cache`, `log`, `projects`, or snapshot
-subvolumes are created. The dedicated swap subvolume isolates the Btrfs
-swapfile from normal compressed data.
+snapshot policy. The NixOS configuration checkout lives at `~/.config/nixos`;
+other projects remain under `~/projects` and use remote Git repositories for
+recovery. No `cache`, `log`, `projects`, or snapshot subvolumes are created.
+The dedicated swap subvolume isolates the Btrfs swapfile from normal compressed
+data.
 
 LUKS2 uses the interactively entered passphrase, Argon2id key derivation,
 AES-XTS-512, and discard propagation. Btrfs uses `noatime`; asynchronous discard
@@ -335,7 +336,7 @@ measurements; the user may later copy a proven runtime curve into BIOS manually.
   configuration.
 - GameMode, Gamescope, and Protontricks are installed.
 - Prism Launcher remains the Minecraft launcher.
-- Steam libraries and all Prism Launcher data use `/home/mvs/Games`.
+- Steam libraries and all Prism Launcher data use `/home/mvs/games`.
 - The game subvolume has no local snapshots. Minecraft worlds use a separate
   backup method.
 - Moonlight, Heroic, Lutris, UMU, Proton-CachyOS, and Wine-CachyOS are not

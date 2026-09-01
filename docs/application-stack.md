@@ -261,7 +261,7 @@ limited without it; those limitations are preferable to weakening SIP initially.
 
 GeForce Now, Moonlight, Heroic, Lutris, and UMU are intentionally excluded.
 Steam libraries, Prism Launcher instances, and Minecraft worlds use
-`/home/mvs/Games`. This Btrfs subvolume has no local snapshot policy. A
+`/home/mvs/games`. This Btrfs subvolume has no local snapshot policy. A
 separate backup method protects Minecraft worlds.
 
 ## Networking and remote access

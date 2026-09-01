@@ -77,11 +77,11 @@ Obtain the repository with the live ISO's nixpkgs Git package. For a new
 checkout, run:
 
 ```sh
-mkdir -p "$HOME/Projects"
+mkdir -p "$HOME/.config"
 nix --extra-experimental-features 'nix-command flakes' \
   shell nixpkgs#git --command \
   git clone https://github.com/anshulnoori/nixconf.git \
-  "$HOME/Projects/nixconf"
+  "$HOME/.config/nixos"
 ```
 
 If the bootstrap checkout already exists, update it instead:
@@ -89,7 +89,7 @@ If the bootstrap checkout already exists, update it instead:
 ```sh
 nix --extra-experimental-features 'nix-command flakes' \
   shell nixpkgs#git --command \
-  git -C "$HOME/Projects/nixconf" pull --ff-only
+  git -C "$HOME/.config/nixos" pull --ff-only
 ```
 
 Enter the repository's temporary installer shell. It contains the pinned Amp
@@ -97,7 +97,7 @@ release, transfer tools, network diagnostics, pager, and read-only hardware and
 firmware inspection tools:
 
 ```sh
-cd "$HOME/Projects/nixconf"
+cd "$HOME/.config/nixos"
 NIXPKGS_ALLOW_UNFREE=1 nix \
   --extra-experimental-features 'nix-command flakes' \
   develop --impure .#installer
@@ -199,7 +199,7 @@ tmux new -s amp-installer
 Inside tmux, return to the bootstrap repository and start a stable named runner:
 
 ```sh
-cd "$HOME/Projects/nixconf"
+cd "$HOME/.config/nixos"
 amp --no-tui \
   --runner-id t1-installer \
   --remote-control-terminal
@@ -246,7 +246,7 @@ After the installed system reaches the initial `mvs` session, open the
 repository and start a new runner process:
 
 ```sh
-cd "$HOME/Projects/nixconf"
+cd "$HOME/.config/nixos"
 amp --no-tui --runner-id t1 --remote-control-terminal
 ```
 
