@@ -1,23 +1,8 @@
 _: {
-  flake.modules.homeManager.desktop = {
-    config,
-    pkgs,
-    ...
-  }: let
+  flake.modules.homeManager.desktop = {config, ...}: let
     colors = config.lib.stylix.colors;
   in {
     stylix.targets.hyprland.enable = false;
-
-    home = {
-      pointerCursor = {
-        enable = true;
-        package = pkgs.adwaita-icon-theme;
-        name = "Adwaita";
-        size = 24;
-        gtk.enable = true;
-      };
-      sessionVariables.HYPRCURSOR_SIZE = "24";
-    };
 
     wayland.windowManager.hyprland = {
       enable = true;
@@ -64,10 +49,6 @@ _: {
           input = {
             kb_layout = "us",
             follow_mouse = 1,
-          },
-          cursor = {
-            hide_on_key_press = true,
-            warp_on_change_workspace = 1,
           },
           group = {
             ["col.border_active"] = "rgb(${colors.base0D})",
@@ -157,12 +138,6 @@ _: {
         hl.window_rule({
           match = { class = "kitty" },
           opacity = 0.93,
-        })
-        hl.window_rule({
-          match = { class = "TUI.float" },
-          float = true,
-          center = 1,
-          size = { 875, 600 },
         })
         hl.window_rule({
           match = { title = "^(Open|Save) (File|Folder)$" },

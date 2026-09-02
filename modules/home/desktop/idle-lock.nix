@@ -1,7 +1,6 @@
 _: {
   flake.modules.homeManager.desktop = {config, ...}: let
     colors = config.lib.stylix.colors;
-    wallpaper = "${config.xdg.dataHome}/wallpapers/gruvbox/flexoki-orb.png";
   in {
     stylix.targets.hyprlock.enable = false;
 
@@ -15,7 +14,7 @@ _: {
         background = [
           {
             monitor = "";
-            path = wallpaper;
+            path = "${config.nixconf.desktop.wallpaper}";
             blur_passes = 3;
           }
         ];

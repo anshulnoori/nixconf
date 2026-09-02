@@ -81,13 +81,14 @@ modules/
 │   ├── system.nix
 │   ├── graphics.nix
 │   ├── desktop/
+│   │   ├── appearance/
+│   │   │   └── stylix.nix
 │   │   ├── session.nix
 │   │   ├── login.nix
 │   │   ├── portals.nix
 │   │   ├── audio.nix
 │   │   ├── removable-media.nix
-│   │   ├── polkit.nix
-│   │   └── stylix.nix
+│   │   └── polkit.nix
 │   ├── gaming/
 │   │   ├── steam.nix
 │   │   ├── gamemode.nix
@@ -117,14 +118,19 @@ modules/
     ├── ai/
     │   └── amp.nix
     ├── desktop/
-    │   ├── appearance.nix
+    │   ├── appearance/
+    │   │   ├── cursor.nix
+    │   │   └── wallpaper.nix
+    │   ├── leader-menu/
+    │   │   ├── menu.nix
+    │   │   └── package-search.nix
+    │   ├── presentation/
+    │   │   └── terminal.nix
     │   ├── hyprland.nix
     │   ├── waybar.nix
     │   ├── notifications.nix
     │   ├── launchers.nix
-    │   ├── leader-menu.nix
     │   ├── idle-lock.nix
-    │   ├── wallpaper.nix
     │   ├── capture.nix
     │   ├── clipboard.nix
     │   ├── controls.nix
@@ -203,6 +209,13 @@ stays in the host's `disko.nix`. `hardware.nix`, `security.nix`, and
 directory because the kernel, bootloader, Plymouth, and later Secure Boot work
 are independent responsibilities. Plymouth is added with the graphics and
 desktop stage rather than the base installation.
+
+The leader menu calls executable interfaces and does not own their
+implementations. `present-terminal` owns UWSM launch, Kitty presentation, and
+the matching Hyprland window rule. `nixpkgs-package-search` owns package
+indexing, selection, preview, and installation. The generated wallpaper is
+exposed through the internal read-only `nixconf.desktop.wallpaper` option so
+swaybg and hyprlock share one artifact without sharing its implementation.
 
 Home Manager keeps visible domain directories from the agreed tree. Amp stays
 under `ai/`; shell programs and tools stay under `shell/`; user services stay

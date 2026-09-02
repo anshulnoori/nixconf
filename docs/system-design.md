@@ -496,7 +496,7 @@ bars, or wallpaper daemons.
 - `Super+L` starts hyprlock.
 - `Print` starts region capture and offers Satty editing.
 - Hardware media keys use SwayOSD.
-- The control menu opens Nixpkgs package search in an Omarchy-sized 875×600
+- The leader menu opens Nixpkgs package search in an Omarchy-sized 875×600
   modal Kitty window. Explicit selections install into the user's Nix profile;
   the core system remains declarative.
 - Keep one direct binding for each action; do not add aliases.
@@ -525,7 +525,7 @@ hyprpolkitagent for polkit-gnome.
 Confirmed placement:
 
 ```text
-left:   control menu, workspaces
+left:   leader menu, workspaces
 center: empty
 right:  tray drawer, Bluetooth, network, audio, CPU, clock and date
 ```
