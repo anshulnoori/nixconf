@@ -81,7 +81,7 @@ _: {
                     "discard=async"
                   ];
                   swap.swapfile = {
-                    size = "64G";
+                    size = "32G";
                     priority = 10;
                   };
                 };

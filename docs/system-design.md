@@ -180,8 +180,9 @@ Memory pressure uses two swap tiers:
 
 1. zstd zram with logical capacity equal to 100% of physical RAM and priority
    100;
-2. a 64 GiB Btrfs swapfile inside LUKS with priority 10, sized to hold the
-   32 GiB of physical memory during hibernation.
+2. a 32 GiB Btrfs swapfile inside LUKS with priority 10, matching physical RAM
+   and comfortably exceeding Linux's default hibernation image limit of roughly
+   two-fifths of available RAM.
 
 systemd 261 discovers the active swapfile before hibernation, calculates its
 Btrfs physical offset, and writes the device and offset to the
