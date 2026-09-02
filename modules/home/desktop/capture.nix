@@ -39,7 +39,7 @@ _: {
               .x as $x | .y as $y |
               (.width / .scale | floor) as $w |
               (.height / .scale | floor) as $h |
-              if .transform == 1 or .transform == 3 then
+              if .transform % 2 == 1 then
                 "\($x),\($y) \($h)x\($w)"
               else
                 "\($x),\($y) \($w)x\($h)"
@@ -54,8 +54,11 @@ _: {
 
         [[ -n "$selection" ]] || exit 0
 
-        file="$output_dir/screenshot-$(date +'%Y-%m-%d_%H-%M-%S').png"
-        grim -g "$selection" "$file"
+        file="$(mktemp "$output_dir/screenshot-$(date +'%Y-%m-%d_%H-%M-%S')-XXXXXX.png")"
+        if ! grim -g "$selection" "$file"; then
+          rm -f "$file"
+          exit 1
+        fi
         cleanup_freeze
         freeze_pid=
         trap - EXIT
@@ -103,6 +106,17 @@ _: {
         recording_file="$runtime_dir/nixconf-screenrecord.file"
         webcam_pid_file="$runtime_dir/nixconf-screenrecord-webcam.pid"
         log_file="$runtime_dir/nixconf-screenrecord.log"
+        lock_file="$runtime_dir/nixconf-screenrecord.lock"
+
+        lock_mutation() {
+          exec 9> "$lock_file"
+          flock 9
+        }
+
+        lock_query() {
+          exec 9> "$lock_file"
+          flock --nonblock 9
+        }
 
         notify() {
           notify-send --app-name=nixconf-capture "$1" "''${2:-}"
@@ -145,7 +159,14 @@ _: {
           active_workspace="$(hyprctl monitors -j | jq -r '.[] | select(.focused).activeWorkspace.id')"
           hyprctl monitors -j | jq -r --arg workspace "$active_workspace" '
             .[] | select(.activeWorkspace.id == ($workspace | tonumber)) |
-            "\(.x),\(.y) \(.width / .scale | floor)x\(.height / .scale | floor)"
+            .x as $x | .y as $y |
+            (.width / .scale | floor) as $w |
+            (.height / .scale | floor) as $h |
+            if .transform % 2 == 1 then
+              "\($x),\($y) \($h)x\($w)"
+            else
+              "\($x),\($y) \($w)x\($h)"
+            end
           '
           hyprctl clients -j | jq -r --arg workspace "$active_workspace" '
             .[] | select(.workspace.id == ($workspace | tonumber)) |
@@ -196,8 +217,15 @@ _: {
               select(
                 .x == $x and
                 .y == $y and
-                (.width / .scale | floor) == $width and
-                (.height / .scale | floor) == $height
+                (
+                  if .transform % 2 == 1 then
+                    (.height / .scale | floor) == $width and
+                    (.width / .scale | floor) == $height
+                  else
+                    (.width / .scale | floor) == $width and
+                    (.height / .scale | floor) == $height
+                  end
+                )
               ) |
               .name
             ' | head -n 1)"
@@ -338,10 +366,20 @@ _: {
         }
 
         case "''${1:-}" in
-          active) recording_active ;;
-          inactive) ! recording_active ;;
-          stop) stop_recording ;;
-          no-audio | desktop-audio | microphone | webcam) start_recording "$1" ;;
+          active)
+            lock_query && recording_active
+            ;;
+          inactive)
+            lock_query && ! recording_active
+            ;;
+          stop)
+            lock_mutation
+            stop_recording
+            ;;
+          no-audio | desktop-audio | microphone | webcam)
+            lock_mutation
+            start_recording "$1"
+            ;;
           *)
             printf 'Usage: capture-screenrecord <no-audio|desktop-audio|microphone|webcam|stop|active|inactive>\n' >&2
             exit 2

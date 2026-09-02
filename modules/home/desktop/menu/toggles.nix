@@ -5,31 +5,16 @@ _: {
       runtimeInputs = with pkgs; [
         coreutils
         hyprland
-        hyprsunset
         libnotify
         mako
         systemd
       ];
       text = ''
-        state_dir="''${XDG_STATE_HOME:-$HOME/.local/state}/nixconf"
-        mkdir -p "$state_dir"
-
         notify() {
           notify-send --app-name=nixconf-menu "$1" "''${2:-}"
         }
 
         case "''${1:-}" in
-          screensaver)
-            flag="$state_dir/screensaver-disabled"
-            if [[ -e "$flag" ]]; then
-              rm -f "$flag"
-              notify "Screensaver enabled"
-            else
-              touch "$flag"
-              nixconf-screensaver stop
-              notify "Screensaver disabled"
-            fi
-            ;;
           nightlight)
             if systemctl --user is-active --quiet nixconf-nightlight.service; then
               systemctl --user stop nixconf-nightlight.service
@@ -37,7 +22,7 @@ _: {
             else
               systemd-run --user --quiet --collect \
                 --unit=nixconf-nightlight \
-                hyprsunset
+                ${pkgs.hyprsunset}/bin/hyprsunset
 
               for _ in {1..20}; do
                 if hyprctl hyprsunset temperature 4000 >/dev/null 2>&1; then
@@ -59,11 +44,11 @@ _: {
             else
               systemd-run --user --quiet --collect \
                 --unit=nixconf-caffeine \
-                systemd-inhibit \
+                ${pkgs.systemd}/bin/systemd-inhibit \
                   --what=idle \
                   --who=nixconf \
                   --why="Caffeine enabled" \
-                  sleep infinity
+                  ${pkgs.coreutils}/bin/sleep infinity
               notify "Caffeinated" "Idle locking inhibited"
             fi
             ;;
@@ -86,7 +71,7 @@ _: {
             fi
             ;;
           *)
-            printf 'Usage: nixconf-toggle <screensaver|nightlight|caffeine|notifications|bar>\n' >&2
+            printf 'Usage: nixconf-toggle <nightlight|caffeine|notifications|bar>\n' >&2
             exit 2
             ;;
         esac

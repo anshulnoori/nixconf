@@ -6,6 +6,7 @@ _: {
         coreutils
         kitty
         libnotify
+        neovim
         util-linux
         uwsm
       ];

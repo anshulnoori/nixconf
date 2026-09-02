@@ -56,9 +56,11 @@ _: {
     screensaver = pkgs.writeShellApplication {
       name = "nixconf-screensaver";
       runtimeInputs = with pkgs; [
+        coreutils
         hyprland
         jq
         kitty
+        libnotify
         procps
         util-linux
         uwsm
@@ -66,6 +68,13 @@ _: {
       ];
       text = ''
         state_dir="''${XDG_STATE_HOME:-$HOME/.local/state}/nixconf"
+        runtime_dir="''${XDG_RUNTIME_DIR:-/tmp}"
+        disabled_file="$state_dir/screensaver-disabled"
+        lock_file="$runtime_dir/nixconf-screensaver.lock"
+
+        mkdir -p "$state_dir"
+        exec 9> "$lock_file"
+        flock 9
 
         stop_screensaver() {
           pkill -f '[n]ixconf-screensaver-run' 2>/dev/null || true
@@ -76,8 +85,18 @@ _: {
           stop)
             stop_screensaver
             ;;
+          toggle)
+            if [[ -e "$disabled_file" ]]; then
+              rm -f "$disabled_file"
+              notify-send --app-name=nixconf-menu "Screensaver enabled"
+            else
+              touch "$disabled_file"
+              stop_screensaver
+              notify-send --app-name=nixconf-menu "Screensaver disabled"
+            fi
+            ;;
           start | force)
-            if [[ "''${1:-start}" != force && -e "$state_dir/screensaver-disabled" ]]; then
+            if [[ "''${1:-start}" != force && -e "$disabled_file" ]]; then
               exit 0
             fi
 
@@ -97,9 +116,17 @@ _: {
             done
 
             [[ -z "$focused" ]] || hyprctl dispatch focusmonitor "$focused" >/dev/null
+
+            for _ in {1..20}; do
+              pgrep -f '[n]ixconf-screensaver-run' >/dev/null && exit 0
+              sleep 0.1
+            done
+
+            notify-send --app-name=nixconf-menu "Screensaver unavailable" "No screensaver window started"
+            exit 1
             ;;
           *)
-            printf 'Usage: nixconf-screensaver [start|force|stop]\n' >&2
+            printf 'Usage: nixconf-screensaver [start|force|stop|toggle]\n' >&2
             exit 2
             ;;
         esac

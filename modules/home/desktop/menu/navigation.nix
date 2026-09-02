@@ -158,7 +158,7 @@ _: {
               {
                 id = "screensaver";
                 text = "Screensaver";
-                action = "nixconf-toggle screensaver";
+                action = "nixconf-screensaver toggle";
               }
               {
                 id = "nightlight";
