@@ -24,6 +24,8 @@ _: {
       progress { background-color: #${colors.base0D}; }
     '';
   in {
+    programs.btop.enable = true;
+
     services = {
       hyprpolkitagent.enable = true;
       swayosd = {
@@ -41,7 +43,6 @@ _: {
     home.packages = with pkgs; [
       bluetui
       brightnessctl
-      btop
       impala
       playerctl
       wiremix

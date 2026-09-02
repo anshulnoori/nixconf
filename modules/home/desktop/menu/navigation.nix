@@ -488,6 +488,88 @@ _: {
       }
     ];
 
+    icons = {
+      "apps" = "󰀻";
+      "trigger" = "󱓞";
+      "appearance" = "󰸌";
+      "setup" = "";
+      "packages" = "󰏖";
+      "about" = "";
+      "system" = "";
+      "reminder" = "󰔛";
+      "add" = "";
+      "upcoming" = "󰃰";
+      "todoist" = "󰄲";
+      "capture" = "";
+      "screenshot" = "";
+      "region" = "󰩭";
+      "fullscreen" = "󰍹";
+      "stop-screenrecording" = "󰻂";
+      "screenrecording" = "";
+      "no-audio" = "󰕾";
+      "desktop-audio" = "";
+      "microphone" = "";
+      "webcam" = "󰖠";
+      "text" = "󰉿";
+      "qr-code" = "󰐲";
+      "color" = "󰏘";
+      "share" = "";
+      "clipboard" = "";
+      "file" = "";
+      "folder" = "";
+      "receive" = "󰥦";
+      "toggle" = "󰔎";
+      "screensaver" = "󱄄";
+      "nightlight" = "󰖔";
+      "caffeine" = "󱫖";
+      "notifications" = "󰂚";
+      "bar" = "󰍜";
+      "monitor-scaling" = "󰍹";
+      "hardware" = "";
+      "laptop-display" = "󰛧";
+      "mirror-display" = "󰍹";
+      "hybrid-gpu" = "";
+      "touchpad" = "󰟸";
+      "touchpad-haptics" = "󰌌";
+      "touchscreen" = "󰆽";
+      "low" = "󰁦";
+      "mid" = "󰁧";
+      "high" = "󰁨";
+      "background" = "";
+      "stylix" = "󰸌";
+      "font" = "";
+      "hyprland" = "";
+      "waybar" = "󰍜";
+      "lock-screen" = "";
+      "audio" = "";
+      "wifi" = "";
+      "bluetooth" = "󰂯";
+      "power-profile" = "󱐋";
+      "system-sleep" = "";
+      "displays" = "󰍹";
+      "keybindings" = "";
+      "input" = "";
+      "dns" = "󰱔";
+      "security" = "";
+      "config" = "";
+      "install" = "󰏖";
+      "remove" = "󰆴";
+      "lock" = "";
+      "suspend" = "󰒲";
+      "hibernate" = "󰤁";
+      "logout" = "󰍃";
+      "restart" = "󰜉";
+      "shutdown" = "󰐥";
+      "system-monitor" = "󰍛";
+      "nix" = "";
+      "build" = "󰏗";
+      "test" = "󰙨";
+      "switch" = "󰑓";
+      "boot" = "󰒋";
+      "update" = "";
+      "clean" = "󰃢";
+    };
+    iconFor = node: node.icon or (icons.${node.id} or "󰇘");
     quote = builtins.toJSON;
     luaList = values: "{ ${lib.concatStringsSep ", " (map quote values)} }";
     menuName = path:
@@ -511,14 +593,15 @@ _: {
       condition ? node.condition or null,
     }: let
       breadcrumb = lib.concatStringsSep " › " (map (part: part.text) path);
+      displayText = "${iconFor node}  ${
+        if global
+        then breadcrumb
+        else node.text
+      }";
       submenu = nodeSubmenu (map (part: part.id) path) node;
       fields =
         [
-          "Text = ${quote (
-            if global
-            then breadcrumb
-            else node.text
-          )}"
+          "Text = ${quote displayText}"
         ]
         ++ lib.optional global "Subtext = ${quote breadcrumb}"
         ++ lib.optional (node ? keywords) "Keywords = ${luaList node.keywords}"
@@ -701,10 +784,10 @@ _: {
       runtimeInputs = [pkgs.walker];
       text = ''
         exec walker \
-          --width 644 \
-          --minheight 300 \
-          --maxheight 300 \
-          --placeholder "Search actions…" \
+          --width 295 \
+          --minheight 1 \
+          --maxheight 630 \
+          --placeholder "Go…" \
           --provider menus:nixconf
       '';
     };

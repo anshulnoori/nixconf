@@ -23,6 +23,7 @@ _: {
         "mode=do-not-disturb".invisible = true;
         "mode=do-not-disturb app-name=notify-send".invisible = false;
         "mode=do-not-disturb app-name=nixconf-menu".invisible = false;
+        "mode=do-not-disturb app-name=nixconf-capture".invisible = false;
         "app-name=nixconf-menu" = {
           anchor = "bottom-center";
           width = 360;
@@ -32,7 +33,13 @@ _: {
           layer = "overlay";
         };
         "summary~='Screenshot saved'" = {
-          max-icon-size = 80;
+          max-icon-size = 160;
+          on-button-left = "invoke-default-action";
+          format = "<b>%s</b>\n%b";
+        };
+        "summary~='Screen recording saved'" = {
+          max-icon-size = 160;
+          on-button-left = "invoke-default-action";
           format = "<b>%s</b>\n%b";
         };
       };

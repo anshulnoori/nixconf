@@ -8,8 +8,13 @@ _: {
         size = 24;
         gtk.enable = true;
       };
-      sessionVariables.HYPRCURSOR_SIZE = "24";
+      sessionVariables = {
+        HYPRCURSOR_THEME = "rose-pine-hyprcursor";
+        HYPRCURSOR_SIZE = "24";
+      };
     };
+
+    xdg.dataFile."icons/rose-pine-hyprcursor".source = "${pkgs.rose-pine-hyprcursor}/share/icons/rose-pine-hyprcursor";
 
     wayland.windowManager.hyprland.extraConfig = ''
       hl.config({

@@ -1,4 +1,4 @@
-_: {
+{inputs, ...}: {
   flake.modules.nixos.desktop = {
     config,
     lib,
@@ -6,7 +6,13 @@ _: {
     ...
   }: let
     colors = config.lib.stylix.colors;
-    themeName = "minimal-luks";
+    themeName = "hyprlock-luks";
+    font = "${pkgs.nerd-fonts.jetbrains-mono}/share/fonts/truetype/NerdFonts/JetBrainsMono/JetBrainsMonoNerdFont-Regular.ttf";
+    source = "${inputs.omarchy-rice}/themes/flexoki-light/backgrounds/1-orb.png";
+    wallpaper = pkgs.runCommand "flexoki-orb-gruvbox.png" {nativeBuildInputs = [pkgs.imagemagick];} ''
+      magick ${source} -colorspace gray -negate \
+        +level-colors '#${colors.base00}','#${colors.base05}' "$out"
+    '';
     toPlymouthColor = color:
       lib.concatMapStringsSep ", " (
         offset:
@@ -18,43 +24,58 @@ _: {
       themeDir="$out/share/plymouth/themes/${themeName}"
       mkdir -p "$themeDir"
 
-      magick \
-        -size 420x64 "xc:#${colors.base01}" \
-        -stroke "#${colors.base03}" -strokewidth 2 -fill none \
-        -draw "rectangle 1,1 418,62" \
-        "$themeDir/entry-base.png"
+      magick ${wallpaper} \
+        -resize '3840x2160^' \
+        -gravity center \
+        -extent 3840x2160 \
+        -blur 0x16 \
+        -strip \
+        "$themeDir/background.png"
 
-      magick \
-        -size 28x32 xc:none \
-        -stroke "#${colors.base05}" -strokewidth 3 -fill none \
-        -draw "roundrectangle 7,2 21,22 7,7" \
-        -stroke none -fill "#${colors.base05}" \
-        -draw "rectangle 4,14 24,30" \
-        "$themeDir/lock.png"
+      for scale in 1 2; do
+        width=$((408 * scale))
+        height=$((68 * scale))
+        inset=$((2 * scale))
+        far_x=$((width - 3 * scale))
+        far_y=$((height - 3 * scale))
+        point_size=$((16 * scale))
+        bullet_size=$((10 * scale))
+        bullet_center=$((5 * scale))
+        bullet_edge=$scale
 
-      magick \
-        "$themeDir/entry-base.png" \
-        "$themeDir/lock.png" -geometry +20+16 -composite \
-        "$themeDir/entry.png"
+        magick \
+          -size "''${width}x''${height}" xc:none \
+          -fill '#${colors.base00}cc' \
+          -stroke '#${colors.base05}' \
+          -strokewidth $((4 * scale)) \
+          -draw "rectangle ''${inset},''${inset} ''${far_x},''${far_y}" \
+          "$themeDir/entry-''${scale}x.png"
 
-      magick \
-        -size 10x10 xc:none -fill "#${colors.base0A}" \
-        -draw "circle 5,5 5,1" \
-        "$themeDir/bullet.png"
+        magick \
+          "$themeDir/entry-''${scale}x.png" \
+          -font ${font} \
+          -pointsize "$point_size" \
+          -fill '#${colors.base05}' \
+          -gravity center \
+          -annotate +0+0 'Enter Password' \
+          "$themeDir/entry-empty-''${scale}x.png"
 
-      magick -size 320x4 "xc:#${colors.base02}" "$themeDir/progress-track.png"
-      magick -size 320x4 "xc:#${colors.base0A}" "$themeDir/progress-fill.png"
-      rm "$themeDir/entry-base.png" "$themeDir/lock.png"
+        magick \
+          -size "''${bullet_size}x''${bullet_size}" xc:none \
+          -fill '#${colors.base05}' \
+          -draw "circle ''${bullet_center},''${bullet_center} ''${bullet_center},''${bullet_edge}" \
+          "$themeDir/bullet-''${scale}x.png"
+      done
 
       cat > "$themeDir/${themeName}.plymouth" <<EOF
       [Plymouth Theme]
-      Name=Minimal LUKS
-      Description=Unbranded password prompt and boot progress
+      Name=Hyprlock LUKS
+      Description=Hyprlock-matched encrypted-volume prompt
       ModuleName=script
 
       [script]
       ImageDir=$themeDir
-      ScriptFile=$themeDir/${themeName}.script
+      ScriptFile=/etc/plymouth/themes/${themeName}/${themeName}.script
       EOF
 
       cat > "$themeDir/${themeName}.script" <<'EOF'
@@ -65,44 +86,54 @@ _: {
       screen.y = Window.GetY(0);
       screen.w = Window.GetWidth(0);
       screen.h = Window.GetHeight(0);
+      center.x = screen.x + screen.w / 2;
+      center.y = screen.y + screen.h / 2;
+      scale = 1;
+      if (screen.w >= 2560)
+          scale = 2;
+      if (screen.h >= 1600)
+          scale = 2;
 
-      entry.image = Image("entry.png");
+      background.source = Image("background.png");
+      background.image = background.source.Scale(screen.w, screen.h);
+      background.sprite = Sprite(background.image);
+      background.sprite.SetPosition(screen.x, screen.y, -100);
+
+      entry.image = Image("entry-" + scale + "x.png");
+      entry.empty_image = Image("entry-empty-" + scale + "x.png");
       entry.sprite = Sprite(entry.image);
-      entry.x = screen.x + (screen.w - entry.image.GetWidth()) / 2;
-      entry.y = screen.y + (screen.h - entry.image.GetHeight()) / 2;
+      entry.x = center.x - entry.image.GetWidth() / 2;
+      entry.y = center.y - entry.image.GetHeight() / 2;
       entry.sprite.SetPosition(entry.x, entry.y, 100);
       entry.sprite.SetOpacity(0);
 
-      bullet.image = Image("bullet.png");
-      password.active = 0;
+      bullet.image = Image("bullet-" + scale + "x.png");
+      status.sprite = Sprite();
 
-      track.image = Image("progress-track.png");
-      track.sprite = Sprite(track.image);
-      track.x = screen.x + (screen.w - track.image.GetWidth()) / 2;
-      track.y = screen.y + (screen.h - track.image.GetHeight()) / 2;
-      track.sprite.SetPosition(track.x, track.y, 10);
-
-      fill.source = Image("progress-fill.png");
-      fill.sprite = Sprite();
-      fill.sprite.SetPosition(track.x, track.y, 11);
+      fun hide_bullets()
+      {
+          for (i = 0; password_bullets[i]; i++)
+              password_bullets[i].SetOpacity(0);
+      }
 
       fun display_password(prompt, bullet_count)
       {
-          password.active = 1;
-          track.sprite.SetOpacity(0);
-          fill.sprite.SetOpacity(0);
+          status.sprite.SetOpacity(0);
           entry.sprite.SetOpacity(1);
+          hide_bullets();
 
-          for (i = 0; password_bullets[i]; i++)
-              password_bullets[i].SetOpacity(0);
+          if (bullet_count == 0)
+              entry.sprite.SetImage(entry.empty_image);
+          else
+              entry.sprite.SetImage(entry.image);
 
           visible = bullet_count;
           if (visible > 16)
               visible = 16;
 
-          spacing = bullet.image.GetWidth() + 8;
-          start_x = screen.x + screen.w / 2 - (visible * spacing - 8) / 2;
-          bullet_y = entry.y + (entry.image.GetHeight() - bullet.image.GetHeight()) / 2;
+          spacing = bullet.image.GetWidth() + 8 * scale;
+          start_x = center.x - (visible * spacing - 8 * scale) / 2;
+          bullet_y = center.y - bullet.image.GetHeight() / 2;
 
           for (i = 0; i < visible; i++)
           {
@@ -114,43 +145,37 @@ _: {
           }
       }
 
-      fun display_normal()
+      fun display_question(prompt, entry_text)
       {
-          password.active = 0;
-          entry.sprite.SetOpacity(0);
-          for (i = 0; password_bullets[i]; i++)
-              password_bullets[i].SetOpacity(0);
-          track.sprite.SetOpacity(1);
+          hide_bullets();
+          entry.sprite.SetImage(entry.image);
+          entry.sprite.SetOpacity(1);
+
+          question.image = Image.Text(entry_text, ${toPlymouthColor colors.base05}, 1, "JetBrainsMono Nerd Font " + 16 * scale);
+          status.sprite.SetImage(question.image);
+          status.sprite.SetPosition(center.x - question.image.GetWidth() / 2, center.y - question.image.GetHeight() / 2, 101);
+          status.sprite.SetOpacity(1);
       }
 
-      fun boot_progress(duration, progress)
+      fun display_message(message)
       {
-          if (password.active)
-          {
-              fill.sprite.SetOpacity(0);
-          }
-          else
-          {
-              width = Math.Int(fill.source.GetWidth() * progress);
-              if (width < 1)
-              {
-                  fill.sprite.SetOpacity(0);
-              }
-              else
-              {
-                  if (width > fill.source.GetWidth())
-                      width = fill.source.GetWidth();
+          status.image = Image.Text(message, ${toPlymouthColor colors.base08}, 1, "JetBrainsMono Nerd Font " + 14 * scale);
+          status.sprite.SetImage(status.image);
+          status.sprite.SetPosition(center.x - status.image.GetWidth() / 2, entry.y + entry.image.GetHeight() + 18 * scale, 101);
+          status.sprite.SetOpacity(1);
+      }
 
-                  fill.image = fill.source.Scale(width, fill.source.GetHeight());
-                  fill.sprite.SetImage(fill.image);
-                  fill.sprite.SetOpacity(1);
-              }
-          }
+      fun display_normal()
+      {
+          entry.sprite.SetOpacity(0);
+          status.sprite.SetOpacity(0);
+          hide_bullets();
       }
 
       Plymouth.SetDisplayPasswordFunction(display_password);
+      Plymouth.SetDisplayQuestionFunction(display_question);
+      Plymouth.SetMessageFunction(display_message);
       Plymouth.SetDisplayNormalFunction(display_normal);
-      Plymouth.SetBootProgressFunction(boot_progress);
       EOF
     '';
   in {
@@ -168,6 +193,7 @@ _: {
       plymouth = {
         enable = true;
         showDelay = 0;
+        inherit font;
         theme = themeName;
         themePackages = [theme];
       };

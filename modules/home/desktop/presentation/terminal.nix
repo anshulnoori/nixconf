@@ -2,19 +2,17 @@ _: {
   flake.modules.homeManager.desktop = {pkgs, ...}: let
     terminalPresentation = pkgs.writeShellApplication {
       name = "terminal-presentation";
-      runtimeInputs = [
-        pkgs.gum
-        pkgs.ncurses
-      ];
+      runtimeInputs = [pkgs.ncurses];
       text = ''
         clear
         status=0
         "$@" || status=$?
 
-        if (( status != 130 )); then
-          printf '\n'
-          gum spin --spinner globe --title "Done! Press any key to close..." -- \
-            ${pkgs.bash}/bin/bash -c "read -n 1 -s"
+        if (( status != 130 )) && : 2>/dev/null <>/dev/tty; then
+          while read -r -s -n 1 -t 0.1 _ </dev/tty; do :; done
+          printf '\nDone! Press any key to close...' >/dev/tty
+          read -r -s -n 1 </dev/tty
+          printf '\n' >/dev/tty
         fi
 
         exit "$status"

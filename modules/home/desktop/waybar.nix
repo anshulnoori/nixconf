@@ -6,6 +6,16 @@ _: {
   }: let
     colors = config.lib.stylix.colors;
     floatingTerminal = command: "kitty --class TUI.float ${command}";
+    screenrecordingIndicator = pkgs.writeShellApplication {
+      name = "nixconf-screenrecording-indicator";
+      text = ''
+        if capture-screenrecord active; then
+          printf '{"text":"󰻂","tooltip":"Stop screen recording","class":"active"}\n'
+        else
+          printf '{"text":""}\n'
+        fi
+      '';
+    };
   in {
     stylix.targets.waybar.enable = false;
 
@@ -24,20 +34,26 @@ _: {
           "custom/menu"
           "hyprland/workspaces"
         ];
-        modules-center = [];
+        modules-center = ["clock"];
         modules-right = [
+          "custom/screenrecording"
           "group/tray-expander"
           "bluetooth"
           "network"
           "pulseaudio"
           "cpu"
-          "clock"
         ];
 
         "custom/menu" = {
-          format = "󰍜";
+          format = "";
           on-click = "nixconf-menu";
           tooltip = false;
+        };
+        "custom/screenrecording" = {
+          exec = "${screenrecordingIndicator}/bin/nixconf-screenrecording-indicator";
+          return-type = "json";
+          interval = 1;
+          on-click = "capture-screenrecord stop";
         };
         "hyprland/workspaces" = {
           on-click = "activate";
@@ -65,7 +81,7 @@ _: {
           };
         };
         clock = {
-          format = "{:%a %d %b  %H:%M}";
+          format = "{:%I:%M %p}";
           format-alt = "{:%A %d %B W%V %Y}";
           tooltip = false;
         };
@@ -178,7 +194,10 @@ _: {
         #bluetooth { margin-right: 17px; }
         #network { margin-right: 13px; }
         #custom-expand-icon { margin-right: 18px; }
-        #clock { margin-left: 8.75px; }
+        #custom-screenrecording.active {
+          color: #${colors.base08};
+          margin-right: 17px;
+        }
 
         tooltip {
           padding: 2px;

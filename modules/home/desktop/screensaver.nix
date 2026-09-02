@@ -16,6 +16,10 @@ _: {
           hyprctl activewindow -j | jq -e '.class == "org.nixconf.screensaver"' >/dev/null 2>&1
         }
 
+        screensaver_present() {
+          hyprctl clients -j | jq -e 'any(.[]; .class == "org.nixconf.screensaver")' >/dev/null 2>&1
+        }
+
         exit_screensaver() {
           [[ -z "$effect_pid" ]] || kill "$effect_pid" 2>/dev/null || true
           rm -f "$input_file"
@@ -28,8 +32,15 @@ _: {
         printf '\033]11;rgb:00/00/00\007'
         hyprctl keyword cursor:invisible true >/dev/null 2>&1 || true
 
+        for _ in {1..30}; do
+          screensaver_present && break
+          sleep 0.1
+        done
+        screensaver_present || exit 1
+        sleep 0.4
+
         while true; do
-          printf '\n%s\n%s\n' "$(date '+%A, %B %-d')" "$(date '+%H:%M')" > "$input_file"
+          printf '\n%s\n%s\n' "$(date '+%A, %B %-d')" "$(date '+%-I:%M %p')" > "$input_file"
           tte -i "$input_file" \
             --frame-rate 120 \
             --canvas-width 0 \
@@ -38,6 +49,7 @@ _: {
             --anchor-canvas c \
             --anchor-text c \
             --random-effect \
+            --exclude-effects print \
             --no-eol \
             --no-restore-cursor &
           effect_pid=$!

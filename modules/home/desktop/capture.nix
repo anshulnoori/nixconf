@@ -62,13 +62,13 @@ _: {
         cleanup_freeze
         freeze_pid=
         trap - EXIT
-        wl-copy < "$file"
+        wl-copy --type image/png < "$file"
 
         (
           action="$(notify-send \
             --app-name=nixconf-capture \
             "Screenshot saved" \
-            "Copied to clipboard" \
+            "Copied to clipboard • Click to edit" \
             --icon="$file" \
             --expire-time=10000 \
             --action="default=Edit" || true)"
@@ -79,7 +79,7 @@ _: {
               --output-filename "$file" \
               --actions-on-enter save-to-clipboard \
               --save-after-copy \
-              --copy-command wl-copy
+              --copy-command 'wl-copy --type image/png'
           fi
         ) >/dev/null 2>&1 &
       '';
@@ -95,9 +95,11 @@ _: {
         hyprpicker
         jq
         libnotify
+        mpv
         procps
         slurp
         util-linux
+        uwsm
         v4l-utils
       ];
       text = ''
@@ -120,6 +122,38 @@ _: {
 
         notify() {
           notify-send --app-name=nixconf-capture "$1" "''${2:-}"
+        }
+
+        notify_recording_saved() {
+          local output="$1"
+          local thumbnail=
+
+          if [[ -f "$output" ]]; then
+            thumbnail="$(mktemp "$runtime_dir/nixconf-screenrecording-XXXXXX.png")"
+            if ! ffmpeg -loglevel error -y -ss 0 -i "$output" -frames:v 1 "$thumbnail"; then
+              rm -f "$thumbnail"
+              thumbnail=
+            fi
+          fi
+
+          (
+            notify_args=(
+              --app-name=nixconf-capture
+              --expire-time=10000
+              --action=default=Open
+            )
+            [[ -z "$thumbnail" ]] || notify_args+=(--icon="$thumbnail")
+
+            action="$(notify-send \
+              "''${notify_args[@]}" \
+              "Screen recording saved" \
+              "Click to open • $output" || true)"
+            rm -f "$thumbnail"
+
+            if [[ "$action" == "default" && -f "$output" ]]; then
+              setsid uwsm app -- mpv "$output" >/dev/null 2>&1 &
+            fi
+          ) >/dev/null 2>&1 &
         }
 
         process_is() {
@@ -362,7 +396,7 @@ _: {
 
           stop_webcam
           rm -f "$pid_file" "$recording_file"
-          notify "Screen recording saved" "$output"
+          notify_recording_saved "$output"
         }
 
         case "''${1:-}" in
