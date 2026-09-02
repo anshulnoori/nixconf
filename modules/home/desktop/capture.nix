@@ -124,6 +124,42 @@ _: {
           notify-send --app-name=nixconf-capture "$1" "''${2:-}"
         }
 
+        finalize_recording() {
+          local output="$1"
+          local processed
+          local video_codec=(-c:v copy)
+          local args
+
+          [[ -f "$output" ]] || return 0
+
+          if ffprobe \
+            -v error \
+            -select_streams v:0 \
+            -read_intervals '%+0.2' \
+            -show_entries packet=flags \
+            -of csv=p=0 \
+            "$output" 2>/dev/null | grep -q D; then
+            video_codec=(-c:v libx264 -preset veryfast -crf 20)
+          fi
+
+          args=(-y -ss 0.1 -i "$output" "''${video_codec[@]}")
+          if ffprobe \
+            -v error \
+            -select_streams a \
+            -show_entries stream=codec_type \
+            -of csv=p=0 \
+            "$output" 2>/dev/null | grep -q audio; then
+            args+=(-af "volume=enable='lt(t,0.4)':volume=0,afade=t=in:st=0.4:d=0.05")
+          fi
+
+          processed="''${output%.mp4}-processed.mp4"
+          if ffmpeg "''${args[@]}" "$processed" -loglevel error; then
+            mv "$processed" "$output"
+          else
+            rm -f "$processed"
+          fi
+        }
+
         notify_recording_saved() {
           local output="$1"
           local thumbnail=
@@ -396,6 +432,7 @@ _: {
 
           stop_webcam
           rm -f "$pid_file" "$recording_file"
+          finalize_recording "$output"
           notify_recording_saved "$output"
         }
 

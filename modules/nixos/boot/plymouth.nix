@@ -113,7 +113,7 @@
       fun hide_bullets()
       {
           for (i = 0; password_bullets[i]; i++)
-              password_bullets[i].SetOpacity(0);
+              password_bullets[i].sprite.SetOpacity(0);
       }
 
       fun display_password(prompt, bullet_count)
@@ -138,10 +138,10 @@
           for (i = 0; i < visible; i++)
           {
               if (!password_bullets[i])
-                  password_bullets[i] = Sprite(bullet.image);
+                  password_bullets[i].sprite = Sprite(bullet.image);
 
-              password_bullets[i].SetPosition(start_x + i * spacing, bullet_y, 101);
-              password_bullets[i].SetOpacity(1);
+              password_bullets[i].sprite.SetPosition(start_x + i * spacing, bullet_y, 101);
+              password_bullets[i].sprite.SetOpacity(1);
           }
       }
 

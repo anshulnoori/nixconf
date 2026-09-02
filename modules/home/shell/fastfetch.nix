@@ -6,7 +6,10 @@ _: {
     programs.fastfetch = {
       enable = true;
       settings = {
-        logo.type = "none";
+        logo = {
+          source = "NixOS";
+          padding.right = 2;
+        };
         display = {
           separator = "  ";
           color = {

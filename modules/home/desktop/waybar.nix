@@ -81,7 +81,7 @@ _: {
           };
         };
         clock = {
-          format = "{:%I:%M %p}";
+          format = "{:%a %d %b  %I:%M %p}";
           format-alt = "{:%A %d %B W%V %Y}";
           tooltip = false;
         };
