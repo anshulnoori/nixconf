@@ -1,4 +1,4 @@
-_: {
+{inputs, ...}: {
   flake.modules.nixos.base = {
     boot.loader = {
       timeout = 5;
@@ -11,11 +11,20 @@ _: {
     };
   };
 
-  flake.modules.nixos.desktop = {config, ...}: let
+  flake.modules.nixos.desktop = {
+    config,
+    pkgs,
+    ...
+  }: let
     colors = config.lib.stylix.colors;
+    source = "${inputs.omarchy-rice}/themes/flexoki-light/backgrounds/1-orb.png";
+    wallpaper = pkgs.runCommand "flexoki-orb-gruvbox.png" {nativeBuildInputs = [pkgs.imagemagick];} ''
+      magick ${source} -colorspace gray -negate \
+        +level-colors '#${colors.base00}','#${colors.base05}' "$out"
+    '';
   in {
     boot.loader.limine.style = {
-      wallpapers = [];
+      wallpapers = [wallpaper];
       interface = {
         branding = "";
         helpHidden = true;

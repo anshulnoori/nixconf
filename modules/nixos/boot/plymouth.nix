@@ -28,7 +28,7 @@
         -resize '3840x2160^' \
         -gravity center \
         -extent 3840x2160 \
-        -blur 0x16 \
+        -blur 0x8 \
         -strip \
         "$themeDir/background.png"
 
