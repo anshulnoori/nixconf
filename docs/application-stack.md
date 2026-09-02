@@ -29,7 +29,7 @@ must return to the user rather than being resolved silently.
 | Bar                  | Waybar                                               | Square CSS; launches system TUIs in Kitty                       |
 | Command launcher     | Walker + Elephant                                    | One launcher UI with one provider backend                       |
 | Notifications        | Mako                                                 | Only notification daemon; Gruvbox styling and DND mode          |
-| Wallpaper            | swaybg                                               | Pinned Omarchy Gruvbox wallpaper                                |
+| Wallpaper            | swaybg                                               | Pinned Omarchy Flexoki Light Orb wallpaper                      |
 | Lock screen          | hyprlock                                             | Visible password field over the matching wallpaper              |
 | Idle management      | hypridle                                             | Lock and display power; no automatic suspend                    |
 | Authentication agent | hyprpolkitagent                                      | Graphical Polkit prompts                                        |
@@ -301,16 +301,16 @@ below LUKS.
 The desktop uses one static wallpaper and one lock implementation. It does not
 run a shell framework, live wallpaper, or separate screensaver.
 
-| Behavior             | Decision                                                    |
-| -------------------- | ----------------------------------------------------------- |
-| Wallpaper engine     | swaybg                                                      |
-| Wallpaper source     | Omarchy Gruvbox `1-the-backwater.jpg` from the pinned input |
-| Idle scheduler       | hypridle                                                    |
-| Lock deadline        | 10 minutes from the beginning of inactivity                 |
-| Display-off deadline | 20 minutes from the beginning of inactivity                 |
-| Automatic suspend    | Disabled; suspend remains an explicit action                |
-| Lock styling         | Matching wallpaper and a centered visible password field    |
-| Idle inhibitors      | Respect media and application inhibitors                    |
+| Behavior             | Decision                                                 |
+| -------------------- | -------------------------------------------------------- |
+| Wallpaper engine     | swaybg                                                   |
+| Wallpaper source     | Omarchy Flexoki Light `1-orb.png` from the pinned input  |
+| Idle scheduler       | hypridle                                                 |
+| Lock deadline        | 10 minutes from the beginning of inactivity              |
+| Display-off deadline | 20 minutes from the beginning of inactivity              |
+| Automatic suspend    | Disabled; suspend remains an explicit action             |
+| Lock styling         | Matching wallpaper and a centered visible password field |
+| Idle inhibitors      | Respect media and application inhibitors                 |
 
 hyprlock is the security boundary. swaybg owns the wallpaper surface and no
 other wallpaper daemon runs concurrently.

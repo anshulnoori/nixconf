@@ -21,21 +21,22 @@ _: {
         spacing = 0;
         height = 26;
         modules-left = [
-          "custom/launcher"
+          "custom/control-menu"
           "hyprland/workspaces"
         ];
-        modules-center = ["clock"];
+        modules-center = [];
         modules-right = [
           "group/tray-expander"
           "bluetooth"
           "network"
           "pulseaudio"
           "cpu"
+          "clock"
         ];
 
-        "custom/launcher" = {
-          format = "";
-          on-click = "walker";
+        "custom/control-menu" = {
+          format = "󰍜";
+          on-click = "wlr-which-key";
           tooltip = false;
         };
         "hyprland/workspaces" = {
@@ -64,8 +65,8 @@ _: {
           };
         };
         clock = {
-          format = "{:%A %H:%M}";
-          format-alt = "{:%d %B W%V %Y}";
+          format = "{:%a %d %b  %H:%M}";
+          format-alt = "{:%A %d %B W%V %Y}";
           tooltip = false;
         };
         cpu = {
@@ -168,7 +169,7 @@ _: {
 
         #cpu,
         #pulseaudio,
-        #custom-launcher {
+        #custom-control-menu {
           min-width: 12px;
           margin: 0 7.5px;
         }

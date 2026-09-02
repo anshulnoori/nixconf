@@ -1,7 +1,7 @@
 {inputs, ...}: {
   flake.modules.homeManager.desktop = {config, ...}: let
     colors = config.lib.stylix.colors;
-    wallpaper = "${inputs.omarchy-rice}/themes/gruvbox/backgrounds/1-the-backwater.jpg";
+    wallpaper = "${inputs.omarchy-rice}/themes/flexoki-light/backgrounds/1-orb.png";
   in {
     stylix.targets.hyprlock.enable = false;
 
@@ -23,7 +23,7 @@
         input-field = [
           {
             monitor = "";
-            size = "650, 100";
+            size = "400, 60";
             position = "0, 0";
             halign = "center";
             valign = "center";
@@ -31,6 +31,7 @@
             outer_color = "rgb(${colors.base05})";
             outline_thickness = 4;
             font_family = "JetBrainsMono Nerd Font";
+            font_size = 16;
             font_color = "rgb(${colors.base05})";
             placeholder_text = "Enter Password";
             check_color = "rgb(${colors.base0D})";

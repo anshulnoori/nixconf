@@ -489,8 +489,9 @@ bars, or wallpaper daemons.
 
 ## Interaction and keybindings
 
-- `Super+Space` opens wlr-which-key.
-- `Super+D` opens Walker.
+- `Super+Space` opens Walker.
+- `Super+Alt+Space` opens wlr-which-key.
+- `Super+W` closes the active window.
 - `Super+Return` opens Kitty.
 - `Super+L` starts hyprlock.
 - `Print` starts region capture and offers Satty editing.
@@ -503,7 +504,7 @@ bars, or wallpaper daemons.
 - Stylix is the shared palette source.
 - Use Gruvbox Dark Hard throughout the desktop.
 - Use no logo, name, or custom branding.
-- swaybg displays Omarchy's Gruvbox `1-the-backwater.jpg` wallpaper from the
+- swaybg displays Omarchy's Flexoki Light `1-orb.png` wallpaper from the
   pinned source input. No other wallpaper service runs concurrently.
 - Preserve square geometry and the classic Omarchy shadow and animation
   treatment.
@@ -513,15 +514,16 @@ The desktop is based on Omarchy commit
 before its Quickshell migration. It is a frozen reference, not an update
 source. Only its visual language is carried over: palette, wallpaper, component
 styling, gaps, borders, shadows, and animations. Bindings and command hierarchy
-remain local. Walker and Elephant are retained; local substitutions are Kitty
-for Alacritty and hyprpolkitagent for polkit-gnome.
+remain local except for the explicitly selected Finder and menu gestures. Walker
+and Elephant are retained; local substitutions are Kitty for Alacritty and
+hyprpolkitagent for polkit-gnome.
 
 Confirmed placement:
 
 ```text
-left:   Walker launcher, workspaces
-center: clock
-right:  tray drawer, Bluetooth, network, audio, CPU
+left:   control menu, workspaces
+center: empty
+right:  tray drawer, Bluetooth, network, audio, CPU, clock and date
 ```
 
 The tray remains collapsed until requested. Network, Bluetooth, audio, and CPU
