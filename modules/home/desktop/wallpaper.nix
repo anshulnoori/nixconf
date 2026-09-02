@@ -1,18 +1,29 @@
 {inputs, ...}: {
-  flake.modules.homeManager.desktop = {pkgs, ...}: let
-    wallpaper = "${inputs.omarchy-rice}/themes/flexoki-light/backgrounds/1-orb.png";
+  flake.modules.homeManager.desktop = {
+    config,
+    pkgs,
+    ...
+  }: let
+    colors = config.lib.stylix.colors;
+    source = "${inputs.omarchy-rice}/themes/flexoki-light/backgrounds/1-orb.png";
+    relativePath = "wallpapers/gruvbox/flexoki-orb.png";
+    wallpaperPath = "${config.xdg.dataHome}/${relativePath}";
+    wallpaper = pkgs.runCommand "flexoki-orb-gruvbox.png" {nativeBuildInputs = [pkgs.imagemagick];} ''
+      magick ${source} -colorspace gray -negate \
+        +level-colors '#${colors.base00}','#${colors.base05}' "$out"
+    '';
   in {
-    xdg.dataFile."wallpapers/flexoki-light/1-orb.png".source = wallpaper;
+    xdg.dataFile.${relativePath}.source = wallpaper;
 
     systemd.user.services.swaybg = {
       Unit = {
-        Description = "Flexoki Light desktop wallpaper";
+        Description = "Gruvbox Flexoki Orb desktop wallpaper";
         After = ["graphical-session.target"];
         PartOf = ["graphical-session.target"];
         ConditionEnvironment = "WAYLAND_DISPLAY";
       };
       Service = {
-        ExecStart = "${pkgs.swaybg}/bin/swaybg -i ${wallpaper} -m fill";
+        ExecStart = "${pkgs.swaybg}/bin/swaybg -i ${wallpaperPath} -m fill";
         Restart = "on-failure";
         RestartSec = 2;
       };

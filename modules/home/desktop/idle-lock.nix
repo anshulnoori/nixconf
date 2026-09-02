@@ -1,7 +1,7 @@
-{inputs, ...}: {
+_: {
   flake.modules.homeManager.desktop = {config, ...}: let
     colors = config.lib.stylix.colors;
-    wallpaper = "${inputs.omarchy-rice}/themes/flexoki-light/backgrounds/1-orb.png";
+    wallpaper = "${config.xdg.dataHome}/wallpapers/gruvbox/flexoki-orb.png";
   in {
     stylix.targets.hyprlock.enable = false;
 

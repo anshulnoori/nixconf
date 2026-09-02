@@ -496,6 +496,9 @@ bars, or wallpaper daemons.
 - `Super+L` starts hyprlock.
 - `Print` starts region capture and offers Satty editing.
 - Hardware media keys use SwayOSD.
+- The control menu opens Nixpkgs package search in an Omarchy-sized 875×600
+  modal Kitty window. Explicit selections install into the user's Nix profile;
+  the core system remains declarative.
 - Keep one direct binding for each action; do not add aliases.
 - Hardware media keys and recovery-critical bindings remain direct.
 
@@ -504,8 +507,9 @@ bars, or wallpaper daemons.
 - Stylix is the shared palette source.
 - Use Gruvbox Dark Hard throughout the desktop.
 - Use no logo, name, or custom branding.
-- swaybg displays Omarchy's Flexoki Light `1-orb.png` wallpaper from the
-  pinned source input. No other wallpaper service runs concurrently.
+- Recolor Omarchy's pinned Flexoki Light `1-orb.png` composition into the
+  Gruvbox Dark Hard background and foreground colors at build time. swaybg owns
+  the result; no other wallpaper service runs concurrently.
 - Preserve square geometry and the classic Omarchy shadow and animation
   treatment.
 
@@ -527,9 +531,10 @@ right:  tray drawer, Bluetooth, network, audio, CPU, clock and date
 ```
 
 The tray remains collapsed until requested. Network, Bluetooth, audio, and CPU
-widgets open Impala, Bluetui, WireMix, and btop in one consistently floating
-Kitty class. There are no weather, keyboard-layout, agent, or duplicate power
-widgets.
+widgets open Impala, Bluetui, WireMix, and btop in one consistently floating,
+centered 875×600 Kitty class. The Bluetooth entry remains visible when no
+controller is detected so Bluetui is still reachable. There are no weather,
+keyboard-layout, agent, or duplicate power widgets.
 
 Elephant's clipboard provider owns clipboard history and Walker presents it.
 Cliphist is not enabled because a second watcher and history store would be

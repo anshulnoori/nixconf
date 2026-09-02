@@ -97,7 +97,7 @@ _: {
           format-off = "󰂲";
           format-disabled = "󰂲";
           format-connected = "󰂱";
-          format-no-controller = "";
+          format-no-controller = "󰂲";
           tooltip-format = "Devices connected: {num_connections}";
           on-click = floatingTerminal "bluetui";
         };

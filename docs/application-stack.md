@@ -29,7 +29,7 @@ must return to the user rather than being resolved silently.
 | Bar                  | Waybar                                               | Square CSS; launches system TUIs in Kitty                       |
 | Command launcher     | Walker + Elephant                                    | One launcher UI with one provider backend                       |
 | Notifications        | Mako                                                 | Only notification daemon; Gruvbox styling and DND mode          |
-| Wallpaper            | swaybg                                               | Pinned Omarchy Flexoki Light Orb wallpaper                      |
+| Wallpaper            | swaybg                                               | Omarchy Flexoki Orb composition recolored to Gruvbox Dark Hard  |
 | Lock screen          | hyprlock                                             | Visible password field over the matching wallpaper              |
 | Idle management      | hypridle                                             | Lock and display power; no automatic suspend                    |
 | Authentication agent | hyprpolkitagent                                      | Graphical Polkit prompts                                        |
@@ -304,7 +304,7 @@ run a shell framework, live wallpaper, or separate screensaver.
 | Behavior             | Decision                                                 |
 | -------------------- | -------------------------------------------------------- |
 | Wallpaper engine     | swaybg                                                   |
-| Wallpaper source     | Omarchy Flexoki Light `1-orb.png` from the pinned input  |
+| Wallpaper source     | Pinned Omarchy `1-orb.png`, deterministically recolored  |
 | Idle scheduler       | hypridle                                                 |
 | Lock deadline        | 10 minutes from the beginning of inactivity              |
 | Display-off deadline | 20 minutes from the beginning of inactivity              |
