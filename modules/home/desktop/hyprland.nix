@@ -99,7 +99,8 @@ _: {
 
         hl.bind("SUPER + RETURN", hl.dsp.exec_cmd("kitty"))
         hl.bind("SUPER + SPACE", hl.dsp.exec_cmd("walker"))
-        hl.bind("SUPER + ALT + SPACE", hl.dsp.exec_cmd("wlr-which-key"))
+        hl.bind("SUPER + ALT + SPACE", hl.dsp.exec_cmd("nixconf-menu"))
+        hl.bind("F13", hl.dsp.exec_cmd("wlr-which-key"))
         hl.bind("SUPER + W", hl.dsp.window.close())
         hl.bind("SUPER + L", hl.dsp.exec_cmd("hyprlock"))
         hl.bind("SUPER + M", hl.dsp.exec_cmd("uwsm stop"))
@@ -144,8 +145,21 @@ _: {
           float = true,
           center = 1,
         })
+        hl.window_rule({
+          match = { title = "WebcamOverlay" },
+          float = true,
+          pin = true,
+          no_initial_focus = true,
+          no_dim = true,
+          move = { "(monitor_w-window_w-40)", "(monitor_h-window_h-40)" },
+        })
         hl.layer_rule({
           match = { namespace = "walker" },
+          no_anim = true,
+          animation = "none",
+        })
+        hl.layer_rule({
+          match = { namespace = "wlr_which_key" },
           no_anim = true,
           animation = "none",
         })

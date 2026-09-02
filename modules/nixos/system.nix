@@ -24,7 +24,10 @@
       ];
     };
     nixpkgs.config.allowUnfreePredicate = package:
-      builtins.elem (lib.getName package) ["amp-cli"];
+      builtins.elem (lib.getName package) [
+        "amp-cli"
+        "todoist-electron"
+      ];
 
     console.keyMap = "us";
     i18n.defaultLocale = "en_US.UTF-8";

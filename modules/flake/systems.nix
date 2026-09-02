@@ -14,7 +14,10 @@
     _module.args.pkgs = import inputs.nixpkgs {
       inherit system;
       config.allowUnfreePredicate = package:
-        inputs.nixpkgs.lib.getName package == "amp-cli";
+        builtins.elem (inputs.nixpkgs.lib.getName package) [
+          "amp-cli"
+          "todoist-electron"
+        ];
     };
   };
 }

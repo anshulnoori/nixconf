@@ -21,7 +21,7 @@ _: {
         spacing = 0;
         height = 26;
         modules-left = [
-          "custom/leader-menu"
+          "custom/menu"
           "hyprland/workspaces"
         ];
         modules-center = [];
@@ -34,9 +34,9 @@ _: {
           "clock"
         ];
 
-        "custom/leader-menu" = {
+        "custom/menu" = {
           format = "󰍜";
-          on-click = "wlr-which-key";
+          on-click = "nixconf-menu";
           tooltip = false;
         };
         "hyprland/workspaces" = {
@@ -169,7 +169,7 @@ _: {
 
         #cpu,
         #pulseaudio,
-        #custom-leader-menu {
+        #custom-menu {
           min-width: 12px;
           margin: 0 7.5px;
         }

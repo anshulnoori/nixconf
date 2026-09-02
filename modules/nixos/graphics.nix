@@ -7,6 +7,11 @@ _: {
       enable32Bit = true;
     };
 
+    programs.obs-studio = {
+      enable = true;
+      enableVirtualCamera = true;
+    };
+
     environment.systemPackages = [
       pkgs.libva-utils
       pkgs.mesa-demos

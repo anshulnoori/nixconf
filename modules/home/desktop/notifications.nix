@@ -22,6 +22,11 @@ _: {
         background-color = "#${colors.base00}";
         "mode=do-not-disturb".invisible = true;
         "mode=do-not-disturb app-name=notify-send".invisible = false;
+        "mode=do-not-disturb app-name=nixconf-menu".invisible = false;
+        "app-name=nixconf-menu" = {
+          anchor = "bottom-center";
+          width = 360;
+        };
         "urgency=critical" = {
           default-timeout = 0;
           layer = "overlay";

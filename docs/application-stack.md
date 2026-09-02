@@ -28,12 +28,16 @@ must return to the user rather than being resolved silently.
 | Compositor           | Hyprland                                             | Owns windows, workspaces, displays, keybindings, and animations |
 | Bar                  | Waybar                                               | Square CSS; launches system TUIs in Kitty                       |
 | Command launcher     | Walker + Elephant                                    | One launcher UI with one provider backend                       |
+| Desktop menu         | Walker + Elephant menus                              | Nested actions with full-tree search from the root              |
+| Shortcut overlay     | wlr-which-key + keyd                                 | Tap Super to discover and dispatch existing shortcuts           |
 | Notifications        | Mako                                                 | Only notification daemon; Gruvbox styling and DND mode          |
 | Wallpaper            | swaybg                                               | Omarchy Flexoki Orb composition recolored to Gruvbox Dark Hard  |
 | Lock screen          | hyprlock                                             | Visible password field over the matching wallpaper              |
 | Idle management      | hypridle                                             | Lock and display power; no automatic suspend                    |
 | Authentication agent | hyprpolkitagent                                      | Graphical Polkit prompts                                        |
 | Screenshots          | grim + slurp + Satty                                 | Region capture, clipboard copy, annotation, and export          |
+| Screen recording     | gpu-screen-recorder                                  | Region, monitor, audio, microphone, and webcam-overlay capture  |
+| Screensaver          | terminaltexteffects in Kitty                         | Fullscreen animated pattern before the lock deadline            |
 | OSD                  | SwayOSD                                              | Volume and brightness feedback                                  |
 | Clipboard            | Elephant + wl-clipboard                              | Searchable history through Walker and direct clipboard commands |
 | Media control        | playerctl                                            | Hardware keybindings                                            |
@@ -41,12 +45,13 @@ must return to the user rather than being resolved silently.
 | Removable media      | udisks2 + udiskie                                    | Device access and automounting                                  |
 | Cooling GUI          | CoolerControl                                        | Manual GUI; daemon starts at boot without GUI or tray autostart |
 
-The visual baseline is the last fully modular, pre-Quickshell
-Omarchy snapshot at commit `a7f8f2495f4990044b7791d8f11a32cf14d34b39`.
-The flake pins that source. This configuration does not follow later Omarchy
-desktop changes. It retains Walker and Elephant while deliberately substituting
-Kitty for Alacritty and hyprpolkitagent for polkit-gnome. Omarchy is not the
-source for bindings or feature policy.
+The flake pins Omarchy commit
+`a7f8f2495f4990044b7791d8f11a32cf14d34b39` as a frozen visual-asset source.
+The Walker menu interaction follows the last pre-Quickshell Walker/Elephant
+commit, `7fe472bf8ab3efe8c2a7470a285aad87dea9052f`. This configuration does not
+follow later Omarchy desktop changes. It deliberately substitutes Kitty for
+Alacritty and hyprpolkitagent for polkit-gnome. Omarchy is not the source for
+bindings or feature policy.
 
 Elephant's clipboard provider owns clipboard history. Do not also run cliphist;
 that would duplicate the clipboard watcher and history database.
@@ -119,6 +124,7 @@ Use the `sensors` command from `lm_sensors` for terminal sensor readings.
 | Downloads              | aria2                |
 | Network diagnostics    | nmap                 |
 | Hardware sensors       | lm_sensors           |
+| System information     | Fastfetch            |
 
 ## Nix tooling and structure
 
@@ -256,6 +262,7 @@ limited without it; those limitations are preferable to weakening SIP initially.
 | Music                          | Official Spotify client | Keep the graphical client                                        |
 | Video, audio, and still images | mpv                     | Default media handler where practical                            |
 | Media retrieval                | yt-dlp                  | Integrate with mpv where useful                                  |
+| Recording and streaming        | OBS Studio              | Includes the `v4l2loopback`-backed OBS virtual camera            |
 | Video editing                  | DaVinci Resolve         | Unfree package; codec limitations may require FFmpeg transcoding |
 | Local file transfer            | LocalSend               | Cross-platform local transfer                                    |
 
@@ -284,7 +291,7 @@ separate backup method protects Minecraft worlds.
 | Wi-Fi backend         | iwd              | Fallback backend required by Impala                                   |
 | Wi-Fi UI              | Impala           | Fallback UI; do not run NetworkManager or wpa_supplicant concurrently |
 | Network configuration | systemd-networkd | Ethernet is primary and uses wired DHCP                               |
-| DNS                   | systemd-resolved | Recommended resolver                                                  |
+| DNS                   | systemd-resolved | Cloudflare DNS over TLS                                               |
 | Bluetooth backend     | BlueZ            | Required by Bluetui                                                   |
 | Bluetooth UI          | Bluetui          | Primary pairing and device UI                                         |
 | Tailnet               | Tailscale        | Only selected VPN                                                     |
@@ -298,19 +305,22 @@ below LUKS.
 
 ## Wallpaper, idle, and locking
 
-The desktop uses one static wallpaper and one lock implementation. It does not
-run a shell framework, live wallpaper, or separate screensaver.
+The desktop uses one wallpaper service, one terminal screensaver, and one lock
+implementation. It does not run a shell framework or live wallpaper.
 
-| Behavior             | Decision                                                 |
-| -------------------- | -------------------------------------------------------- |
-| Wallpaper engine     | swaybg                                                   |
-| Wallpaper source     | Pinned Omarchy `1-orb.png`, deterministically recolored  |
-| Idle scheduler       | hypridle                                                 |
-| Lock deadline        | 10 minutes from the beginning of inactivity              |
-| Display-off deadline | 20 minutes from the beginning of inactivity              |
-| Automatic suspend    | Disabled; suspend remains an explicit action             |
-| Lock styling         | Matching wallpaper and a centered visible password field |
-| Idle inhibitors      | Respect media and application inhibitors                 |
+| Behavior             | Decision                                                          |
+| -------------------- | ----------------------------------------------------------------- |
+| Wallpaper engine     | swaybg                                                            |
+| Default wallpaper    | Pinned Omarchy `1-orb.png`, deterministically recolored           |
+| Wallpaper selection  | Walker picker over generated and user-provided wallpaper files    |
+| Screensaver          | Random terminaltexteffects animation in fullscreen Kitty windows  |
+| Idle scheduler       | hypridle                                                          |
+| Screensaver deadline | 5 minutes from the beginning of inactivity                        |
+| Lock deadline        | 10 minutes from the beginning of inactivity                       |
+| Display-off deadline | 20 minutes from the beginning of inactivity                       |
+| Automatic suspend    | Disabled; suspend and hibernate remain explicit actions           |
+| Lock styling         | Matching selected wallpaper and a centered visible password field |
+| Idle inhibitors      | Respect media and application inhibitors                          |
 
 hyprlock is the security boundary. swaybg owns the wallpaper surface and no
 other wallpaper daemon runs concurrently.
@@ -326,7 +336,7 @@ other wallpaper daemon runs concurrently.
 | Real-time mode       | Disabled                                  | Normal BORE kernel                               |
 | TCP congestion       | BBR3 with FQ                              | Default TCP policy                               |
 | Binder               | Compiled but dormant                      | No BinderFS mount or Android service             |
-| v4l2loopback         | Available on demand                       | Do not load the module at boot                   |
+| v4l2loopback         | OBS virtual camera                        | Loaded for OBS Studio virtual-camera output      |
 | ZFS                  | Excluded                                  | Btrfs is the only root filesystem                |
 | Flake source         | `xddxdd/nix-cachyos-kernel`               | Use its pinned overlay                           |
 | Recovery             | Previous Limine generations and TTY login | Separate recovery specialization is deferred     |
@@ -363,17 +373,18 @@ enter the public repository or Nix store unintentionally.
 
 ## References
 
-| Project                          | Reference                                                                                                           |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Frozen classic Omarchy desktop   | [basecamp/omarchy at `a7f8f249`](https://github.com/basecamp/omarchy/tree/a7f8f2495f4990044b7791d8f11a32cf14d34b39) |
-| BlueBubbles                      | [Installation](https://bluebubbles.app/install)                                                                     |
-| BlueBubbles over Tailscale       | [Tailscale guide](https://tailscale.com/blog/bluebubbles-tailscale-imessage-android-pc-no-port-forwarding)          |
-| Brave Origin                     | [Official product page](https://brave.com/origin/)                                                                  |
-| Walker                           | [Documentation](https://github.com/abenz1267/walker)                                                                |
-| Elephant                         | [Documentation](https://github.com/abenz1267/elephant)                                                              |
-| Browsh profiles                  | [Configuration](https://www.brow.sh/docs/config/)                                                                   |
-| CachyOS kernel packages          | [xddxdd/nix-cachyos-kernel](https://github.com/xddxdd/nix-cachyos-kernel)                                           |
-| Recursive Nix module imports     | [vic/import-tree](https://github.com/vic/import-tree)                                                               |
-| Neovim configuration             | [NotAShelf/nvf](https://github.com/NotAShelf/nvf)                                                                   |
-| Selective package wrappers       | [Lassulus/wrappers](https://github.com/Lassulus/wrappers)                                                           |
-| Discoverable Wayland leader menu | [wlr-which-key](https://github.com/eepp/wlr-which-key)                                                              |
+| Project                        | Reference                                                                                                           |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| Frozen classic Omarchy desktop | [basecamp/omarchy at `a7f8f249`](https://github.com/basecamp/omarchy/tree/a7f8f2495f4990044b7791d8f11a32cf14d34b39) |
+| BlueBubbles                    | [Installation](https://bluebubbles.app/install)                                                                     |
+| BlueBubbles over Tailscale     | [Tailscale guide](https://tailscale.com/blog/bluebubbles-tailscale-imessage-android-pc-no-port-forwarding)          |
+| Brave Origin                   | [Official product page](https://brave.com/origin/)                                                                  |
+| Walker                         | [Documentation](https://github.com/abenz1267/walker)                                                                |
+| Elephant                       | [Documentation](https://github.com/abenz1267/elephant)                                                              |
+| Browsh profiles                | [Configuration](https://www.brow.sh/docs/config/)                                                                   |
+| CachyOS kernel packages        | [xddxdd/nix-cachyos-kernel](https://github.com/xddxdd/nix-cachyos-kernel)                                           |
+| Recursive Nix module imports   | [vic/import-tree](https://github.com/vic/import-tree)                                                               |
+| Neovim configuration           | [NotAShelf/nvf](https://github.com/NotAShelf/nvf)                                                                   |
+| Selective package wrappers     | [Lassulus/wrappers](https://github.com/Lassulus/wrappers)                                                           |
+| Discoverable shortcut overlay  | [wlr-which-key](https://github.com/eepp/wlr-which-key)                                                              |
+| Super tap/hold mapping         | [keyd](https://github.com/rvaiya/keyd)                                                                              |

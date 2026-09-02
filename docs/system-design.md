@@ -159,7 +159,7 @@ Storage policy:
 - automatic Nix store optimization;
 - weekly `nh clean all` that retains six generations in every profile and
   active direnv roots;
-- no hibernation initially.
+- explicit hibernation only when systemd-logind reports it as available.
 
 Maintenance is automatic: run `fstrim` weekly, Btrfs scrub monthly, and Btrfs
 device-stat plus NVMe health checks daily. Keep journald's default rotation.
@@ -180,7 +180,14 @@ Memory pressure uses two swap tiers:
 
 1. zstd zram with logical capacity equal to 100% of physical RAM and priority
    100;
-2. a 16 GiB Btrfs swapfile inside LUKS with priority 10.
+2. a 64 GiB Btrfs swapfile inside LUKS with priority 10, sized to hold the
+   32 GiB of physical memory during hibernation.
+
+systemd 261 discovers the active swapfile before hibernation, calculates its
+Btrfs physical offset, and writes the device and offset to the
+`HibernateLocation` EFI variable. The systemd-based initrd reads that variable
+when booting, so this configuration does not pin a swapfile offset in kernel
+parameters.
 
 The zram capacity is an uncompressed logical limit, not RAM reserved at boot.
 Compressed storage is allocated dynamically. The normal running state uses
@@ -247,10 +254,9 @@ Optional features must not be described as active only because CachyOS lists
 them. The normal BORE kernel is not a real-time kernel. BBR3 with FQ is the
 default TCP congestion policy. ZFS and proprietary NVIDIA drivers are external
 modules from the selected kernel package set. ZFS is not installed because the
-system uses Btrfs. v4l2loopback remains available as an inactive module until a
-virtual-camera workflow needs it. The NVIDIA modules are added only after the
-GPU is installed. Open NVIDIA modules remain excluded. Binder and ADIOS stay
-compiled but inactive.
+system uses Btrfs. OBS Studio's virtual-camera support loads v4l2loopback. The
+NVIDIA modules are added only after the GPU is installed. Open NVIDIA modules
+remain excluded. Binder and ADIOS stay compiled but inactive.
 
 Nixpkgs supports `znver5` compiler targeting, but setting it globally changes
 the standard environment and causes a near-complete source rebuild with little
@@ -434,7 +440,8 @@ Ethernet through systemd-networkd DHCP is primary. Standalone iwd and Impala
 remain the Wi-Fi fallback; do not enable NetworkManager or wpa_supplicant
 against the same interfaces. Enter Wi-Fi credentials interactively and keep
 them as mutable state below LUKS rather than in the repository or Nix store.
-systemd-resolved owns DNS, and Tailscale is the only VPN.
+systemd-resolved owns DNS, uses Cloudflare DNS over TLS, and ignores DNS servers
+offered through DHCP and IPv6 router advertisements. Tailscale is the only VPN.
 
 Tailscale is installed declaratively but authenticated interactively after
 first boot. Its mutable state remains below LUKS; no reusable Tailscale auth key
@@ -462,8 +469,9 @@ typed LUKS unlock
 - Automatic login applies only to the first graphical session after each cold
   boot. It does not remove the LUKS prompt or account password.
 - UWSM owns the systemd user session and starts Hyprland.
-- hypridle handles lock and display-power transitions. It does not suspend
-  automatically; suspend is available only as an explicit desktop action.
+- hypridle handles screensaver, lock, and display-power transitions. It does
+  not suspend automatically; suspend and hibernate are explicit desktop
+  actions.
 - hyprlock locks the existing session and authenticates wake.
 - Explicit logout presents ReGreet under the small Cage compositor and requires
   the `mvs` password before starting another session.
@@ -472,8 +480,10 @@ typed LUKS unlock
 - The account password authenticates hyprlock, ReGreet, and privileged actions.
 - Passwordless sudo is not enabled on the physical PC.
 
-After 10 minutes of inactivity, start hyprlock. At 20 minutes, turn displays
-off while keeping the session locked. No idle deadline suspends the machine.
+After 5 minutes of inactivity, start the terminal screensaver. Stop it when
+activity resumes. After 10 minutes of continuous inactivity, stop it and start
+hyprlock. At 20 minutes, turn displays off while keeping the session locked. No
+idle deadline suspends or hibernates the machine.
 
 1Password system authentication allows Linux PAM authentication to unlock
 1Password. It does not make 1Password an operating-system login or PAM
@@ -483,23 +493,29 @@ interactive.
 
 Use official Hyprland ecosystem components where they directly fit, including
 Hyprland, hypridle, hyprlock, hyprpolkitagent, and the Hyprland portal. Waybar,
-Mako, Walker, Elephant, SwayOSD, swaybg, and Kitty complete the modular desktop.
-Do not install parallel launchers, provider backends, notification daemons,
-bars, or wallpaper daemons.
+Mako, Walker, Elephant, SwayOSD, swaybg, terminaltexteffects, and Kitty complete
+the modular desktop. Do not install parallel launchers, provider backends,
+notification daemons, bars, or wallpaper daemons.
 
 ## Interaction and keybindings
 
+- Tapping `Super` opens wlr-which-key. Holding or using `Super` as a modifier
+  preserves the direct Hyprland shortcuts.
 - `Super+Space` opens Walker.
-- `Super+Alt+Space` opens wlr-which-key.
+- `Super+Alt+Space` opens the searchable Walker desktop menu.
 - `Super+W` closes the active window.
 - `Super+Return` opens Kitty.
 - `Super+L` starts hyprlock.
 - `Print` starts region capture and offers Satty editing.
 - Hardware media keys use SwayOSD.
-- The leader menu opens Nixpkgs package search in an Omarchy-sized 875×600
-  modal Kitty window. Explicit selections install into the user's Nix profile;
-  the core system remains declarative.
-- Keep one direct binding for each action; do not add aliases.
+- An empty Walker desktop-menu query shows only `Apps`, `Trigger`, `Appearance`,
+  `Setup`, `Packages`, `About`, and `System`. A non-empty root query searches the
+  complete tree and directly executes a selected leaf.
+- The Walker desktop menu opens Nixpkgs package search in an Omarchy-sized
+  875×600 modal Kitty window. Explicit selections install into or remove from
+  the user's Nix profile; the core system remains declarative.
+- wlr-which-key mirrors the direct Super shortcuts after a completed Super tap;
+  it does not own desktop actions or settings.
 - Hardware media keys and recovery-critical bindings remain direct.
 
 ## Theme and bar
@@ -513,19 +529,18 @@ bars, or wallpaper daemons.
 - Preserve square geometry and the classic Omarchy shadow and animation
   treatment.
 
-The desktop is based on Omarchy commit
-`a7f8f2495f4990044b7791d8f11a32cf14d34b39`, the last fully modular snapshot
-before its Quickshell migration. It is a frozen reference, not an update
-source. Only its visual language is carried over: palette, wallpaper, component
-styling, gaps, borders, shadows, and animations. Bindings and command hierarchy
-remain local except for the explicitly selected Finder and menu gestures. Walker
-and Elephant are retained; local substitutions are Kitty for Alacritty and
-hyprpolkitagent for polkit-gnome.
+The desktop pins Omarchy commit
+`a7f8f2495f4990044b7791d8f11a32cf14d34b39` as a frozen visual-asset source,
+not an update source. Walker menu behavior follows the last pre-Quickshell
+Walker/Elephant commit, `7fe472bf8ab3efe8c2a7470a285aad87dea9052f`.
+Only selected visual language and explicitly chosen menu behavior are carried
+over. Bindings and feature policy remain local. Local substitutions are Kitty
+for Alacritty and hyprpolkitagent for polkit-gnome.
 
 Confirmed placement:
 
 ```text
-left:   leader menu, workspaces
+left:   desktop menu, workspaces
 center: empty
 right:  tray drawer, Bluetooth, network, audio, CPU, clock and date
 ```

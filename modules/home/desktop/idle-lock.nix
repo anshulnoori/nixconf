@@ -14,7 +14,7 @@ _: {
         background = [
           {
             monitor = "";
-            path = "${config.nixconf.desktop.wallpaper}";
+            path = "${config.xdg.stateHome}/nixconf/wallpaper";
             blur_passes = 3;
           }
         ];
@@ -55,8 +55,13 @@ _: {
         };
         listener = [
           {
+            timeout = 300;
+            on-timeout = "nixconf-screensaver start";
+            on-resume = "nixconf-screensaver stop";
+          }
+          {
             timeout = 600;
-            on-timeout = "hyprlock";
+            on-timeout = "nixconf-screensaver stop; pidof hyprlock || hyprlock";
           }
           {
             timeout = 1200;

@@ -83,6 +83,8 @@ modules/
 │   ├── desktop/
 │   │   ├── appearance/
 │   │   │   └── stylix.nix
+│   │   ├── input/
+│   │   │   └── leader-key.nix
 │   │   ├── session.nix
 │   │   ├── login.nix
 │   │   ├── portals.nix
@@ -100,6 +102,7 @@ modules/
     ├── shell/
     │   ├── zsh.nix
     │   ├── kitty.nix
+    │   ├── fastfetch.nix
     │   ├── zmx.nix
     │   ├── prompt.nix
     │   ├── history.nix
@@ -122,8 +125,16 @@ modules/
     │   │   ├── cursor.nix
     │   │   └── wallpaper.nix
     │   ├── leader-menu/
-    │   │   ├── menu.nix
-    │   │   └── package-search.nix
+    │   │   └── menu.nix
+    │   ├── menu/
+    │   │   ├── editor.nix
+    │   │   ├── hardware.nix
+    │   │   ├── navigation.nix
+    │   │   ├── package-search.nix
+    │   │   ├── reminders.nix
+    │   │   ├── share.nix
+    │   │   ├── system.nix
+    │   │   └── toggles.nix
     │   ├── presentation/
     │   │   └── terminal.nix
     │   ├── hyprland.nix
@@ -131,6 +142,7 @@ modules/
     │   ├── notifications.nix
     │   ├── launchers.nix
     │   ├── idle-lock.nix
+    │   ├── screensaver.nix
     │   ├── capture.nix
     │   ├── clipboard.nix
     │   ├── controls.nix
@@ -210,12 +222,16 @@ directory because the kernel, bootloader, Plymouth, and later Secure Boot work
 are independent responsibilities. Plymouth is added with the graphics and
 desktop stage rather than the base installation.
 
-The leader menu calls executable interfaces and does not own their
-implementations. `present-terminal` owns UWSM launch, Kitty presentation, and
-the matching Hyprland window rule. `nixpkgs-package-search` owns package
-indexing, selection, preview, and installation. The generated wallpaper is
-exposed through the internal read-only `nixconf.desktop.wallpaper` option so
-swaybg and hyprlock share one artifact without sharing its implementation.
+The Walker desktop menu calls executable interfaces and does not own their
+implementations. Elephant's generated Lua menu provider returns top-level
+categories for an empty root query and all descendants for a non-empty query,
+so root search can execute a matched leaf directly. The wlr-which-key leader
+menu is a separate shortcut tree. `present-terminal` owns UWSM launch, Kitty
+presentation, and the matching Hyprland window rule. `nixpkgs-package-search`
+owns package indexing, selection, preview, installation, and removal from the
+user profile. The generated wallpaper is exposed through the internal read-only
+`nixconf.desktop.wallpaper` option; a state symlink records the selected
+wallpaper so swaybg and hyprlock share the same current image.
 
 Home Manager keeps visible domain directories from the agreed tree. Amp stays
 under `ai/`; shell programs and tools stay under `shell/`; user services stay
