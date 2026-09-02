@@ -4,6 +4,10 @@
 
     nix.settings = {
       auto-optimise-store = true;
+      experimental-features = [
+        "nix-command"
+        "flakes"
+      ];
       extra-substituters = [
         "https://anshulnoori.cachix.org"
         "https://attic.xuyh0120.win/lantian"
