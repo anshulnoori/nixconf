@@ -1,37 +1,75 @@
 _: {
   flake.modules.homeManager.desktop = {pkgs, ...}: let
-    captureScreenshot = pkgs.writeShellApplication {
-      name = "capture-screenshot";
+    captureRegionPick = pkgs.writeShellApplication {
+      name = "capture-region-pick";
       runtimeInputs = with pkgs; [
         coreutils
-        grim
         hyprland
         hyprpicker
         jq
-        libnotify
-        procps
-        satty
         slurp
-        wl-clipboard
       ];
       text = ''
-        output_dir="$HOME/Pictures/Screenshots"
-        mkdir -p "$output_dir"
+        mode=smart
+        keep_freeze=false
+        match_monitor=false
 
-        pkill -x slurp 2>/dev/null && exit 0
+        for argument in "$@"; do
+          case "$argument" in
+            region | windows | smart | fullscreen) mode="$argument" ;;
+            --keep-freeze) keep_freeze=true ;;
+            --match-monitor) match_monitor=true ;;
+            *)
+              printf 'Usage: capture-region-pick [region|windows|smart|fullscreen] [--keep-freeze] [--match-monitor]\n' >&2
+              exit 2
+              ;;
+          esac
+        done
+
+        get_rectangles() {
+          local active_workspace
+
+          active_workspace="$(hyprctl monitors -j | jq -r '.[] | select(.focused).activeWorkspace.id')"
+          hyprctl monitors -j | jq -r --arg workspace "$active_workspace" '
+            .[] | select(.activeWorkspace.id == ($workspace | tonumber)) |
+            .x as $x | .y as $y |
+            (.width / .scale | floor) as $w |
+            (.height / .scale | floor) as $h |
+            if .transform % 2 == 1 then
+              "\($x),\($y) \($h)x\($w)"
+            else
+              "\($x),\($y) \($w)x\($h)"
+            end
+          '
+          hyprctl clients -j | jq -r --arg workspace "$active_workspace" '
+            .[] | select(.workspace.id == ($workspace | tonumber)) |
+            "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"
+          '
+        }
 
         freeze_pid=
         cleanup_freeze() {
-          [[ -z "$freeze_pid" ]] || kill "$freeze_pid" 2>/dev/null || true
+          if [[ "$keep_freeze" != true && -n "$freeze_pid" ]]; then
+            kill "$freeze_pid" 2>/dev/null || true
+          fi
         }
         trap cleanup_freeze EXIT
 
-        case "''${1:-region}" in
+        freeze_screen() {
+          hyprpicker -r -z >/dev/null 2>&1 &
+          freeze_pid=$!
+          sleep 0.1
+        }
+
+        selection=
+        case "$mode" in
           region)
-            hyprpicker -r -z >/dev/null 2>&1 &
-            freeze_pid=$!
-            sleep 0.1
+            freeze_screen
             selection="$(slurp 2>/dev/null || true)"
+            ;;
+          windows)
+            freeze_screen
+            selection="$(get_rectangles | slurp -r 2>/dev/null || true)"
             ;;
           fullscreen)
             selection="$(hyprctl monitors -j | jq -r '
@@ -46,12 +84,104 @@ _: {
               end
             ')"
             ;;
+          smart)
+            rectangles="$(get_rectangles)"
+            freeze_screen
+            selection="$(printf '%s\n' "$rectangles" | slurp 2>/dev/null || true)"
+
+            if [[ "$selection" =~ ^(-?[0-9]+),(-?[0-9]+)[[:space:]]([0-9]+)x([0-9]+)$ ]] &&
+              ((BASH_REMATCH[3] * BASH_REMATCH[4] < 20)); then
+              click_x="''${BASH_REMATCH[1]}"
+              click_y="''${BASH_REMATCH[2]}"
+
+              while IFS= read -r rectangle; do
+                [[ "$rectangle" =~ ^(-?[0-9]+),(-?[0-9]+)[[:space:]]([0-9]+)x([0-9]+)$ ]] || continue
+                rectangle_x="''${BASH_REMATCH[1]}"
+                rectangle_y="''${BASH_REMATCH[2]}"
+                rectangle_width="''${BASH_REMATCH[3]}"
+                rectangle_height="''${BASH_REMATCH[4]}"
+
+                if ((
+                  click_x >= rectangle_x &&
+                  click_x < rectangle_x + rectangle_width &&
+                  click_y >= rectangle_y &&
+                  click_y < rectangle_y + rectangle_height
+                )); then
+                  selection="$rectangle_x,$rectangle_y ''${rectangle_width}x$rectangle_height"
+                  break
+                fi
+              done <<< "$rectangles"
+            fi
+            ;;
+        esac
+
+        if [[ "$keep_freeze" == true ]]; then
+          printf '%s\n' "$freeze_pid"
+        fi
+
+        [[ -n "$selection" ]] || exit 1
+
+        if [[ "$match_monitor" == true ]]; then
+          monitor="$(hyprctl monitors -j | jq -r \
+            --arg geometry "$selection" '
+              .[] |
+              .x as $x | .y as $y |
+              (.width / .scale | floor) as $w |
+              (.height / .scale | floor) as $h |
+              (if .transform % 2 == 1 then
+                "\($x),\($y) \($h)x\($w)"
+              else
+                "\($x),\($y) \($w)x\($h)"
+              end) as $monitor_geometry |
+              select($monitor_geometry == $geometry) |
+              .name
+            ' | head -n 1)"
+
+          if [[ -n "$monitor" ]]; then
+            printf 'monitor:%s\n' "$monitor"
+            exit 0
+          fi
+        fi
+
+        printf '%s\n' "$selection"
+      '';
+    };
+    captureScreenshot = pkgs.writeShellApplication {
+      name = "capture-screenshot";
+      runtimeInputs = with pkgs; [
+        captureRegionPick
+        coreutils
+        grim
+        libnotify
+        procps
+        satty
+        wl-clipboard
+      ];
+      text = ''
+        output_dir="$HOME/Pictures/Screenshots"
+        mkdir -p "$output_dir"
+
+        pkill -x slurp 2>/dev/null && exit 0
+
+        freeze_pid=
+        cleanup_freeze() {
+          [[ -z "$freeze_pid" ]] || kill "$freeze_pid" 2>/dev/null || true
+        }
+        trap cleanup_freeze EXIT
+
+        mode="''${1:-smart}"
+        case "$mode" in
+          region | windows | smart | fullscreen) ;;
           *)
-            printf 'Usage: capture-screenshot <region|fullscreen>\n' >&2
+            printf 'Usage: capture-screenshot <region|windows|smart|fullscreen>\n' >&2
             exit 2
             ;;
         esac
 
+        pick=()
+        mapfile -t pick < <(capture-region-pick "$mode" --keep-freeze || true)
+        freeze_pid="''${pick[0]:-}"
+        selection="''${pick[1]:-}"
         [[ -n "$selection" ]] || exit 0
 
         file="$(mktemp "$output_dir/screenshot-$(date +'%Y-%m-%d_%H-%M-%S')-XXXXXX.png")"
@@ -87,17 +217,14 @@ _: {
     captureScreenrecord = pkgs.writeShellApplication {
       name = "capture-screenrecord";
       runtimeInputs = with pkgs; [
+        captureRegionPick
         coreutils
         ffmpeg
         gnugrep
         gpu-screen-recorder
-        hyprland
-        hyprpicker
-        jq
         libnotify
         mpv
         procps
-        slurp
         util-linux
         uwsm
         v4l-utils
@@ -122,6 +249,10 @@ _: {
 
         notify() {
           notify-send --app-name=nixconf-capture "$1" "''${2:-}"
+        }
+
+        refresh_waybar() {
+          pkill -RTMIN+8 -x waybar 2>/dev/null || true
         }
 
         finalize_recording() {
@@ -225,87 +356,19 @@ _: {
           return 1
         }
 
-        get_rectangles() {
-          active_workspace="$(hyprctl monitors -j | jq -r '.[] | select(.focused).activeWorkspace.id')"
-          hyprctl monitors -j | jq -r --arg workspace "$active_workspace" '
-            .[] | select(.activeWorkspace.id == ($workspace | tonumber)) |
-            .x as $x | .y as $y |
-            (.width / .scale | floor) as $w |
-            (.height / .scale | floor) as $h |
-            if .transform % 2 == 1 then
-              "\($x),\($y) \($h)x\($w)"
-            else
-              "\($x),\($y) \($w)x\($h)"
-            end
-          '
-          hyprctl clients -j | jq -r --arg workspace "$active_workspace" '
-            .[] | select(.workspace.id == ($workspace | tonumber)) |
-            "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"
-          '
-        }
-
         select_capture_target() {
-          rectangles="$(get_rectangles)"
-          hyprpicker -r -z >/dev/null 2>&1 &
-          picker_pid=$!
-          sleep 0.1
-          selection="$(printf '%s\n' "$rectangles" | slurp 2>/dev/null || true)"
-          kill "$picker_pid" 2>/dev/null || true
-
-          if [[ ! "$selection" =~ ^(-?[0-9]+),(-?[0-9]+)[[:space:]]([0-9]+)x([0-9]+)$ ]]; then
-            return 1
+          target="$(capture-region-pick smart --match-monitor)" || return 1
+          if [[ "$target" == monitor:* ]]; then
+            printf '%s\n' "$target"
+            return 0
           fi
 
-          selection_x="''${BASH_REMATCH[1]}"
-          selection_y="''${BASH_REMATCH[2]}"
-          selection_width="''${BASH_REMATCH[3]}"
-          selection_height="''${BASH_REMATCH[4]}"
-
-          if (( selection_width * selection_height < 20 )); then
-            while IFS= read -r rectangle; do
-              [[ "$rectangle" =~ ^(-?[0-9]+),(-?[0-9]+)[[:space:]]([0-9]+)x([0-9]+)$ ]] || continue
-              rectangle_x="''${BASH_REMATCH[1]}"
-              rectangle_y="''${BASH_REMATCH[2]}"
-              rectangle_width="''${BASH_REMATCH[3]}"
-              rectangle_height="''${BASH_REMATCH[4]}"
-              if (( selection_x >= rectangle_x && selection_x < rectangle_x + rectangle_width && selection_y >= rectangle_y && selection_y < rectangle_y + rectangle_height )); then
-                selection_x="$rectangle_x"
-                selection_y="$rectangle_y"
-                selection_width="$rectangle_width"
-                selection_height="$rectangle_height"
-                break
-              fi
-            done <<< "$rectangles"
-          fi
-
-          monitor="$(hyprctl monitors -j | jq -r \
-            --argjson x "$selection_x" \
-            --argjson y "$selection_y" \
-            --argjson width "$selection_width" \
-            --argjson height "$selection_height" '
-              .[] |
-              select(
-                .x == $x and
-                .y == $y and
-                (
-                  if .transform % 2 == 1 then
-                    (.height / .scale | floor) == $width and
-                    (.width / .scale | floor) == $height
-                  else
-                    (.width / .scale | floor) == $width and
-                    (.height / .scale | floor) == $height
-                  end
-                )
-              ) |
-              .name
-            ' | head -n 1)"
-
-          if [[ -n "$monitor" ]]; then
-            printf 'monitor:%s\n' "$monitor"
-          else
-            printf 'region:%sx%s+%s+%s\n' \
-              "$selection_width" "$selection_height" "$selection_x" "$selection_y"
-          fi
+          [[ "$target" =~ ^(-?[0-9]+),(-?[0-9]+)[[:space:]]([0-9]+)x([0-9]+)$ ]] || return 1
+          printf 'region:%sx%s+%s+%s\n' \
+            "''${BASH_REMATCH[3]}" \
+            "''${BASH_REMATCH[4]}" \
+            "''${BASH_REMATCH[1]}" \
+            "''${BASH_REMATCH[2]}"
         }
 
         start_webcam() {
@@ -406,6 +469,7 @@ _: {
 
           printf '%s\n' "$recorder_pid" > "$pid_file"
           printf '%s\n' "$output" > "$recording_file"
+          refresh_waybar
           notify "Screen recording started" "Select Stop Screen Recording when finished"
         }
 
@@ -432,6 +496,7 @@ _: {
 
           stop_webcam
           rm -f "$pid_file" "$recording_file"
+          refresh_waybar
           finalize_recording "$output"
           notify_recording_saved "$output"
         }

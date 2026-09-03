@@ -6,10 +6,11 @@ _: {
   }: let
     colors = config.lib.stylix.colors;
     floatingTerminal = command: "kitty --class TUI.float ${command}";
+    captureScreenrecord = "${config.home.profileDirectory}/bin/capture-screenrecord";
     screenrecordingIndicator = pkgs.writeShellApplication {
       name = "nixconf-screenrecording-indicator";
       text = ''
-        if capture-screenrecord active; then
+        if ${captureScreenrecord} active; then
           printf '{"text":"󰻂","tooltip":"Stop screen recording","class":"active"}\n'
         else
           printf '{"text":""}\n'
@@ -47,13 +48,14 @@ _: {
         "custom/menu" = {
           format = "";
           on-click = "nixconf-menu";
-          tooltip = false;
+          tooltip-format = "Control Menu\n\nSuper + Alt + Space";
         };
         "custom/screenrecording" = {
           exec = "${screenrecordingIndicator}/bin/nixconf-screenrecording-indicator";
           return-type = "json";
           interval = 1;
-          on-click = "capture-screenrecord stop";
+          signal = 8;
+          on-click = "${captureScreenrecord} stop";
         };
         "hyprland/workspaces" = {
           on-click = "activate";
@@ -148,6 +150,10 @@ _: {
         "custom/expand-icon" = {
           format = "";
           tooltip = false;
+          on-scroll-up = "";
+          on-scroll-down = "";
+          on-scroll-left = "";
+          on-scroll-right = "";
         };
         tray = {
           icon-size = 12;

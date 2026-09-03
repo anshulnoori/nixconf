@@ -12,6 +12,8 @@ _: {
       enableVirtualCamera = true;
     };
 
+    programs.gpu-screen-recorder.enable = true;
+
     environment.systemPackages = [
       pkgs.libva-utils
       pkgs.mesa-demos

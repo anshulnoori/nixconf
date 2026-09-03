@@ -28,19 +28,19 @@
         -resize '3840x2160^' \
         -gravity center \
         -extent 3840x2160 \
-        -blur 0x8 \
+        -blur 0x16 \
         -strip \
         "$themeDir/background.png"
 
       for scale in 1 2; do
-        width=$((408 * scale))
-        height=$((68 * scale))
+        width=$((400 * scale))
+        height=$((60 * scale))
         inset=$((2 * scale))
         far_x=$((width - 3 * scale))
         far_y=$((height - 3 * scale))
         point_size=$((16 * scale))
-        bullet_size=$((10 * scale))
-        bullet_center=$((5 * scale))
+        bullet_size=$((16 * scale))
+        bullet_center=$((8 * scale))
         bullet_edge=$scale
 
         magick \
@@ -108,12 +108,13 @@
       entry.sprite.SetOpacity(0);
 
       bullet.image = Image("bullet-" + scale + "x.png");
+      bullet.sprites = [];
       status.sprite = Sprite();
 
       fun hide_bullets()
       {
-          for (i = 0; password_bullets[i]; i++)
-              password_bullets[i].sprite.SetOpacity(0);
+          for (i = 0; bullet.sprites[i]; i++)
+              bullet.sprites[i].SetOpacity(0);
       }
 
       fun display_password(prompt, bullet_count)
@@ -128,20 +129,21 @@
               entry.sprite.SetImage(entry.image);
 
           visible = bullet_count;
-          if (visible > 16)
-              visible = 16;
+          if (visible > 19)
+              visible = 19;
 
-          spacing = bullet.image.GetWidth() + 8 * scale;
-          start_x = center.x - (visible * spacing - 8 * scale) / 2;
+          dot_spacing = 3 * scale;
+          spacing = bullet.image.GetWidth() + dot_spacing;
+          start_x = center.x - (visible * spacing - dot_spacing) / 2;
           bullet_y = center.y - bullet.image.GetHeight() / 2;
 
           for (i = 0; i < visible; i++)
           {
-              if (!password_bullets[i])
-                  password_bullets[i].sprite = Sprite(bullet.image);
+              if (!bullet.sprites[i])
+                  bullet.sprites[i] = Sprite(bullet.image);
 
-              password_bullets[i].sprite.SetPosition(start_x + i * spacing, bullet_y, 101);
-              password_bullets[i].sprite.SetOpacity(1);
+              bullet.sprites[i].SetPosition(start_x + i * spacing, bullet_y, 101);
+              bullet.sprites[i].SetOpacity(1);
           }
       }
 
