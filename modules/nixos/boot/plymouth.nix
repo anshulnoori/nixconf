@@ -42,6 +42,8 @@
         bullet_size=$((16 * scale))
         bullet_center=$((8 * scale))
         bullet_edge=$scale
+        progress_width=$((300 * scale))
+        progress_height=$((10 * scale))
 
         magick \
           -size "''${width}x''${height}" xc:none \
@@ -65,6 +67,16 @@
           -fill '#${colors.base05}' \
           -draw "circle ''${bullet_center},''${bullet_center} ''${bullet_center},''${bullet_edge}" \
           "$themeDir/bullet-''${scale}x.png"
+
+        magick \
+          -size "''${progress_width}x''${progress_height}" \
+          "xc:#${colors.base02}" \
+          "$themeDir/progress-track-''${scale}x.png"
+
+        magick \
+          -size "''${progress_width}x''${progress_height}" \
+          "xc:#${colors.base05}" \
+          "$themeDir/progress-fill-''${scale}x.png"
       done
 
       cat > "$themeDir/${themeName}.plymouth" <<EOF
@@ -111,6 +123,80 @@
       bullet.sprites = [];
       status.sprite = Sprite();
 
+      progress.track_image = Image("progress-track-" + scale + "x.png");
+      progress.track_sprite = Sprite(progress.track_image);
+      progress.x = center.x - progress.track_image.GetWidth() / 2;
+      progress.y = center.y - progress.track_image.GetHeight() / 2;
+      progress.track_sprite.SetPosition(progress.x, progress.y, 10);
+      progress.track_sprite.SetOpacity(0);
+
+      progress.fill_source = Image("progress-fill-" + scale + "x.png");
+      progress.fill_sprite = Sprite(progress.fill_source.Scale(1, progress.fill_source.GetHeight()));
+      progress.fill_sprite.SetPosition(progress.x, progress.y, 11);
+      progress.fill_sprite.SetOpacity(0);
+
+      global.fake_progress_limit = 0.7;
+      global.fake_progress_duration = 15.0;
+      global.animation_frame = 0;
+      global.fake_progress = 0.0;
+      global.fake_progress_active = 0;
+      global.fake_progress_start_time = 0.0;
+      global.password_shown = 0;
+      global.max_progress = 0.0;
+
+      fun update_progress(progress_value)
+      {
+          if (progress_value > global.max_progress)
+          {
+              global.max_progress = progress_value;
+              width = Math.Int(progress.fill_source.GetWidth() * progress_value);
+              if (width < 1)
+                  width = 1;
+              if (width > progress.fill_source.GetWidth())
+                  width = progress.fill_source.GetWidth();
+
+              progress.fill_image = progress.fill_source.Scale(width, progress.fill_source.GetHeight());
+              progress.fill_sprite.SetImage(progress.fill_image);
+          }
+      }
+
+      fun show_progress()
+      {
+          progress.track_sprite.SetOpacity(1);
+          progress.fill_sprite.SetOpacity(1);
+      }
+
+      fun hide_progress()
+      {
+          progress.track_sprite.SetOpacity(0);
+          progress.fill_sprite.SetOpacity(0);
+      }
+
+      fun start_fake_progress()
+      {
+          global.animation_frame = 0;
+          global.fake_progress = 0.0;
+          global.fake_progress_start_time = 0.0;
+          global.max_progress = 0.0;
+          global.fake_progress_active = 1;
+      }
+
+      fun refresh()
+      {
+          global.animation_frame++;
+          if (global.fake_progress_active == 1)
+          {
+              elapsed = global.animation_frame / 50.0;
+              ratio = elapsed / global.fake_progress_duration;
+              if (ratio > 1.0)
+                  ratio = 1.0;
+
+              eased = 1 - ((1 - ratio) * (1 - ratio));
+              global.fake_progress = eased * global.fake_progress_limit;
+              update_progress(global.fake_progress);
+          }
+      }
+
       fun hide_bullets()
       {
           for (i = 0; bullet.sprites[i]; i++)
@@ -119,6 +205,9 @@
 
       fun display_password(prompt, bullet_count)
       {
+          global.password_shown = 1;
+          global.fake_progress_active = 0;
+          hide_progress();
           status.sprite.SetOpacity(0);
           entry.sprite.SetOpacity(1);
           hide_bullets();
@@ -149,6 +238,8 @@
 
       fun display_question(prompt, entry_text)
       {
+          global.fake_progress_active = 0;
+          hide_progress();
           hide_bullets();
           entry.sprite.SetImage(entry.image);
           entry.sprite.SetOpacity(1);
@@ -172,12 +263,33 @@
           entry.sprite.SetOpacity(0);
           status.sprite.SetOpacity(0);
           hide_bullets();
+
+          mode = Plymouth.GetMode();
+          if ((mode == "boot" || mode == "resume") && global.password_shown == 1)
+          {
+              show_progress();
+              start_fake_progress();
+          }
       }
 
+      fun boot_progress(duration, progress_value)
+      {
+          if (global.fake_progress_start_time == 0.0)
+              global.fake_progress_start_time = duration;
+
+          if (duration > global.fake_progress_start_time && progress_value > global.fake_progress)
+          {
+              global.fake_progress_active = 0;
+              update_progress(progress_value);
+          }
+      }
+
+      Plymouth.SetRefreshFunction(refresh);
       Plymouth.SetDisplayPasswordFunction(display_password);
       Plymouth.SetDisplayQuestionFunction(display_question);
       Plymouth.SetMessageFunction(display_message);
       Plymouth.SetDisplayNormalFunction(display_normal);
+      Plymouth.SetBootProgressFunction(boot_progress);
       EOF
     '';
   in {
