@@ -30,6 +30,7 @@ nix fmt
 nix flake check --all-systems --no-build
 ```
 
-Local pre-push validation evaluates without realizing host systems. Build the
-full host closure on `t1`. See [`docs/development.md`](./docs/development.md)
-for repository conventions and external setup.
+Local pre-push validation evaluates without realizing host systems. CI builds
+and caches the full `t1` closure after each push to `master`. See
+[`docs/development.md`](./docs/development.md) for repository conventions and
+external setup.

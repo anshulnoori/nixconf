@@ -15,7 +15,7 @@ _: {
     hl.bind("SUPER + SPACE", hl.dsp.exec_cmd("walker"))
     hl.bind("SUPER + ALT + SPACE", hl.dsp.exec_cmd("nixconf-menu"))
     hl.bind("F13", hl.dsp.exec_cmd("wlr-which-key"))
-    hl.bind("SUPER + W", hl.dsp.window.close())
+    hl.bind("SUPER + Q", hl.dsp.window.close())
     hl.bind("SUPER + L", hl.dsp.exec_cmd("hyprlock"))
     hl.bind("SUPER + M", hl.dsp.exec_cmd("uwsm stop"))
     hl.bind("SUPER + C", send_shortcut_once("CTRL", "Insert"), { description = "Universal copy" })

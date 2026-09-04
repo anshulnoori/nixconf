@@ -152,7 +152,6 @@ _: {
     systemd = {
       services.nixconf-storage-health = {
         description = "Check Btrfs and NVMe health";
-        wantedBy = ["multi-user.target"];
         after = ["local-fs.target"];
         requires = ["local-fs.target"];
         serviceConfig = {

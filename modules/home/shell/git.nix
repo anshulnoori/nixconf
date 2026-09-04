@@ -125,6 +125,11 @@ _: {
       };
 
       lazygit.enable = true;
+
+      zsh.shellAliases = {
+        lg = "lazygit";
+        lines = "git ls-files -z | xargs -0 wc -l";
+      };
     };
   };
 

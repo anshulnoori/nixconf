@@ -14,30 +14,55 @@
         magick ${source} -colorspace gray -negate \
           +level-colors '#${colors.base00}','#${colors.base05}' "$out"
       '';
-      hyprlockBlur = inputs.monorepo.packages.${pkgs.stdenv.hostPlatform.system}.hyprlock-blur;
-      prepareBackground = pkgs.writeShellApplication {
-        name = "nixconf-prepare-boot-background";
-        runtimeInputs = with pkgs; [
-          coreutils
-          hyprlockBlur
+      hyprlockBlurSource = pkgs.applyPatches {
+        name = "hyprlock-blur-headless-source";
+        src = "${inputs.monorepo}/src/hyprlock-blur";
+        patches = [./hyprlock-blur-headless.patch];
+      };
+      hyprlockBlur = pkgs.stdenv.mkDerivation {
+        pname = "hyprlock-blur-headless";
+        version = "1.0.0";
+        src = hyprlockBlurSource;
+        nativeBuildInputs = [
+          inputs.monorepo.inputs.zig.packages.${pkgs.stdenv.hostPlatform.system}."0.16.0"
+          pkgs.makeWrapper
+          pkgs.patchelf
         ];
-        text = ''
-          theme=/etc/plymouth/themes/${themeName}
-          runtime=/run/nixconf-boot
-          temporary="$runtime/background.png.new"
-
-          install -d -m 0755 "$runtime"
-          cp "$theme"/*.png "$runtime/"
-
-          if hyprlock-blur \
-            --shaders ${pkgs.hyprlock.src}/src/renderer/Shaders.hpp \
-            ${lib.escapeShellArg (toString wallpaper)} \
-            "$temporary"; then
-            mv -f "$temporary" "$runtime/background.png"
-          else
-            rm -f "$temporary"
-            echo "Using the pre-rendered Plymouth background" >&2
-          fi
+        dontConfigure = true;
+        dontPatchELF = true;
+        dontStrip = true;
+        buildPhase = ''
+          runHook preBuild
+          export ZIG_LOCAL_CACHE_DIR="$TMPDIR/zig-local-cache"
+          export ZIG_GLOBAL_CACHE_DIR="$TMPDIR/zig-global-cache"
+          zig build-exe \
+            --name hyprlock-blur-renderer \
+            -femit-bin=hyprlock-blur-renderer \
+            -target x86_64-linux-gnu.2.42 \
+            -O ReleaseSafe \
+            -fstrip \
+            -I ${pkgs.libpng.dev}/include \
+            -I ${pkgs.libglvnd.dev}/include \
+            -lc \
+            ${pkgs.libglvnd}/lib/libEGL.so \
+            ${pkgs.libglvnd}/lib/libGLESv2.so \
+            ${pkgs.libpng}/lib/libpng16.so \
+            -Mroot=main.zig
+          runHook postBuild
+        '';
+        installPhase = ''
+          runHook preInstall
+          install -Dm755 hyprlock-blur-renderer "$out/bin/hyprlock-blur-renderer"
+          patchelf \
+            --set-interpreter ${pkgs.stdenv.cc.bintools.dynamicLinker} \
+            --set-rpath ${lib.makeLibraryPath [pkgs.libglvnd pkgs.libpng pkgs.stdenv.cc.cc.lib]} \
+            "$out/bin/hyprlock-blur-renderer"
+          makeWrapper "$out/bin/hyprlock-blur-renderer" "$out/bin/hyprlock-blur" \
+            --set LIBGL_ALWAYS_SOFTWARE true \
+            --set LIBGL_DRIVERS_PATH ${pkgs.mesa}/lib/dri \
+            --set __EGL_VENDOR_LIBRARY_FILENAMES ${pkgs.mesa}/share/glvnd/egl_vendor.d/50_mesa.json \
+            --set MESA_SHADER_CACHE_DISABLE true
+          runHook postInstall
         '';
       };
       toPlymouthColor = color:
@@ -248,80 +273,84 @@
         Plymouth.SetDisplayNormalFunction(display_normal);
         Plymouth.SetBootProgressFunction(boot_progress);
       '';
-      theme = pkgs.runCommand "${themeName}-plymouth-theme" {nativeBuildInputs = [pkgs.imagemagick];} ''
-        themeDir="$out/share/plymouth/themes/${themeName}"
-        mkdir -p "$themeDir"
+      theme =
+        pkgs.runCommand "${themeName}-plymouth-theme" {
+          nativeBuildInputs = [
+            hyprlockBlur
+            pkgs.imagemagick
+          ];
+        } ''
+          themeDir="$out/share/plymouth/themes/${themeName}"
+          mkdir -p "$themeDir"
 
-        magick ${wallpaper} \
-          -resize '3840x2160^' \
-          -gravity center \
-          -extent 3840x2160 \
-          -blur 0x16 \
-          -strip \
-          "$themeDir/background.png"
+          hyprlock-blur \
+            --shaders ${pkgs.hyprlock.src}/src/renderer/Shaders.hpp \
+            --size 3840 2160 \
+            ${wallpaper} \
+            "$themeDir/background.png"
 
-        for scale in 1 2; do
-          width=$((400 * scale))
-          height=$((60 * scale))
-          inset=$((2 * scale))
-          far_x=$((width - 3 * scale))
-          far_y=$((height - 3 * scale))
-          point_size=$((16 * scale))
-          bullet_size=$((16 * scale))
-          bullet_center=$((8 * scale))
-          bullet_edge=$scale
-          progress_width=$((300 * scale))
-          progress_height=$((10 * scale))
+          for scale in 1 2; do
+            width=$((400 * scale))
+            height=$((60 * scale))
+            inset=$((2 * scale))
+            far_x=$((width - 3 * scale))
+            far_y=$((height - 3 * scale))
+            point_size=$((16 * scale))
+            bullet_size=$((16 * scale))
+            bullet_center=$((8 * scale))
+            bullet_edge=$scale
+            progress_width=$((300 * scale))
+            progress_height=$((10 * scale))
 
-          magick \
-            -size "''${width}x''${height}" xc:none \
-            -fill '#${colors.base00}cc' \
-            -stroke '#${colors.base05}' \
-            -strokewidth $((4 * scale)) \
-            -draw "rectangle ''${inset},''${inset} ''${far_x},''${far_y}" \
-            "$themeDir/entry-''${scale}x.png"
+            magick \
+              -size "''${width}x''${height}" xc:none \
+              -fill '#${colors.base00}cc' \
+              -stroke '#${colors.base05}' \
+              -strokewidth $((4 * scale)) \
+              -draw "rectangle ''${inset},''${inset} ''${far_x},''${far_y}" \
+              "$themeDir/entry-''${scale}x.png"
 
-          magick \
-            "$themeDir/entry-''${scale}x.png" \
-            -font ${font} \
-            -pointsize "$point_size" \
-            -fill '#${colors.base05}' \
-            -gravity center \
-            -annotate +0+0 'Enter Password' \
-            "$themeDir/entry-empty-''${scale}x.png"
+            magick \
+              "$themeDir/entry-''${scale}x.png" \
+              -font ${font} \
+              -pointsize "$point_size" \
+              -fill '#${colors.base05}' \
+              -gravity center \
+              -annotate +0+0 'Enter Password' \
+              "$themeDir/entry-empty-''${scale}x.png"
 
-          magick \
-            -size "''${bullet_size}x''${bullet_size}" xc:none \
-            -fill '#${colors.base05}' \
-            -draw "circle ''${bullet_center},''${bullet_center} ''${bullet_center},''${bullet_edge}" \
-            "$themeDir/bullet-''${scale}x.png"
+            magick \
+              -size "''${bullet_size}x''${bullet_size}" xc:none \
+              -fill '#${colors.base05}' \
+              -draw "circle ''${bullet_center},''${bullet_center} ''${bullet_center},''${bullet_edge}" \
+              "$themeDir/bullet-''${scale}x.png"
 
-          magick \
-            -size "''${progress_width}x''${progress_height}" \
-            "xc:#${colors.base02}" \
-            "$themeDir/progress-track-''${scale}x.png"
+            magick \
+              -size "''${progress_width}x''${progress_height}" \
+              "xc:#${colors.base02}" \
+              "$themeDir/progress-track-''${scale}x.png"
 
-          magick \
-            -size "''${progress_width}x''${progress_height}" \
-            "xc:#${colors.base05}" \
-            "$themeDir/progress-fill-''${scale}x.png"
-        done
+            magick \
+              -size "''${progress_width}x''${progress_height}" \
+              "xc:#${colors.base05}" \
+              "$themeDir/progress-fill-''${scale}x.png"
+          done
 
-        cat > "$themeDir/${themeName}.plymouth" <<EOF
-        [Plymouth Theme]
-        Name=Hyprlock LUKS
-        Description=Hyprlock-matched encrypted-volume prompt
-        ModuleName=script
+          cat > "$themeDir/${themeName}.plymouth" <<EOF
+          [Plymouth Theme]
+          Name=Hyprlock LUKS
+          Description=Hyprlock-matched encrypted-volume prompt
+          ModuleName=script
 
-        [script]
-        ImageDir=/run/nixconf-boot
-        ScriptFile=/etc/plymouth/themes/${themeName}/${themeName}.script
-        EOF
+          [script]
+          ImageDir=/etc/plymouth/themes/${themeName}
+          ScriptFile=/etc/plymouth/themes/${themeName}/${themeName}.script
+          EOF
 
-        cat > "$themeDir/${themeName}.script" <<'EOF'
-        ${script}
-        EOF
-      '';
+          cat > "$themeDir/${themeName}.script" <<'EOF'
+          ${script}
+          EOF
+        '';
     };
   in {
     boot = {
@@ -341,36 +370,6 @@
         showDelay = 0;
         theme = theme.themeName;
         themePackages = [theme.theme];
-      };
-    };
-
-    boot.initrd.systemd = {
-      storePaths = [
-        theme.prepareBackground
-        theme.hyprlockBlur
-        pkgs.hyprlock.src
-        theme.wallpaper
-      ];
-      services = {
-        nixconf-boot-background = {
-          description = "Render Hyprlock-matched Plymouth background";
-          wantedBy = ["sysinit.target"];
-          before = ["plymouth-start.service"];
-          after = [
-            "systemd-udev-trigger.service"
-            "systemd-udevd.service"
-          ];
-          unitConfig.DefaultDependencies = false;
-          serviceConfig = {
-            Type = "oneshot";
-            ExecStart = "${theme.prepareBackground}/bin/nixconf-prepare-boot-background";
-            TimeoutStartSec = "15s";
-          };
-        };
-        plymouth-start = {
-          wants = ["nixconf-boot-background.service"];
-          after = ["nixconf-boot-background.service"];
-        };
       };
     };
   };

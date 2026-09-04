@@ -176,18 +176,19 @@ frameworks.
 
 ## Checks and caches
 
-This personal repository has no CI. Local flake checks validate both Linux
-systems without building the full host closure. The full `t1` closure is built
-on `t1`.
+Local flake checks validate both Linux systems without building the full host
+closure. On each push to `master`, GitHub Actions repeats evaluation and builds
+the full `t1` closure.
 
 Trusted public Cachix keys are part of flake trust, so machines can use those
-caches read-only. Any future cache upload must be explicit and command-scoped;
-the configuration does not install a persistent uploader.
+caches read-only. The GitHub Actions build uploads newly built paths to the
+personal cache. It reads the private monorepo through a deploy-key secret. The
+machine configuration does not install a persistent uploader.
 
 ## Explicit exclusions
 
 The repository does not contain Buck2, deploy-rs, nixos-anywhere, Kubernetes,
-cloud deployment, OCI publication, CI, application release workflows, or broad
+cloud deployment, OCI publication, application release workflows, or broad
 language toolchains.
 
 ## References

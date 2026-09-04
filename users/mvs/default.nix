@@ -6,7 +6,7 @@
   users.users.mvs = {
     isNormalUser = true;
     description = "Mervs";
-    extraGroups = ["wheel"];
+    extraGroups = ["wheel" "librepods"];
     shell = pkgs.zsh;
   };
 

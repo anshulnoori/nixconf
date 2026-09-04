@@ -1,0 +1,70 @@
+diff --git a/main.zig b/main.zig
+index c4bad94..5b05418 100644
+--- a/main.zig
++++ b/main.zig
+@@ -1,25 +1,25 @@
+ const std = @import("std");
+-const drm = @import("drm.zig");
+ const png = @import("png.zig");
+ const render = @import("render.zig");
+ const runtime = @import("runtime.zig");
+ const shaders = @import("shaders.zig");
+ 
+-const usage = "usage: hyprlock-blur --shaders PATH/TO/Shaders.hpp WALLPAPER OUTPUT.png\n";
++const usage = "usage: hyprlock-blur --shaders PATH/TO/Shaders.hpp --size WIDTH HEIGHT WALLPAPER OUTPUT.png\n";
+ 
+ fn run(io: std.Io, allocator: std.mem.Allocator, args: []const [:0]const u8) !void {
+-    if (args.len != 5 or !std.mem.eql(u8, args[1], "--shaders")) return error.InvalidArguments;
++    if (args.len != 8 or !std.mem.eql(u8, args[1], "--shaders") or !std.mem.eql(u8, args[3], "--size")) return error.InvalidArguments;
++    const width = std.fmt.parseInt(i32, args[4], 10) catch return error.InvalidArguments;
++    const height = std.fmt.parseInt(i32, args[5], 10) catch return error.InvalidArguments;
++    if (width <= 0 or height <= 0) return error.InvalidArguments;
+     const shader_source = try std.Io.Dir.cwd().readFileAlloc(io, args[2], allocator, .limited(16 * 1024 * 1024));
+     defer allocator.free(shader_source);
+     const shader_set = try shaders.parse(shader_source);
+-    const image = try png.load(allocator, args[3]);
++    const image = try png.load(allocator, args[6]);
+     defer allocator.free(image.pixels);
+-    const output = try drm.selectOutput(io, allocator);
+-    defer allocator.free(output.render_node);
+     try runtime.configure(io, allocator);
+-    const pixels = try render.render(io, allocator, output.render_node, output.width, output.height, image, shader_set);
++    const pixels = try render.render(allocator, width, height, image, shader_set);
+     defer allocator.free(pixels);
+-    try png.write(args[4], output.width, output.height, pixels);
++    try png.write(args[7], width, height, pixels);
+ }
+ 
+ pub fn main(init: std.process.Init) void {
+diff --git a/render.zig b/render.zig
+index 45a5505..8a2ef69 100644
+--- a/render.zig
++++ b/render.zig
+@@ -7,10 +7,9 @@ const c = @cImport({
+     @cInclude("EGL/egl.h");
+     @cInclude("EGL/eglext.h");
+     @cInclude("GLES3/gl32.h");
+-    @cInclude("gbm.h");
+ });
+ 
+-pub const Error = error{ OpenGpu, CreateGbm, InitializeEgl, ChooseConfig, CreateContext, CreateSurface, TextureLimit, GlFailure, ShaderCompilation, ProgramLink, FramebufferIncomplete, InvalidDimensions, OutOfMemory };
++pub const Error = error{ InitializeEgl, ChooseConfig, CreateContext, CreateSurface, TextureLimit, GlFailure, ShaderCompilation, ProgramLink, FramebufferIncomplete, InvalidDimensions, OutOfMemory };
+ const blur_size: f32 = 8;
+ const blur_passes: usize = 3;
+ const blur_noise: f32 = 0.0117;
+@@ -199,13 +198,9 @@ fn blur(base: Framebuffer, mirrors: *[2]Framebuffer, programs: Programs) Error!v
+     try checkGl();
+ }
+ 
+-pub fn render(io: std.Io, allocator: std.mem.Allocator, node: [:0]const u8, width: i32, height: i32, image: png.Image, source: shaders.Set) Error![]u8 {
++pub fn render(allocator: std.mem.Allocator, width: i32, height: i32, image: png.Image, source: shaders.Set) Error![]u8 {
+     if (width <= 0 or height <= 0 or image.width <= 0 or image.height <= 0) return error.InvalidDimensions;
+-    const file = std.Io.Dir.openFileAbsolute(io, node, .{ .mode = .read_write }) catch return error.OpenGpu;
+-    defer file.close(io);
+-    const gbm = c.gbm_create_device(file.handle) orelse return error.CreateGbm;
+-    defer c.gbm_device_destroy(gbm);
+-    const display = c.eglGetPlatformDisplay(c.EGL_PLATFORM_GBM_KHR, @ptrCast(gbm), null);
++    const display = c.eglGetPlatformDisplay(c.EGL_PLATFORM_SURFACELESS_MESA, c.EGL_DEFAULT_DISPLAY, null);
+     if (display == c.EGL_NO_DISPLAY or c.eglInitialize(display, null, null) == 0) return error.InitializeEgl;
+     defer _ = c.eglTerminate(display);
+     if (c.eglBindAPI(c.EGL_OPENGL_ES_API) == 0) return error.InitializeEgl;

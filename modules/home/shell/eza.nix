@@ -8,6 +8,8 @@ _: {
     zsh.shellAliases = {
       la = "eza --all --long";
       ll = "eza --long";
+      lsa = "eza --all";
+      lst = "eza --tree";
     };
   };
 }

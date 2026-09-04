@@ -152,7 +152,7 @@ _: {
         pkgs.systemd
       ];
       text = ''
-        background=/run/nixconf-boot/background.png
+        background=/etc/plymouth/themes/hyprlock-luks/background.png
         if [[ ! -r "$background" ]]; then
           background=${lib.escapeShellArg (toString config.nixconf.desktop.wallpaper)}
         fi

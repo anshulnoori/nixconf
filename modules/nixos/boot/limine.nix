@@ -1,4 +1,4 @@
-{inputs, ...}: {
+_: {
   flake.modules.nixos.base = {
     boot.loader = {
       timeout = 5;
@@ -10,17 +10,10 @@
     };
   };
 
-  flake.modules.nixos.desktop = {
-    config,
-    pkgs,
-    ...
-  }: let
+  flake.modules.nixos.desktop = {config, ...}: let
     colors = config.lib.stylix.colors;
-    source = "${inputs.omarchy-rice}/themes/flexoki-light/backgrounds/1-orb.png";
-    wallpaper = pkgs.runCommand "flexoki-orb-gruvbox.png" {nativeBuildInputs = [pkgs.imagemagick];} ''
-      magick ${source} -colorspace gray -negate \
-        +level-colors '#${colors.base00}','#${colors.base05}' "$out"
-    '';
+    # Reuse the exact build-time Hyprlock render used by the LUKS splash.
+    wallpaper = "${builtins.head config.boot.plymouth.themePackages}/share/plymouth/themes/${config.boot.plymouth.theme}/background.png";
   in {
     boot.loader.limine.style = {
       wallpapers = [wallpaper];

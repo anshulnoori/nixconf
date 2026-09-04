@@ -48,8 +48,10 @@ ShellCheck, Renovate configuration, Git conventions, Gitleaks, Minuet's secret
 transport, and the Notion Calendar integration.
 
 The pre-push hook validates the branch and evaluates the flake without building
-the host. Build the full `t1` closure on `t1`, where it is substantially faster.
-This personal repository has no GitHub Actions workflow or other CI.
+the host. On each push to `master`, GitHub Actions repeats evaluation, builds the
+full `t1` closure, and uploads newly built paths to `anshulnoori.cachix.org`.
+The workflow requires `CACHIX_AUTH_TOKEN` and a read-only monorepo deploy key in
+`MONOREPO_SSH_KEY` as repository secrets.
 
 ## Git conventions
 
