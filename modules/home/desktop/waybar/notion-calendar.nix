@@ -6,7 +6,7 @@
       exec = "${notionCalendar}/bin/notion-calendar-waybar --follow";
       return-type = "json";
       escape = true;
-      on-click = "${notionCalendar}/bin/notion-calendar-waybar --open";
+      on-click = "${notionCalendar}/bin/notion-calendar-waybar --activate";
       on-click-right = "${notionCalendar}/bin/notion-calendar-waybar --menu";
       tooltip = true;
     };
