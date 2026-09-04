@@ -26,7 +26,7 @@ must return to the user rather than being resolved silently.
 | Role                 | Selection                                            | Integration notes                                               |
 | -------------------- | ---------------------------------------------------- | --------------------------------------------------------------- |
 | Compositor           | Hyprland                                             | Owns windows, workspaces, displays, keybindings, and animations |
-| Bar                  | Waybar                                               | Square CSS; launches system TUIs in Kitty                       |
+| Bar                  | Waybar                                               | Square CSS; launches system interfaces in Kitty                 |
 | Command launcher     | Walker + Elephant                                    | One launcher UI with one provider backend                       |
 | Desktop menu         | Walker + Elephant menus                              | Nested actions with full-tree search from the root              |
 | Shortcut overlay     | wlr-which-key + keyd                                 | Tap Super to discover and dispatch existing shortcuts           |
@@ -75,7 +75,7 @@ Zsh is the interactive shell, but portable scripts must use an explicit
 `#!/usr/bin/env bash`. Interactive-shell selection does not make scripts
 portable.
 
-## System TUIs
+## System interfaces
 
 | Role                  | Selection             | Preferred command                                            |
 | --------------------- | --------------------- | ------------------------------------------------------------ |
@@ -119,7 +119,7 @@ Use the `sensors` command from `lm_sensors` for terminal sensor readings.
 | Archives               | ouch                 |
 | HTTP                   | xh                   |
 | File watching          | watchexec            |
-| Remote client          | OpenSSH              |
+| Remote client          | Mosh + OpenSSH       |
 | Terminal recording     | asciinema            |
 | Downloads              | aria2                |
 | Network diagnostics    | nmap                 |
@@ -162,7 +162,7 @@ underneath it.
 | Shared colors       | Custom modules consume `config.lib.stylix.colors`                                      |
 | GTK and Qt          | Stylix targets                                                                         |
 | Terminal            | Stylix Kitty target                                                                    |
-| Editor              | Stylix Neovim target or a generated Gruvbox configuration                              |
+| Editor              | Stylix nvf target                                                                      |
 | Desktop components  | Generate Waybar, Walker, Mako, SwayOSD, hyprlock, and Hyprland colors from the palette |
 | Custom applications | Consume the same generated palette rather than embedding hex values                    |
 | Primary font        | JetBrains Mono Nerd Font                                                               |
@@ -194,13 +194,13 @@ audio is required when Bluetooth latency is unacceptable.
 
 ## Credentials
 
-| Role                | Selection                            | Notes                                             |
-| ------------------- | ------------------------------------ | ------------------------------------------------- |
-| Password manager    | 1Password                            | Human-managed secrets                             |
-| CLI                 | `op`                                 | Runtime secret access                             |
-| SSH agent           | 1Password SSH agent                  | Git and outbound SSH authentication               |
-| Browser integration | 1Password extension for Brave Origin | Primary web credential flow                       |
-| Secret Service      | GNOME Keyring                        | Battle-tested Freedesktop Secret Service provider |
+| Role                | Selection                            | Notes                                     |
+| ------------------- | ------------------------------------ | ----------------------------------------- |
+| Password manager    | 1Password                            | Human-managed secrets                     |
+| CLI                 | `op`                                 | Runtime secret access                     |
+| SSH agent           | 1Password SSH agent                  | Git and outbound SSH authentication       |
+| Browser integration | 1Password extension for Brave Origin | Primary web credential flow               |
+| Secret Service      | GNOME Keyring                        | Home Manager owns the sole session daemon |
 
 Secrets must not be written into the Nix store. Resolve them at runtime through
 1Password, protected files, or an appropriate secrets module.
@@ -235,7 +235,6 @@ bookmark service rather than copying browser profile files.
 | Calendar         | Private Notion Calendar Electron package     | Personal distribution only; Waybar integration over a Unix socket |
 | Tasks            | Todoist                                      | Native client or Brave Origin app selected during packaging       |
 | Notes            | Obsidian                                     | Unfree package allowed explicitly                                 |
-| Canvas           | tldraw                                       | Offline package or Brave Origin app selected during packaging     |
 
 ### iMessage bridge
 
@@ -260,29 +259,33 @@ limited without it; those limitations are preferable to weakening SIP initially.
 | Role                           | Selection               | Notes                                                            |
 | ------------------------------ | ----------------------- | ---------------------------------------------------------------- |
 | Music                          | Official Spotify client | Keep the graphical client                                        |
-| Video, audio, and still images | mpv                     | Default media handler where practical                            |
+| Video, audio, and still images | mpv                     | Default media handler; MPRIS integrates with playerctl           |
 | Media retrieval                | yt-dlp                  | Integrate with mpv where useful                                  |
+| Transcoding and inspection     | FFmpeg                  | Full codec build for CLI work and DaVinci-compatible transcodes  |
 | Recording and streaming        | OBS Studio              | Includes the `v4l2loopback`-backed OBS virtual camera            |
 | Video editing                  | DaVinci Resolve         | Unfree package; codec limitations may require FFmpeg transcoding |
-| Local file transfer            | LocalSend               | Cross-platform local transfer                                    |
+| Local file transfer            | LocalSend               | Cross-platform transfer over Tailscale only                      |
 
 ## Gaming
 
-| Role                  | Selection      | Notes                                               |
-| --------------------- | -------------- | --------------------------------------------------- |
-| Platform              | Steam          | Enable 32-bit graphics and audio support            |
-| Compatibility runtime | Proton-GE      | Default Steam compatibility runtime                 |
-| Minecraft             | Prism Launcher | Per-instance Java and mod management                |
-| Performance overlay   | MangoHud       | FPS, frame time, and hardware metrics               |
-| Overlay editor        | GOverlay       | Interactive MangoHud configuration                  |
-| Performance policy    | GameMode       | Game process and I/O tuning; fixed CPU policy stays |
-| Nested compositor     | Gamescope      | Resolution, scaling, and fullscreen control         |
-| Prefix management     | Protontricks   | Per-game Wine and Proton changes                    |
+| Role                  | Selection      | Notes                                                 |
+| --------------------- | -------------- | ----------------------------------------------------- |
+| Platform              | Steam          | Enable 32-bit graphics and audio support              |
+| Compatibility runtime | Proton-GE      | Exposed declaratively; select as Steam's default once |
+| Minecraft             | Prism Launcher | Per-instance Java and mod management                  |
+| Performance overlay   | MangoHud       | FPS, frame time, and hardware metrics                 |
+| Overlay editor        | GOverlay       | Interactive MangoHud configuration                    |
+| Performance policy    | GameMode       | Game process and I/O tuning; fixed CPU policy stays   |
+| Nested compositor     | Gamescope      | Resolution, scaling, and fullscreen control           |
+| Prefix management     | Protontricks   | Per-game Wine and Proton changes                      |
 
 GeForce Now, Moonlight, Heroic, Lutris, and UMU are intentionally excluded.
 Steam libraries, Prism Launcher instances, and Minecraft worlds use
 `/home/mvs/games`. This Btrfs subvolume has no local snapshot policy. A
-separate backup method protects Minecraft worlds.
+separate backup method protects Minecraft worlds. After first launch, select
+Proton-GE as Steam's default compatibility tool and add
+`/home/mvs/games/Steam` as its library. Nix does not rewrite Steam's mutable VDF
+state.
 
 ## Networking and remote access
 
@@ -296,12 +299,22 @@ separate backup method protects Minecraft worlds.
 | Bluetooth UI          | Bluetui          | Primary pairing and device UI                                         |
 | Tailnet               | Tailscale        | Only selected VPN                                                     |
 | Incoming remote shell | Disabled         | Do not enable OpenSSH or Mosh services                                |
-| Outbound SSH          | OpenSSH client   | Git and administration of other systems                               |
-| Local transfer        | LocalSend        | GUI transfer between nearby devices                                   |
+| Outbound remote shell | Mosh             | Primary interactive client; OpenSSH provides bootstrap and fallback   |
+| Outbound SSH          | OpenSSH client   | Required by Mosh, Git, and noninteractive remote administration       |
+| Local transfer        | LocalSend        | Direct transfer by Tailscale IP or MagicDNS name                      |
 
 The Amp runner uses an outbound connection. It does not require an incoming SSH
 service. Wi-Fi credentials are entered interactively and stored as mutable state
 below LUKS.
+
+LocalSend accepts inbound TCP traffic on port 53317 only through `tailscale0`.
+The firewall blocks this port on LAN interfaces. Tailscale does not forward
+LocalSend multicast discovery, so each peer must use a Tailscale address. The
+packaged launcher refuses to start without an active Tailscale address and
+updates LocalSend's mutable interface whitelist with the machine's current
+Tailscale IPv4 and IPv6 addresses before every launch. This prevents LocalSend
+from advertising or scanning on physical LAN interfaces without replacing its
+other mutable preferences.
 
 ## Wallpaper, idle, and locking
 
@@ -346,15 +359,19 @@ package set. Add proprietary NVIDIA modules only after the GPU is installed.
 
 ## Private packages
 
-| Package                    | Constraint                                                                                   |
-| -------------------------- | -------------------------------------------------------------------------------------------- |
-| Notion Calendar            | Package the tested Electron application privately and do not redistribute copyrighted assets |
-| Mail client                | Keep private implementation and credentials out of the public flake                          |
-| tldraw offline application | Reuse existing personal packaging or install as a Brave Origin app                           |
-| TTFX                       | Add a local package only if the pinned nixpkgs does not provide it                           |
+| Package         | Constraint                                                                                   |
+| --------------- | -------------------------------------------------------------------------------------------- |
+| Notion Calendar | Package the tested Electron application privately and do not redistribute copyrighted assets |
+| Mail client     | Keep private implementation and credentials out of the public flake                          |
+| TTFX            | Add a local package only if the pinned nixpkgs does not provide it                           |
 
 Private source, credentials, license material, and application data must never
 enter the public repository or Nix store unintentionally.
+
+Notion Calendar is consumed from the private application monorepo. Its helper
+streams calendar state to Waybar over a Unix socket; Waybar opens the app on
+left-click and its menu on right-click. The private mail client remains deferred
+until its source and runtime contracts are ready.
 
 ## Explicit exclusions
 
@@ -367,6 +384,7 @@ enter the public repository or Nix store unintentionally.
 | Global development language toolchains | Projects own their complete environments                 |
 | Zed                                    | Neovim is the selected editor                            |
 | GeForce Now                            | Not part of the migrated gaming stack                    |
+| tldraw                                 | No native package is available                           |
 | Terminal Desmos replacement            | Use Desmos itself in Brave Origin                        |
 | NetworkManager for Wi-Fi               | Conflicts with the selected standalone iwd/Impala design |
 | BlueBubbles Private API initially      | Requires disabling macOS SIP                             |

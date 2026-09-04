@@ -1,13 +1,17 @@
 _: {
-  flake.modules.homeManager.desktop = {pkgs, ...}: let
+  flake.modules.homeManager.desktop = {
+    osConfig,
+    pkgs,
+    ...
+  }: let
     hardwareActions = pkgs.writeShellApplication {
       name = "nixconf-hardware";
       runtimeInputs = with pkgs; [
         coreutils
         gnugrep
-        hyprland
         jq
         libnotify
+        osConfig.programs.hyprland.package
         pciutils
       ];
       text = ''

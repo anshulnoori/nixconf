@@ -4,9 +4,9 @@ _: {
       name = "nixconf-edit";
       runtimeInputs = with pkgs; [
         coreutils
+        direnv
         kitty
         libnotify
-        neovim
         util-linux
         uwsm
       ];
@@ -28,12 +28,12 @@ _: {
             ;;
           hyprland)
             title=Hyprland
-            file=modules/home/desktop/hyprland.nix
+            file=modules/home/desktop/hyprland/configuration.nix
             pattern='hl.config'
             ;;
           waybar)
             title=Waybar
-            file=modules/home/desktop/waybar.nix
+            file=modules/home/desktop/waybar/core.nix
             pattern='programs.waybar'
             ;;
           lock-screen)
@@ -43,12 +43,12 @@ _: {
             ;;
           screensaver)
             title=Screensaver
-            file=modules/home/desktop/screensaver.nix
+            file=modules/home/desktop/screensaver/control.nix
             pattern='nixconf-screensaver'
             ;;
           monitor-scaling | displays)
             title=Displays
-            file=modules/home/desktop/hyprland.nix
+            file=modules/home/desktop/hyprland/configuration.nix
             pattern='hl.monitor'
             ;;
           graphics)
@@ -58,7 +58,7 @@ _: {
             ;;
           audio)
             title=Audio
-            file=modules/nixos/desktop/audio.nix
+            file=modules/nixos/system/audio.nix
             pattern='services.pipewire'
             ;;
           wifi)
@@ -68,7 +68,7 @@ _: {
             ;;
           bluetooth)
             title=Bluetooth
-            file=modules/nixos/networking.nix
+            file=modules/nixos/system/bluetooth.nix
             pattern='hardware.bluetooth'
             ;;
           power-profile)
@@ -83,12 +83,12 @@ _: {
             ;;
           keybindings)
             title=Keybindings
-            file=modules/home/desktop/hyprland.nix
+            file=modules/home/desktop/hyprland/bindings.nix
             pattern='hl.bind'
             ;;
           input)
             title=Input
-            file=modules/home/desktop/hyprland.nix
+            file=modules/home/desktop/hyprland/configuration.nix
             pattern='input ='
             ;;
           dns)
@@ -122,7 +122,9 @@ _: {
           args=("+/$pattern" "$path")
         fi
 
-        exec setsid uwsm app -- kitty --class TUI.float --title "$title" nvim "''${args[@]}"
+        cd "$root"
+        exec setsid uwsm app -- kitty --class TUI.float --title "$title" \
+          direnv exec "$root" nvim "''${args[@]}"
       '';
     };
   in {

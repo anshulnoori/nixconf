@@ -89,10 +89,13 @@ workflow, actor, branch, commit, and signature before starting a private,
 read-only review thread. Only a later direct owner message may authorize a
 fast-forward merge and push.
 
-The deferred module `modules.homeManager.base` defines the disabled
-`services.nixconf-renovate-notifier` option. When enabled, the service polls
-GitHub every six hours and sends one desktop notification for each new branch
-SHA. It does not expose an inbound device webhook.
+The enabled `services.nixconf-update` user timer polls GitHub every six hours.
+It records active `renovate/*` revisions and compares `master` with the revision
+embedded in the running NixOS system. Waybar shows actionable state, and Mako
+sends at most one persistent notification for each branch revision. Clicking
+the indicator opens GitHub-provided diffs in a floating terminal. A confirmed
+update fast-forwards a clean `/etc/nixos` checkout to the inspected `master`
+revision and runs `nh os switch`; it never merges a Renovate branch.
 
 ## External setup
 

@@ -235,8 +235,8 @@ Before rebooting, the installation thread must:
 - commit or otherwise preserve all intended configuration changes;
 - set the `mvs` password interactively inside the installed system and verify
   that direct root login remains disabled;
-- ensure `amp-cli`, Git, networking, the outbound OpenSSH client, and the
-  repository checkout are available in the installed system;
+- ensure `amp-cli`, Git, networking, the outbound Mosh and OpenSSH clients, and
+  the repository checkout are available in the installed system;
 - verify that no incoming SSH or Mosh service is enabled;
 - record validation results and any remaining manual action;
 - stop before reboot and ask the user to perform the reboot.

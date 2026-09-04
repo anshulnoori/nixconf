@@ -54,6 +54,7 @@ _: {
         after = ["greetd.service"];
         wantedBy = lib.mkForce ["graphical.target"];
         serviceConfig = {
+          Type = "simple";
           ExecStart = lib.mkForce [
             ""
             "${quitPlymouth}/bin/quit-plymouth-after-desktop"

@@ -1,17 +1,11 @@
 _: {
-  flake.modules.nixos.base = {pkgs, ...}: {
+  flake.modules.nixos.base = {
     boot.kernelParams = ["amd_pstate=active"];
     powerManagement.cpuFreqGovernor = "performance";
 
     hardware = {
       enableRedistributableFirmware = true;
     };
-
-    environment.systemPackages = [
-      pkgs.lm_sensors
-      pkgs.pciutils
-      pkgs.usbutils
-    ];
 
     services = {
       fwupd.enable = true;
