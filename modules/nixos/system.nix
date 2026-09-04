@@ -26,6 +26,7 @@
     nixpkgs.config.allowUnfreePredicate = package:
       builtins.elem (lib.getName package) [
         "amp-cli"
+        "notion-calendar"
         "todoist-electron"
       ];
 

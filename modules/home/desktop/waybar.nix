@@ -1,10 +1,11 @@
-_: {
+{inputs, ...}: {
   flake.modules.homeManager.desktop = {
     config,
     pkgs,
     ...
   }: let
     colors = config.lib.stylix.colors;
+    notionCalendar = inputs.monorepo.packages.${pkgs.stdenv.hostPlatform.system}.notion-calendar;
     floatingTerminal = command: "kitty --class TUI.float ${command}";
     captureScreenrecord = "${config.home.profileDirectory}/bin/capture-screenrecord";
     screenrecordingIndicator = pkgs.writeShellApplication {
@@ -37,6 +38,7 @@ _: {
         ];
         modules-center = ["clock"];
         modules-right = [
+          "custom/notion-calendar"
           "custom/screenrecording"
           "group/tray-expander"
           "bluetooth"
@@ -49,6 +51,14 @@ _: {
           format = "";
           on-click = "nixconf-menu";
           tooltip-format = "Control Menu\n\nSuper + Alt + Space";
+        };
+        "custom/notion-calendar" = {
+          exec = "${notionCalendar}/bin/notion-calendar-waybar --follow";
+          return-type = "json";
+          escape = true;
+          on-click = "${notionCalendar}/bin/notion-calendar-waybar --open";
+          on-click-right = "${notionCalendar}/bin/notion-calendar-waybar --menu";
+          tooltip = true;
         };
         "custom/screenrecording" = {
           exec = "${screenrecordingIndicator}/bin/nixconf-screenrecording-indicator";
@@ -191,11 +201,13 @@ _: {
 
         #cpu,
         #pulseaudio,
-        #custom-menu {
+        #custom-menu,
+        #custom-notion-calendar {
           min-width: 12px;
           margin: 0 7.5px;
         }
 
+        #custom-notion-calendar.active { color: @accent; }
         #tray { margin-right: 16px; }
         #bluetooth { margin-right: 17px; }
         #network { margin-right: 13px; }

@@ -20,6 +20,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    monorepo.url = "github:anshulnoori/monorepo";
 
     flake-parts = {
       url = "github:hercules-ci/flake-parts";
