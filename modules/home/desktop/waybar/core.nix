@@ -16,11 +16,11 @@ _: {
       ];
       modules-center = [];
       modules-right = [
-        "custom/notion-calendar"
         "custom/screenrecording"
         "custom/update"
         "custom/storage-health"
         "group/tray-expander"
+        "custom/notion-calendar"
         "bluetooth"
         "network"
         "pulseaudio"
@@ -85,6 +85,7 @@ _: {
       tray = {
         icon-size = 12;
         spacing = 17;
+        ignore-list = ["Notion Calendar_status_icon_"];
       };
     };
   };
