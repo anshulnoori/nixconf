@@ -20,6 +20,7 @@ must return to the user rather than being resolved silently.
 | Development toolchains | Per-project Nix development shells; no global language toolchains                 |
 | Package channel        | NixOS unstable, with pinned flake inputs                                          |
 | Kernel                 | CachyOS BORE ThinLTO Zen 4; previous Limine generations provide rollback          |
+| Boot verification      | Limine Secure Boot with local keys; signed Memtest86+ entry                       |
 
 ## Desktop
 
@@ -77,20 +78,20 @@ portable.
 
 ## System interfaces
 
-| Role                  | Selection             | Preferred command                                            |
-| --------------------- | --------------------- | ------------------------------------------------------------ |
-| Wi-Fi                 | Impala                | `impala`                                                     |
-| Bluetooth             | Bluetui               | `bluetui`                                                    |
-| Audio mixer           | WireMix               | `wiremix`                                                    |
-| File manager          | Yazi                  | `yazi`, wrapped as `y` to change the parent shell directory  |
-| System monitor        | btop                  | `btop`                                                       |
-| GPU monitor           | nvtop                 | `nvtop`                                                      |
-| Journal viewer        | lazyjournal           | `lj`                                                         |
-| Git UI                | lazygit               | `lg`                                                         |
-| Container UI          | lazydocker            | `lazydocker`                                                 |
-| Command documentation | tealdeer              | `tldr`                                                       |
-| Terminal browser      | Browsh                | `browsh`                                                     |
-| Mail                  | Private custom client | Package separately without publishing private source or data |
+| Role                  | Selection     | Preferred command                                           |
+| --------------------- | ------------- | ----------------------------------------------------------- |
+| Wi-Fi                 | Impala        | `impala`                                                    |
+| Bluetooth             | Bluetui       | `bluetui`                                                   |
+| Audio mixer           | WireMix       | `wiremix`                                                   |
+| File manager          | Yazi          | `yazi`, wrapped as `y` to change the parent shell directory |
+| System monitor        | btop          | `btop`                                                      |
+| GPU monitor           | nvtop         | `nvtop`                                                     |
+| Journal viewer        | lazyjournal   | `lj`                                                        |
+| Git UI                | lazygit       | `lg`                                                        |
+| Container UI          | lazydocker    | `lazydocker`                                                |
+| Command documentation | tealdeer      | `tldr`                                                      |
+| Terminal browser      | Browsh        | `browsh`                                                    |
+| Mail                  | Custom client | Add when its package and runtime contracts are ready        |
 
 Waybar modules should open these applications in a consistently styled,
 floating Kitty window. Wi-Fi, Bluetooth, audio, system load, GPU load, and logs
@@ -194,13 +195,13 @@ audio is required when Bluetooth latency is unacceptable.
 
 ## Credentials
 
-| Role                | Selection                            | Notes                                     |
-| ------------------- | ------------------------------------ | ----------------------------------------- |
-| Password manager    | 1Password                            | Human-managed secrets                     |
-| CLI                 | `op`                                 | Runtime secret access                     |
-| SSH agent           | 1Password SSH agent                  | Git and outbound SSH authentication       |
-| Browser integration | 1Password extension for Brave Origin | Primary web credential flow               |
-| Secret Service      | GNOME Keyring                        | Home Manager owns the sole session daemon |
+| Role                | Selection                            | Notes                                                  |
+| ------------------- | ------------------------------------ | ------------------------------------------------------ |
+| Password manager    | 1Password                            | Human-managed secrets                                  |
+| CLI                 | `op`                                 | Runtime secret access                                  |
+| SSH agent           | 1Password SSH agent                  | Git and outbound SSH authentication                    |
+| Browser integration | 1Password extension for Brave Origin | Primary web credential flow                            |
+| Secret Service      | GNOME Keyring                        | NixOS graphical-session autostart owns the sole daemon |
 
 Secrets must not be written into the Nix store. Resolve them at runtime through
 1Password, protected files, or an appropriate secrets module.
@@ -225,16 +226,16 @@ bookmark service rather than copying browser profile files.
 
 ## Communication and productivity
 
-| Role             | Selection                                    | Packaging notes                                                   |
-| ---------------- | -------------------------------------------- | ----------------------------------------------------------------- |
-| Secure messaging | Signal Desktop                               | Native Linux client                                               |
-| Community chat   | Discord Canary + Vencord                     | Package declaratively; accept client-mod compatibility risk       |
-| WhatsApp         | WhatsApp Web installed as a Brave Origin app | No unofficial credential-holding wrapper                          |
-| iMessage         | BlueBubbles client                           | Connect only to the Mac over Tailscale                            |
-| Mail             | Private custom client                        | Existing application                                              |
-| Calendar         | Private Notion Calendar Electron package     | Personal distribution only; Waybar integration over a Unix socket |
-| Tasks            | Todoist                                      | Native client or Brave Origin app selected during packaging       |
-| Notes            | Obsidian                                     | Unfree package allowed explicitly                                 |
+| Role             | Selection                                    | Packaging notes                                              |
+| ---------------- | -------------------------------------------- | ------------------------------------------------------------ |
+| Secure messaging | Signal Desktop                               | Native Linux client                                          |
+| Community chat   | Discord Canary + Vencord                     | Package declaratively; accept client-mod compatibility risk  |
+| WhatsApp         | WhatsApp Web installed as a Brave Origin app | No unofficial credential-holding wrapper                     |
+| iMessage         | BlueBubbles client                           | Connect only to the Mac over Tailscale                       |
+| Mail             | Custom client                                | Existing application                                         |
+| Calendar         | Notion Calendar Electron package             | Personal distribution; Waybar integration over a Unix socket |
+| Tasks            | Todoist                                      | Native client or Brave Origin app selected during packaging  |
+| Notes            | Obsidian                                     | Unfree package allowed explicitly                            |
 
 ### iMessage bridge
 
@@ -264,7 +265,13 @@ limited without it; those limitations are preferable to weakening SIP initially.
 | Transcoding and inspection     | FFmpeg                  | Full codec build for CLI work and DaVinci-compatible transcodes  |
 | Recording and streaming        | OBS Studio              | Includes the `v4l2loopback`-backed OBS virtual camera            |
 | Video editing                  | DaVinci Resolve         | Unfree package; codec limitations may require FFmpeg transcoding |
+| 3D creation                    | Blender                 | Stylix preset and native `.blend` file association               |
 | Local file transfer            | LocalSend               | Cross-platform transfer over Tailscale only                      |
+
+Blender uses the standard build while the machine has only integrated
+graphics. Select the CUDA-enabled package together with the future NVIDIA GPU
+module; do not install parallel Blender variants. Select the generated Stylix
+theme once in Blender's preferences.
 
 ## Gaming
 
@@ -353,24 +360,22 @@ other wallpaper daemon runs concurrently.
 | ZFS                  | Excluded                                  | Btrfs is the only root filesystem                |
 | Flake source         | `xddxdd/nix-cachyos-kernel`               | Use its pinned overlay                           |
 | Recovery             | Previous Limine generations and TTY login | Separate recovery specialization is deferred     |
+| Memory test          | Memtest86+ EFI                            | Signed and launched from Limine                  |
 
 GPU and other out-of-tree kernel modules must come from the selected kernel
 package set. Add proprietary NVIDIA modules only after the GPU is installed.
 
-## Private packages
+## Monorepo packages
 
-| Package         | Constraint                                                                                   |
-| --------------- | -------------------------------------------------------------------------------------------- |
-| Notion Calendar | Package the tested Electron application privately and do not redistribute copyrighted assets |
-| Mail client     | Keep private implementation and credentials out of the public flake                          |
-| TTFX            | Add a local package only if the pinned nixpkgs does not provide it                           |
+| Package         | Constraint                                                           |
+| --------------- | -------------------------------------------------------------------- |
+| Notion Calendar | Use the tested Electron package from the pinned application monorepo |
+| Mail client     | Add only when its source and runtime contracts are ready             |
+| TTFX            | Add a local package only if the pinned nixpkgs does not provide it   |
 
-Private source, credentials, license material, and application data must never
-enter the public repository or Nix store unintentionally.
-
-Notion Calendar is consumed from the private application monorepo. Its helper
+The application monorepo is one normal root flake input. Notion Calendar's helper
 streams calendar state to Waybar over a Unix socket; Waybar opens the app on
-left-click and its menu on right-click. The private mail client remains deferred
+left-click and its menu on right-click. The custom mail client remains deferred
 until its source and runtime contracts are ready.
 
 ## Explicit exclusions

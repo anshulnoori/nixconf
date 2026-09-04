@@ -3,10 +3,9 @@
 ## Scope
 
 This repository owns declarative configuration for Anshul's physical NixOS
-devices. It remains standalone from the private application monorepo: there is
-no submodule, nested checkout, or continuous file synchronization. A shared
-module should move to a dedicated flake only after both repositories have a
-real consumer with the same contract.
+devices. It consumes the application monorepo as one pinned root flake input;
+there is no submodule, nested checkout, separate lock, or continuous file
+synchronization.
 
 The current configuration implements the inspected `x86_64-linux` PC named
 `t1`, including its base system, Hyprland desktop, applications, and gaming
@@ -29,16 +28,18 @@ import list while keeping ownership visible:
 ```text
 modules/
 ├── flake/    repository tooling, systems, checks, shells, and packages
-├── nixos/    NixOS module contributions
-└── home/     Home Manager module contributions
+├── nixos/    system-owned NixOS module contributions
+└── home/     user-facing features and their complete integrations
 
 hosts/        actual machine roots
 users/        integrated Home Manager user roots
 overlays/     local package overlays, added only for real consumers
 ```
 
-Underscore-prefixed files or directories can hold helpers that import-tree must
-not load as modules.
+Every `.nix` file in `modules/` is imported automatically. A feature keeps its
+implementation with its module rather than routing it through a repository-wide
+helper directory. Static menu entries use the `.data` extension so they can
+remain beside the menu renderer without becoming auto-imported modules.
 
 The flake enables the upstream `flake.modules` option from flake-parts. Each
 base NixOS file contributes to `flake.modules.nixos.base`. Each base Home
@@ -48,14 +49,14 @@ merging composes files that use the same class and name.
 This pattern is the repository standard. A module does not read sibling outputs
 through `inputs.self` while those outputs are under construction. A host imports
 one completed base module for each module class. A profile exists only for a
-real optional layer, such as `desktop` or `gaming`; no aggregator-only base
-profile exists.
+real optional layer, such as `desktop` or `gaming`.
 
 ### Target topology
 
 The host implementation uses the following target tree. This tree is an
 ownership map. A directory exists only when it has an implemented feature.
-Each application and command-line tool has its own Nix file.
+Configured applications keep focused Nix files. Shallow command-line tools are
+grouped in the owning domain's `tools.nix`.
 
 ```text
 modules/
@@ -64,12 +65,11 @@ modules/
 │   ├── boot/               kernel, Limine, and Plymouth
 │   ├── system/             audio, Bluetooth, Lix, logs, cooling, and health
 │   ├── desktop/            session, login, policy, portals, and appearance
-│   ├── networking/         service-specific firewall policy
 │   ├── gaming/             Steam, GameMode, and Gamescope
-│   ├── containers/         rootless Podman
+│   ├── containers/         container runtimes
 │   ├── hardware.nix
 │   ├── home-manager.nix
-│   ├── networking.nix
+│   ├── networking.nix      shared network configuration and policy
 │   ├── security.nix
 │   ├── storage.nix
 │   └── graphics.nix
@@ -82,10 +82,10 @@ modules/
     ├── browsers/           Brave Origin, Browsh, and browser applications
     ├── messaging/          Signal, Discord, WhatsApp, and BlueBubbles
     ├── productivity/       Todoist and Obsidian
-    ├── media/              Spotify, mpv, yt-dlp, and DaVinci Resolve
+    ├── media/              Spotify, mpv, yt-dlp, Blender, and DaVinci Resolve
     ├── gaming/             MangoHud, GOverlay, and Prism Launcher
-    ├── containers/         Lazydocker
-    ├── services/           user timers and notification services
+    ├── containers/         container clients and integrations
+    ├── update.nix          update timer, notifications, and command
     └── ai/                 Amp
 
 hosts/
@@ -103,24 +103,27 @@ users/
 `networking.nix` owns reusable network policy. Device names and links stay in
 the host's `networking.nix`. `storage.nix` owns Disko integration, swap, and
 storage maintenance. The host's `disko.nix` owns the destructive disk layout.
-`system/storage-health/` owns health checks and persistent status. Boot stays
-in a directory because its components have independent responsibilities.
+`system/storage-health.nix` owns health checks and persistent status. Boot
+stays in a directory because its components have independent responsibilities;
+Plymouth itself is one module rather than a one-file subdirectory.
 
 The Walker desktop menu calls executable interfaces and does not own their
-implementations. Elephant's generated Lua menu provider returns top-level
-categories for an empty root query and all descendants for a non-empty query,
-so root search can execute a matched leaf directly. The wlr-which-key leader
-menu is a separate shortcut tree. `present-terminal` owns UWSM launch, Kitty
-presentation, and the matching Hyprland window rule. `nixpkgs-package-search`
-owns package indexing, selection, preview, installation, and removal from the
-user profile. The generated wallpaper is exposed through the internal read-only
-`nixconf.desktop.wallpaper` option; a state symlink records the selected
-wallpaper so swaybg and hyprlock share the same current image.
+implementations. Its renderer and static entry data remain together under
+`desktop/menu/navigation/`. Elephant's generated Lua menu provider returns
+top-level categories for an empty root query and all descendants for a
+non-empty query, so root search can execute a matched leaf directly. The
+wlr-which-key leader menu is a separate shortcut tree. `present-terminal` owns
+UWSM launch, Kitty presentation, and the matching Hyprland window rule.
+`nixpkgs-package-search` owns package indexing, selection, preview,
+installation, and removal from the user profile. The generated wallpaper is
+exposed through the internal read-only `nixconf.desktop.wallpaper` option; a
+state symlink records the selected wallpaper so swaybg and hyprlock share the
+same current image.
 
 Home Manager keeps visible domain directories from the agreed tree. Amp stays
 under `ai/`. Zsh, Kitty, Neovim, Yazi, and general CLI tools stay under
 `shell/`. System interfaces stay under `system/`. Network clients stay under
-`networking/`. User services stay under `services/`.
+`networking/`.
 
 There is no root theme directory for one standard scheme. Stylix owns the
 shared Gruvbox palette; application-specific adapters remain with their
@@ -144,9 +147,9 @@ The flake exports reusable deferred modules for each active layer:
 - `modules.homeManager.base`, `modules.homeManager.desktop`, and
   `modules.homeManager.gaming` contain the matching user layers.
 
-The `t1` host imports all three layers. A future host can select only the layers
-it needs. A separate recovery specialization remains deferred; previous Limine
-generations are the current rollback path.
+The `t1` host imports all three layers as one system. A future host can select
+only the layers it needs. A separate recovery specialization remains deferred;
+previous Limine generations are the current rollback path.
 
 `Lassulus/wrappers` is not a Home Manager replacement. Use it selectively when
 a package genuinely needs fixed flags, environment, or store-backed
@@ -162,32 +165,29 @@ if a nightly regression blocks operation, pin both Lix inputs to the last known
 good compatible revisions. Previous NixOS generations remain the primary
 rollback path.
 
+The application monorepo is a normal root input pinned in `flake.lock`.
+Authenticate GitHub before evaluating the flake. This personal configuration
+does not maintain separate public and authenticated output graphs.
+
 nvf replaces Nixvim. Migration of the existing editor behavior is a semantic
 rewrite performed with the user module, not parallel ownership by two Neovim
 frameworks.
 
-## CI and caches
+## Checks and caches
 
-CI is push-based because this personal repository follows trunk-based
-development without pull requests. All external GitHub Actions are pinned to
-full commit SHAs with readable version comments. The workflow uses a pinned Lix
-installer and explicitly rejects CppNix installer actions.
+This personal repository has no CI. Local flake checks validate both Linux
+systems without building the full host closure. The full `t1` closure is built
+on `t1`.
 
-CI currently performs repository checks and cross-system evaluation only. The
-planned host-build workflow uses one AMD64 GitHub runner: AMD64 builds locally,
-while ARM64 builds use nixbuild.net. Remote-builder credentials remain CI-only.
-
-The public Cachix key is part of flake trust. Amp Orbs and other ephemeral
-environments read from the cache only. Only `master` CI and trusted physical
-devices may write through a command-scoped `cachix watch-exec` process.
+Trusted public Cachix keys are part of flake trust, so machines can use those
+caches read-only. Any future cache upload must be explicit and command-scoped;
+the configuration does not install a persistent uploader.
 
 ## Explicit exclusions
 
-The repository does not contain Buck2, BuildBuddy, deploy-rs, nixos-anywhere,
-Kubernetes, cloud deployment, OCI publication, application release workflows,
-or broad language toolchains. Bun exists only in the Nix development shell to
-test the tracked Amp plugin; there is no JavaScript package manifest or lock
-file.
+The repository does not contain Buck2, deploy-rs, nixos-anywhere, Kubernetes,
+cloud deployment, OCI publication, CI, application release workflows, or broad
+language toolchains.
 
 ## References
 

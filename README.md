@@ -9,7 +9,7 @@ be added from each target machine after live inspection.
 ## Design
 
 - [`docs/repository-design.md`](./docs/repository-design.md) describes module
-  boundaries, CI, caching, and update automation.
+  boundaries, caching, and update automation.
 - [`docs/system-design.md`](./docs/system-design.md) records the confirmed `t1`
   system design and remaining live facts.
 - [`docs/application-stack.md`](./docs/application-stack.md) records the planned
@@ -30,7 +30,6 @@ nix fmt
 nix flake check --all-systems --no-build
 ```
 
-Local pre-push validation evaluates without realizing host systems. Full host
-builds will run only in CI after host configurations exist. See
-[`docs/development.md`](./docs/development.md) for repository conventions and
-external setup.
+Local pre-push validation evaluates without realizing host systems. Build the
+full host closure on `t1`. See [`docs/development.md`](./docs/development.md)
+for repository conventions and external setup.

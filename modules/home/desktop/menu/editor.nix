@@ -18,12 +18,12 @@ _: {
         case "$target" in
           stylix)
             title=Stylix
-            file=modules/nixos/desktop/appearance/stylix.nix
+            file=modules/nixos/desktop/stylix.nix
             pattern='stylix ='
             ;;
           font)
             title=Font
-            file=modules/nixos/desktop/appearance/stylix.nix
+            file=modules/nixos/desktop/stylix.nix
             pattern='fonts ='
             ;;
           hyprland)
@@ -43,7 +43,7 @@ _: {
             ;;
           screensaver)
             title=Screensaver
-            file=modules/home/desktop/screensaver/control.nix
+            file=modules/home/desktop/screensaver.nix
             pattern='nixconf-screensaver'
             ;;
           monitor-scaling | displays)

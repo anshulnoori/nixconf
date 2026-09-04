@@ -11,11 +11,10 @@ reboots:
 
 1. inspect hardware, firmware, drivers, interfaces, and disks read-only;
 2. present the exact destructive disk plan and obtain fresh approval;
-3. install the encrypted base system;
-4. validate the base system's first boot with Secure Boot disabled;
-5. activate Plymouth and the full desktop, add its recovery specialization,
-   and validate them;
-6. enroll and verify Secure Boot.
+3. authenticate GitHub and install the encrypted `t1` system;
+4. validate the complete system's first boot with Secure Boot disabled; and
+5. enroll and verify Secure Boot with
+   [the dedicated runbook](./secure-boot.md).
 
 This runbook provides commands only through starting the outbound live Amp
 runner. Its later sections record handoff and reboot safety boundaries. It
@@ -91,6 +90,18 @@ nix --extra-experimental-features 'nix-command flakes' \
   git -C /etc/nixos pull --ff-only
 ```
 
+Authenticate the main GitHub account before the first flake evaluation so Git
+can fetch every pinned input:
+
+```sh
+nix --extra-experimental-features 'nix-command flakes' \
+  shell nixpkgs#gh --command \
+  gh auth login --hostname github.com --git-protocol ssh --skip-ssh-key --web
+nix --extra-experimental-features 'nix-command flakes' \
+  shell nixpkgs#gh --command \
+  gh auth setup-git --hostname github.com
+```
+
 Enter the repository's temporary installer shell. It contains the pinned Amp
 release, transfer tools, network diagnostics, pager, and read-only hardware and
 firmware inspection tools:
@@ -164,30 +175,14 @@ The installed system and a verified current checkout use the same package as
 `nix shell .#amp-cli`. Updating Amp requires changing the pinned version and
 both platform hashes in `flake.nix`; no package updates itself imperatively.
 
-Use the tracked two-device wizard to authenticate without typing a long token,
-copying through a text-only console, or persisting an API key. Start the Mac
-side first so Magic Wormhole and its dependencies are ready before Amp creates
-the short-lived login URL:
+Authenticate directly from the installer shell:
 
 ```sh
-nix --extra-experimental-features 'nix-command flakes' \
-  shell nixpkgs#magic-wormhole --command \
-  ./scripts/amp-login-wizard.sh mac
+amp login
 ```
 
-Leave it waiting for a Wormhole code. On `t1`, from the installer shell, run:
-
-```sh
-./scripts/amp-login-wizard.sh t1
-```
-
-The `t1` wizard starts a fresh `amp login`, sends its exact URL through a
-four-word Magic Wormhole exchange, and waits for the return code. Enter the
-codes shown by each wizard on the other device. The Mac asks for the Amp code
-through hidden input. The `t1` wizard sends that code directly to the same Amp
-process that created the URL; it does not use tmux scrollback or paste buffers.
-Authentication and configuration in the live environment disappear when it
-reboots.
+Open the displayed URL on a signed-in device and follow Amp's prompt. The live
+environment's authentication and configuration disappear when it reboots.
 
 After signing in, start a detachable terminal:
 
@@ -221,7 +216,7 @@ Once `t1-installer` appears online:
    sanitized current design documents;
 3. inspect hardware, firmware, active drivers, interfaces, and disks read-only;
 4. present the exact destructive plan and require explicit user confirmation;
-5. only then partition and install.
+5. only then partition and install the `.#t1` output.
 
 The live installer user has broad local privileges. A remotely controllable Amp
 runner therefore has the same effective installation authority. Keep the runner
@@ -249,10 +244,10 @@ cd /etc/nixos
 amp --no-tui --runner-id t1 --remote-control-terminal
 ```
 
-The post-install thread follows the base-gate checklist in `system-design.md`:
+The post-install thread follows the first-boot checklist in `system-design.md`:
 LUKS, Limine generations, Lix nightly, the CachyOS kernel, AMD P-state, mounts,
 zram and swap, Ethernet and DNS, integrated graphics and audio hardware,
 firewall state, and the absence of SSH and Mosh listeners. Plymouth, automatic
-login, lock behavior, and a standard-kernel recovery specialization belong to
-the later desktop and login stage. Secure Boot stays disabled through both
-stages. Enrollment and active-state verification come last.
+login, and lock behavior are part of the same integrated system check. Secure
+Boot stays disabled until those checks pass. Enrollment and active-state
+verification come last and follow `secure-boot.md`.

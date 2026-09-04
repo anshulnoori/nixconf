@@ -15,7 +15,6 @@ _: {
         };
         shfmt.enable = true;
       };
-      settings.formatter.shfmt.excludes = ["scripts/amp-login-wizard.sh"];
     };
 
     checks.treefmt = (config.treefmt.build.check config.treefmt.projectRoot).overrideAttrs {

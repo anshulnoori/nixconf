@@ -6,7 +6,6 @@
   }: let
     branchNameCheck = config.packages.check-branch-name;
     commitizen = config.packages.commitizen;
-    workflowPolicy = config.packages.workflow-policy;
   in {
     pre-commit.check.enable = false;
     pre-commit.settings.hooks = {
@@ -34,28 +33,6 @@
       };
       deadnix = {
         enable = true;
-        stages = ["pre-commit"];
-      };
-      actionlint = {
-        enable = true;
-        stages = ["pre-commit"];
-      };
-      workflow-policy = {
-        enable = true;
-        name = "GitHub workflow policy";
-        package = workflowPolicy;
-        entry = lib.getExe workflowPolicy;
-        files = "^(\\.github/|scripts/check-workflows\\.sh$)";
-        pass_filenames = false;
-        stages = ["pre-commit"];
-      };
-      amp-plugins = {
-        enable = true;
-        name = "Amp Renovate review plugin";
-        package = pkgs.bun;
-        entry = "${lib.getExe pkgs.bun} test ./.amp/plugins/renovate-review/index.test.ts";
-        files = "^\\.amp/plugins/renovate-review/";
-        pass_filenames = false;
         stages = ["pre-commit"];
       };
       gitleaks = {

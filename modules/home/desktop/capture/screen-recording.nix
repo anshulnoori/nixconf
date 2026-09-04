@@ -1,4 +1,6 @@
 _: {
+  flake.modules.nixos.desktop.programs.gpu-screen-recorder.enable = true;
+
   flake.modules.homeManager.desktop = {
     config,
     osConfig,

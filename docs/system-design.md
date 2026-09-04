@@ -13,10 +13,10 @@ the user rather than silently choosing one.
 - The installation starts from the official NixOS 26.05 minimal ISO, verified
   and flashed to USB with Balena Etcher.
 - Work proceeds in this order: read-only inspection; an exact destructive disk
-  plan and fresh approval; encrypted base installation; base first-boot
-  validation with Secure Boot disabled; desktop activation and validation; and
-  Secure Boot enrollment and verification. A separate recovery specialization
-  is deferred; previous Limine generations are the current rollback path.
+  plan and fresh approval; encrypted `t1` installation; first-boot validation
+  with Secure Boot disabled; and Secure Boot enrollment and verification. A
+  separate recovery specialization is deferred; previous Limine generations
+  are the current rollback path.
 - The user reports that the new target SSD is empty. This workflow has not
   performed a destructive action or consumed approval for one. The live
   successor must identify the target disk, show the existing data, exact
@@ -99,18 +99,22 @@ separately maintained stable-Lix configuration.
 
 - Limine is the bootloader.
 - The official installer boots with Secure Boot temporarily disabled. The first
-  installed boot also keeps Secure Boot disabled while the user validates the
-  base system. The full desktop comes after that gate. Enrollment follows only
-  after the desktop stage passes.
-- Secure Boot setup follows the current CachyOS process where it fits NixOS and
-  Limine. The current [CachyOS Secure Boot guide](https://wiki.cachyos.org/configuration/secure_boot_setup/)
-  is a process reference, not a source of Arch-specific commands. On the MSI
-  board, firmware uses custom mode and its maximum-security compatibility
-  setting. The process enrolls local keys with Microsoft and OEM certificates,
-  signs Limine, enrolls its configuration checksum, enables Secure Boot, and
-  then verifies the active state.
+  installed boot also keeps firmware enforcement disabled while the user
+  validates the complete system. Limine generates local keys and signs the boot
+  chain during installation; firmware enrollment follows only after first-boot
+  checks pass.
+- Secure Boot uses NixOS's native Limine support with automatically generated
+  and manually enrolled `sbctl` keys. The MSI board stays in custom mode with its
+  maximum-security preset. Before resetting firmware keys, the runbook verifies
+  and exports the current firmware certificate sets, then verifies that the
+  firmware-default variables remain available in Setup Mode. Enrollment then
+  includes Microsoft certificates and those verified firmware-default
+  certificates for Option ROM and update compatibility. The exact procedure is in
+  [the Secure Boot runbook](./secure-boot.md).
 - The Secure Boot private keys remain below encrypted root. The firmware
   administrator password is recorded on paper.
+- Memtest86+ is copied to the EFI system partition, signed with the same local
+  key as Limine, and exposed as a Limine boot entry.
 - The normal kernel package is
   `pkgs.cachyosKernels.linuxPackages-cachyos-bore-lto-zen4` from
   `xddxdd/nix-cachyos-kernel`.
@@ -318,16 +322,16 @@ than minimum heat or noise.
 
 Use the latest released CoolerControl package from `nixos-unstable`, not an
 upstream-main build. Enable it with `programs.coolercontrol.enable = true` and
-include its GUI plus `lm_sensors`. The daemon starts at boot, but the GUI opens
-only manually; do not autostart its GUI or tray. CoolerControl has no official
-TUI. Bind its API and Web UI to loopback only at `localhost:11987`, with no LAN
-or tailnet exposure.
+provide `lm_sensors` for direct terminal readings. The daemon starts at boot,
+but the GUI opens only manually; do not autostart its GUI or tray. CoolerControl
+has no official TUI. Bind its API and Web UI to loopback only at
+`localhost:11987`, with no LAN or tailnet exposure.
 
 NixOS owns the CoolerControl package and service. CoolerControl owns its mutable
 calibration and profiles under encrypted root. Initially leave every fan
 channel unmanaged so the BIOS remains in control until live calibration and an
-explicit profile assignment. Use motherboard hwmon; keep `liquidctl` available
-but unused unless compatible hardware is detected. BIOS keeps independent safe
+explicit profile assignment. Use motherboard hwmon; add `liquidctl` only if a
+supported USB cooling device is installed later. BIOS keeps independent safe
 curves for pre-Linux boot, recovery, and service failure. Do not invent fan
 percentages before calibration. Build performance-first curves from live
 measurements; the user may later copy a proven runtime curve into BIOS manually.
@@ -361,10 +365,10 @@ The `mvs` password is entered interactively, and Wi-Fi, Tailscale, and
 stays below LUKS and never enters the repository or Nix store.
 
 Add a runtime secrets mechanism only with the first real noninteractive
-consumer. Do not add a private submodule or separate secret flake preemptively.
-Secure Boot signing keys remain below encrypted root when that later stage is
-implemented. The normal installation does not create an offline
-administrator-key USB. A high-entropy LUKS recovery key is printed on paper.
+consumer. Authenticate GitHub before evaluating the application monorepo input.
+Secure Boot signing keys remain below encrypted root at `/var/lib/sbctl`. The
+normal installation does not create an offline administrator-key USB. A
+high-entropy LUKS recovery key is printed on paper.
 
 ## User environment
 
@@ -511,8 +515,8 @@ idle deadline suspends or hibernates the machine.
 provider. Enable the 1Password GUI, CLI, browser integration, SSH agent, Git
 signing integration, and required polkit policy. Initial sign-in remains
 interactive. NixOS installs GNOME Keyring's package, D-Bus service, portal, and
-required capability wrapper but does not start it through login PAM. Home
-Manager owns the sole secrets-only daemon in the graphical session.
+required capability wrapper. Its standard graphical-session autostart owns the
+sole daemon; Home Manager does not start a duplicate service.
 
 Use official Hyprland ecosystem components where they directly fit, including
 Hyprland, hypridle, hyprlock, hyprpolkitagent, and the Hyprland portal. Waybar,
@@ -623,10 +627,10 @@ Shared behavior:
 - Neovim editor;
 - aliases `co`, `br`, `ci`, and `st`.
 
-## Base first-boot gate
+## First-boot gate
 
 With Secure Boot still disabled, collect concrete evidence for every item
-before starting graphics and desktop work:
+before enrolling firmware keys:
 
 - the typed LUKS unlock and encrypted-root boundary;
 - current and previous-generation Limine entries;
@@ -639,18 +643,17 @@ before starting graphics and desktop work:
 - default-deny firewall state; and
 - absence of incoming SSH and Mosh listeners.
 
-The desktop stage must separately validate Plymouth, graphical automatic login,
-explicit logout authentication, hyprlock, and audio services. Secure Boot
-enrollment remains a final stage and requires its own post-enrollment
-verification.
+Also validate Plymouth, graphical automatic login, explicit logout
+authentication, hyprlock, and audio services. Secure Boot enrollment remains
+the final stage and follows [its dedicated runbook](./secure-boot.md), including
+post-enrollment verification of normal boots, rollback, and Memtest86+.
 
 ## Remaining physical facts
 
 - official latest-version status for the BIOS, SSD, and other fwupd devices;
 - the motherboard Super-I/O driver, if one is exposed after installation;
-- exact NixOS and Limine Secure Boot commands for the discovered system;
 - authenticated validation that the LiteLLM endpoint exposes Minuet's selected
   model alias; and
-- concrete evidence from the base first-boot checks.
+- concrete evidence from the first-boot checks.
 
 Remote game-server deployment is outside this system's scope.

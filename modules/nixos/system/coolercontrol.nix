@@ -1,7 +1,8 @@
 _: {
   flake.modules.nixos.desktop = {pkgs, ...}: {
+    environment.systemPackages = [pkgs.lm_sensors];
+
     programs.coolercontrol.enable = true;
-    environment.systemPackages = [pkgs.liquidctl];
 
     systemd.services.coolercontrold.environment = {
       CC_HOST_IP4 = "127.0.0.1";

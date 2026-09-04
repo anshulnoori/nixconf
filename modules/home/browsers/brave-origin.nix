@@ -1,14 +1,26 @@
 _: {
-  flake.modules.homeManager.desktop = {pkgs, ...}: {
-    home.packages = [pkgs.brave-origin];
-    home.sessionVariables.BROWSER = "brave-origin";
+  flake.modules = {
+    nixos.desktop = {
+      programs.chromium = {
+        enable = true;
+        extensions = ["aeblfdkhhhdcdjpifhhbdiojplfjncoa"];
+        extraOpts.PasswordManagerEnabled = false;
+      };
 
-    xdg.mimeApps = {
-      enable = true;
-      defaultApplications = {
-        "text/html" = ["brave-origin.desktop"];
-        "x-scheme-handler/http" = ["brave-origin.desktop"];
-        "x-scheme-handler/https" = ["brave-origin.desktop"];
+      stylix.targets.chromium.enable = true;
+    };
+
+    homeManager.desktop = {pkgs, ...}: {
+      home.packages = [pkgs.brave-origin];
+      home.sessionVariables.BROWSER = "brave-origin";
+
+      xdg.mimeApps = {
+        enable = true;
+        defaultApplications = {
+          "text/html" = ["brave-origin.desktop"];
+          "x-scheme-handler/http" = ["brave-origin.desktop"];
+          "x-scheme-handler/https" = ["brave-origin.desktop"];
+        };
       };
     };
   };

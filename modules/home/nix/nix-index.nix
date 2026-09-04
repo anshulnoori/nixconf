@@ -6,5 +6,7 @@
       enable = true;
       enableZshIntegration = false;
     };
+
+    programs.nix-index-database.comma.enable = true;
   };
 }

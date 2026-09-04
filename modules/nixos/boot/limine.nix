@@ -6,7 +6,6 @@
       limine = {
         enable = true;
         maxGenerations = 6;
-        secureBoot.enable = false;
       };
     };
   };

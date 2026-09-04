@@ -41,7 +41,6 @@
             config.pre-commit.settings.enabledPackages
             ++ [
               pkgs.alejandra
-              pkgs.bun
               pkgs.cachix
               pkgs.git
               pkgs.jq

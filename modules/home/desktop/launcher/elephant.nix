@@ -1,5 +1,7 @@
 _: {
-  flake.modules.homeManager.desktop = {
+  flake.modules.homeManager.desktop = {pkgs, ...}: {
+    home.packages = [pkgs.wl-clipboard];
+
     services.elephant = {
       enable = true;
       settings.providers.default = [

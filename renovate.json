@@ -26,15 +26,6 @@
       "separateMajorMinor": false,
       "separateMultipleMajor": false,
       "semanticCommitType": "flake"
-    },
-    {
-      "description": "Group GitHub Actions",
-      "matchManagers": ["github-actions"],
-      "groupName": "GitHub Actions",
-      "groupSlug": "github-actions",
-      "separateMajorMinor": false,
-      "separateMultipleMajor": false,
-      "semanticCommitType": "ci"
     }
   ]
 }
