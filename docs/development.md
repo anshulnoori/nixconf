@@ -2,15 +2,28 @@
 
 ## Environment
 
-Use Lix with flakes enabled. Authenticate GitHub before evaluating the flake so
-Git can fetch the application monorepo input. Then enter the development shell:
+Use Lix with flakes enabled. The private application monorepo uses SSH so Git
+can authenticate through the 1Password SSH agent without a GitHub token in Nix
+configuration. Enable the SSH agent in 1Password, add the key to GitHub as an
+authentication key, unlock 1Password, and verify the connection:
 
 ```sh
-gh auth status --hostname github.com
+test -S "$HOME/.1password/agent.sock"
+ssh -T git@github.com
+```
+
+GitHub should identify the account and report that it does not provide shell
+access. Then enter the development shell:
+
+```sh
 direnv allow
 # or
 nix develop
 ```
+
+Run `nh os switch` as the login user, without a leading `sudo`. `nh` elevates
+activation itself; starting it with `sudo` would hide the user's 1Password
+agent from the flake fetch.
 
 `.envrc` watches the flake and module roots. It optionally loads the ignored
 `.envrc.local` file for machine-local, short-lived settings. Do not store

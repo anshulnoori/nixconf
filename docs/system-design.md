@@ -365,10 +365,11 @@ The `mvs` password is entered interactively, and Wi-Fi, Tailscale, and
 stays below LUKS and never enters the repository or Nix store.
 
 Add a runtime secrets mechanism only with the first real noninteractive
-consumer. Authenticate GitHub before evaluating the application monorepo input.
-Secure Boot signing keys remain below encrypted root at `/var/lib/sbctl`. The
-normal installation does not create an offline administrator-key USB. A
-high-entropy LUKS recovery key is printed on paper.
+consumer. The private application monorepo uses SSH through the interactive
+1Password agent; no GitHub token is stored in Nix configuration. Secure Boot
+signing keys remain below encrypted root at `/var/lib/sbctl`. The normal
+installation does not create an offline administrator-key USB. A high-entropy
+LUKS recovery key is printed on paper.
 
 ## User environment
 
@@ -582,7 +583,10 @@ keyboard-layout, agent, or duplicate power widgets.
 
 Elephant's clipboard provider owns clipboard history and Walker presents it.
 Cliphist is not enabled because a second watcher and history store would be
-duplicate infrastructure.
+duplicate infrastructure. Hyprland translates `Super+C`, `Super+V`, and
+`Super+X` into application clipboard shortcuts. Copy and paste use the
+terminal-safe `Ctrl+Insert` and `Shift+Insert` alternatives, which Kitty handles
+without interrupting the foreground process.
 
 Update state is checked by a lightweight user timer two minutes after boot and
 every six hours thereafter. It detects active `renovate/*` branch revisions and
@@ -602,7 +606,9 @@ origin is local and defaults to the main profile. Other remotes do not
 participate; an unrecognized nonempty origin remains unset and fails safely.
 
 GitHub CLI clones over SSH so Git and GitHub CLI share the 1Password SSH agent.
-`SSH_AUTH_SOCK` and OpenSSH's `IdentityAgent` both point to that agent.
+The private flake input uses the same path. `SSH_AUTH_SOCK` and OpenSSH's
+`IdentityAgent` both point to that agent. Run `nh` as the login user so the
+fetch inherits this authentication context; `nh` elevates activation itself.
 
 | Profile   | Author                                                           |
 | --------- | ---------------------------------------------------------------- |

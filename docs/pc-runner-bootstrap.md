@@ -90,17 +90,28 @@ nix --extra-experimental-features 'nix-command flakes' \
   git -C /etc/nixos pull --ff-only
 ```
 
-Authenticate the main GitHub account before the first flake evaluation so Git
-can fetch every pinned input:
+The installed system fetches the private application monorepo over SSH through
+1Password. The live ISO does not have the desktop agent, so authenticate GitHub
+temporarily over HTTPS and rewrite only the flake's SSH GitHub URL for this
+ephemeral environment:
 
 ```sh
 nix --extra-experimental-features 'nix-command flakes' \
   shell nixpkgs#gh --command \
-  gh auth login --hostname github.com --git-protocol ssh --skip-ssh-key --web
+  gh auth login --hostname github.com --git-protocol https --web
 nix --extra-experimental-features 'nix-command flakes' \
   shell nixpkgs#gh --command \
   gh auth setup-git --hostname github.com
+nix --extra-experimental-features 'nix-command flakes' \
+  shell nixpkgs#git --command \
+  git config --global \
+    url."https://github.com/".insteadOf \
+    "ssh://git@github.com/"
 ```
+
+This rewrite disappears with the live environment. Do not add it to the
+installed user's Git configuration; the installed system uses the 1Password
+SSH agent directly.
 
 Enter the repository's temporary installer shell. It contains the pinned Amp
 release, transfer tools, network diagnostics, pager, and read-only hardware and

@@ -1070,11 +1070,11 @@
         "rev": "344e3e6f3b51e520bc75678d94eef36dde9353de",
         "revCount": 114,
         "type": "git",
-        "url": "https://github.com/anshulnoori/monorepo.git"
+        "url": "ssh://git@github.com/anshulnoori/monorepo.git"
       },
       "original": {
         "type": "git",
-        "url": "https://github.com/anshulnoori/monorepo.git"
+        "url": "ssh://git@github.com/anshulnoori/monorepo.git"
       }
     },
     "neovim-nightly-overlay": {

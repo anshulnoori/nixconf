@@ -57,6 +57,10 @@ bindings or feature policy.
 Elephant's clipboard provider owns clipboard history. Do not also run cliphist;
 that would duplicate the clipboard watcher and history database.
 
+Hyprland maps `Super+C`, `Super+V`, and `Super+X` to universal copy, paste, and
+cut shortcuts. Copy and paste use `Ctrl+Insert` and `Shift+Insert`, which Kitty
+consumes as clipboard operations without sending `Ctrl+C` to the running shell.
+
 ## Terminal environment
 
 | Role                 | Selection | Integration notes                                            |

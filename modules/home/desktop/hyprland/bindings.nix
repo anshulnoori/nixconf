@@ -1,5 +1,16 @@
 _: {
   flake.modules.homeManager.desktop.wayland.windowManager.hyprland.extraConfig = ''
+    -- Explicit key states avoid Hyprland leaving a synthetic shortcut stuck.
+    local function send_shortcut_once(mods, key)
+      return function()
+        hl.dispatch(hl.dsp.send_key_state({ mods = mods, key = key, state = "down", window = "activewindow" }))
+
+        hl.timer(function()
+          hl.dispatch(hl.dsp.send_key_state({ mods = mods, key = key, state = "up", window = "activewindow" }))
+        end, { timeout = 50, type = "oneshot" })
+      end
+    end
+
     hl.bind("SUPER + RETURN", hl.dsp.exec_cmd("kitty"))
     hl.bind("SUPER + SPACE", hl.dsp.exec_cmd("walker"))
     hl.bind("SUPER + ALT + SPACE", hl.dsp.exec_cmd("nixconf-menu"))
@@ -7,6 +18,9 @@ _: {
     hl.bind("SUPER + W", hl.dsp.window.close())
     hl.bind("SUPER + L", hl.dsp.exec_cmd("hyprlock"))
     hl.bind("SUPER + M", hl.dsp.exec_cmd("uwsm stop"))
+    hl.bind("SUPER + C", send_shortcut_once("CTRL", "Insert"), { description = "Universal copy" })
+    hl.bind("SUPER + V", send_shortcut_once("SHIFT", "Insert"), { description = "Universal paste" })
+    hl.bind("SUPER + X", send_shortcut_once("CTRL", "X"), { description = "Universal cut" })
 
     hl.bind("SUPER + left", hl.dsp.focus({ direction = "left" }))
     hl.bind("SUPER + right", hl.dsp.focus({ direction = "right" }))

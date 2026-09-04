@@ -186,9 +186,11 @@ Classic Omarchy includes universal copy/paste/cut mappings, Walker clipboard
 history, LocalSend sharing, OCR, color picking, and systemd-timer reminders.
 
 The current menus expose LocalSend, clipboard/file/folder/receive sharing, QR
-creation, OCR, QR decoding, color picking, and Todoist-oriented reminders. The
-Omarchy direct shortcuts and universal clipboard key translation are not yet
-mirrored.
+creation, OCR, QR decoding, color picking, and Todoist-oriented reminders.
+Hyprland mirrors Omarchy's universal `Super+C`, `Super+V`, and `Super+X`
+translation, including explicit synthetic key release and Kitty's terminal-safe
+Insert bindings. The remaining direct shortcuts stay intentionally selected
+rather than copied wholesale.
 
 ### 9. Window-management feel
 

@@ -69,7 +69,7 @@
 
     nix-cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/release";
 
-    monorepo.url = "git+https://github.com/anshulnoori/monorepo.git";
+    monorepo.url = "git+ssh://git@github.com/anshulnoori/monorepo.git";
 
     omarchy-rice = {
       url = "github:basecamp/omarchy/a7f8f2495f4990044b7791d8f11a32cf14d34b39";

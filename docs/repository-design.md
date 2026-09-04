@@ -165,9 +165,10 @@ if a nightly regression blocks operation, pin both Lix inputs to the last known
 good compatible revisions. Previous NixOS generations remain the primary
 rollback path.
 
-The application monorepo is a normal root input pinned in `flake.lock`.
-Authenticate GitHub before evaluating the flake. This personal configuration
-does not maintain separate public and authenticated output graphs.
+The application monorepo is a normal SSH root input pinned in `flake.lock`.
+Interactive evaluation authenticates through the user's 1Password SSH agent;
+no GitHub token enters Nix configuration. This personal configuration does not
+maintain separate public and authenticated output graphs.
 
 nvf replaces Nixvim. Migration of the existing editor behavior is a semantic
 rewrite performed with the user module, not parallel ownership by two Neovim

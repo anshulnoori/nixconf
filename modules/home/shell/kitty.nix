@@ -1,6 +1,10 @@
 _: {
   flake.modules.homeManager.desktop.programs.kitty = {
     enable = true;
+    keybindings = {
+      "ctrl+insert" = "copy_to_clipboard";
+      "shift+insert" = "paste_from_clipboard";
+    };
     settings = {
       font_size = 9;
       window_padding_width = 14;
