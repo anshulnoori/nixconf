@@ -14,8 +14,7 @@
         magick ${source} -colorspace gray -negate \
           +level-colors '#${colors.base00}','#${colors.base05}' "$out"
       '';
-      hyprlockBlur =
-        (import "${inputs.monorepo}/nix/artifacts/hyprlock-blur.nix").${pkgs.stdenv.hostPlatform.system} {inherit pkgs;};
+      hyprlockBlur = inputs.monorepo.packages.${pkgs.stdenv.hostPlatform.system}.hyprlock-blur;
       prepareBackground = pkgs.writeShellApplication {
         name = "nixconf-prepare-boot-background";
         runtimeInputs = with pkgs; [
