@@ -94,7 +94,7 @@ The prefix is `Ctrl+B`, followed by a separate key:
 | `g` / `t`           | Lazygit / temporary shell popup                    |
 | `Space`             | Thumbs hints for copying paths, URLs, and hashes   |
 | `Ctrl+S` / `Ctrl+R` | Save / restore the resurrect snapshot              |
-| `                   | `/`-`                                              | Side-by-side / stacked panes |
+| `\|` / `-`          | Side-by-side / stacked panes                       |
 | `d`                 | Detach without stopping the session                |
 
 Without the prefix, `Ctrl+h/j/k/l` moves between Neovim splits and tmux panes.

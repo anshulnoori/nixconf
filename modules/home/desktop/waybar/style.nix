@@ -35,10 +35,14 @@ _: {
 
       #cpu,
       #pulseaudio,
-      #custom-menu,
-      #custom-notion-calendar {
+      #custom-menu {
         min-width: 12px;
         margin: 0 7.5px;
+      }
+
+      #custom-notion-calendar {
+        min-width: 12px;
+        margin: 0 17px 0 0;
       }
 
       #custom-notion-calendar.active { color: @accent; }
