@@ -40,13 +40,17 @@
           packages =
             config.pre-commit.settings.enabledPackages
             ++ [
-              pkgs.bun
+              pkgs.alejandra
               pkgs.cachix
               pkgs.git
               pkgs.jq
-              pkgs.nil
+              pkgs.marksman
+              pkgs.nixd
               pkgs.pre-commit
               pkgs.renovate
+              pkgs.taplo
+              pkgs.vscode-langservers-extracted
+              pkgs.yaml-language-server
             ];
           shellHook = config.pre-commit.installationScript;
         };

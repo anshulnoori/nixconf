@@ -3,7 +3,6 @@ _: {
     reminders = pkgs.writeShellApplication {
       name = "nixconf-reminder";
       runtimeInputs = with pkgs; [
-        todoist-electron
         util-linux
         uwsm
         xdg-utils
@@ -23,9 +22,6 @@ _: {
       '';
     };
   in {
-    home.packages = [
-      pkgs.todoist-electron
-      reminders
-    ];
+    home.packages = [reminders];
   };
 }

@@ -21,11 +21,6 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-    monorepo = {
-      url = "git+ssh://git@github.com/anshulnoori/monorepo.git";
-      flake = false;
-    };
-
     flake-parts = {
       url = "github:hercules-ci/flake-parts";
       inputs.nixpkgs-lib.follows = "nixpkgs";
@@ -55,7 +50,31 @@
 
     hyprland.url = "github:hyprwm/Hyprland";
 
+    waybar = {
+      url = "github:Alexays/Waybar/66139e4440b626e0d92c4b902185ced10ce78df7";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    nvf = {
+      url = "github:NotAShelf/nvf";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    neovim-nightly-overlay.url = "github:nix-community/neovim-nightly-overlay";
+
+    nix-index-database = {
+      url = "github:nix-community/nix-index-database";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    wrappers = {
+      url = "github:Lassulus/wrappers";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     nix-cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/release";
+
+    monorepo.url = "git+ssh://git@github.com/anshulnoori/monorepo.git";
 
     omarchy-rice = {
       url = "github:basecamp/omarchy/a7f8f2495f4990044b7791d8f11a32cf14d34b39";

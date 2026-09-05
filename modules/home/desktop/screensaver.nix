@@ -1,11 +1,17 @@
 _: {
-  flake.modules.homeManager.desktop = {pkgs, ...}: let
-    screensaverRunner = pkgs.writeShellApplication {
+  flake.modules.homeManager.desktop = {
+    config,
+    osConfig,
+    pkgs,
+    ...
+  }: let
+    colors = config.lib.stylix.colors;
+    runner = pkgs.writeShellApplication {
       name = "nixconf-screensaver-run";
       runtimeInputs = with pkgs; [
         coreutils
-        hyprland
         jq
+        osConfig.programs.hyprland.package
         terminaltexteffects
       ];
       text = ''
@@ -29,7 +35,7 @@ _: {
         }
 
         trap exit_screensaver INT TERM HUP QUIT
-        printf '\033]11;rgb:00/00/00\007'
+        printf '\033]11;#${colors.base00}\007'
         hyprctl keyword cursor:invisible true >/dev/null 2>&1 || true
 
         for _ in {1..30}; do
@@ -65,14 +71,14 @@ _: {
         done
       '';
     };
-    screensaver = pkgs.writeShellApplication {
+    control = pkgs.writeShellApplication {
       name = "nixconf-screensaver";
       runtimeInputs = with pkgs; [
         coreutils
-        hyprland
         jq
         kitty
         libnotify
+        osConfig.programs.hyprland.package
         procps
         util-linux
         uwsm
@@ -123,7 +129,7 @@ _: {
                 --class org.nixconf.screensaver \
                 --override font_size=18 \
                 --override window_padding_width=0 \
-                ${screensaverRunner}/bin/nixconf-screensaver-run \
+                ${runner}/bin/nixconf-screensaver-run \
                 >/dev/null 2>&1 &
             done
 
@@ -145,7 +151,7 @@ _: {
       '';
     };
   in {
-    home.packages = [screensaver];
+    home.packages = [control];
 
     wayland.windowManager.hyprland.extraConfig = ''
       hl.window_rule({

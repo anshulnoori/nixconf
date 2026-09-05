@@ -1,12 +1,16 @@
 _: {
-  flake.modules.homeManager.desktop = {pkgs, ...}: let
+  flake.modules.homeManager.desktop = {
+    osConfig,
+    pkgs,
+    ...
+  }: let
     toggles = pkgs.writeShellApplication {
       name = "nixconf-toggle";
       runtimeInputs = with pkgs; [
         coreutils
-        hyprland
         libnotify
         mako
+        osConfig.programs.hyprland.package
         systemd
       ];
       text = ''

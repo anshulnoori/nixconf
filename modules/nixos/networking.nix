@@ -1,9 +1,12 @@
 _: {
   flake.modules.nixos.base = {
-    boot.kernelModules = ["tcp_bbr"];
+    boot.kernelModules = [
+      "sch_fq"
+      "tcp_bbr3"
+    ];
     boot.kernel.sysctl = {
       "net.core.default_qdisc" = "fq";
-      "net.ipv4.tcp_congestion_control" = "bbr";
+      "net.ipv4.tcp_congestion_control" = "bbr3";
     };
 
     networking = {
@@ -36,10 +39,5 @@ _: {
         useRoutingFeatures = "none";
       };
     };
-  };
-
-  flake.modules.nixos.desktop.hardware.bluetooth = {
-    enable = true;
-    powerOnBoot = true;
   };
 }

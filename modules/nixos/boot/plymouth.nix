@@ -5,293 +5,353 @@
     pkgs,
     ...
   }: let
-    colors = config.lib.stylix.colors;
-    themeName = "hyprlock-luks";
-    font = "${pkgs.nerd-fonts.jetbrains-mono}/share/fonts/truetype/NerdFonts/JetBrainsMono/JetBrainsMonoNerdFont-Regular.ttf";
-    source = "${inputs.omarchy-rice}/themes/flexoki-light/backgrounds/1-orb.png";
-    wallpaper = pkgs.runCommand "flexoki-orb-gruvbox.png" {nativeBuildInputs = [pkgs.imagemagick];} ''
-      magick ${source} -colorspace gray -negate \
-        +level-colors '#${colors.base00}','#${colors.base05}' "$out"
-    '';
-    toPlymouthColor = color:
-      lib.concatMapStringsSep ", " (
-        offset:
-          toString (
-            (lib.fromHexString (builtins.substring offset 2 color)) / 255.0
-          )
-      ) [0 2 4];
-    theme = pkgs.runCommand "${themeName}-plymouth-theme" {nativeBuildInputs = [pkgs.imagemagick];} ''
-      themeDir="$out/share/plymouth/themes/${themeName}"
-      mkdir -p "$themeDir"
+    theme = rec {
+      colors = config.lib.stylix.colors;
+      themeName = "hyprlock-luks";
+      font = "${pkgs.nerd-fonts.jetbrains-mono}/share/fonts/truetype/NerdFonts/JetBrainsMono/JetBrainsMonoNerdFont-Regular.ttf";
+      source = "${inputs.omarchy-rice}/themes/flexoki-light/backgrounds/1-orb.png";
+      wallpaper = pkgs.runCommand "flexoki-orb-gruvbox.png" {nativeBuildInputs = [pkgs.imagemagick];} ''
+        magick ${source} -colorspace gray -negate \
+          +level-colors '#${colors.base00}','#${colors.base05}' "$out"
+      '';
+      hyprlockBlurSource = pkgs.applyPatches {
+        name = "hyprlock-blur-headless-source";
+        src = "${inputs.monorepo}/src/hyprlock-blur";
+        patches = [./hyprlock-blur-headless.patch];
+      };
+      hyprlockBlur = pkgs.stdenv.mkDerivation {
+        pname = "hyprlock-blur-headless";
+        version = "1.0.0";
+        src = hyprlockBlurSource;
+        nativeBuildInputs = [
+          inputs.monorepo.inputs.zig.packages.${pkgs.stdenv.hostPlatform.system}."0.16.0"
+          pkgs.makeWrapper
+          pkgs.patchelf
+        ];
+        dontConfigure = true;
+        dontPatchELF = true;
+        dontStrip = true;
+        buildPhase = ''
+          runHook preBuild
+          export ZIG_LOCAL_CACHE_DIR="$TMPDIR/zig-local-cache"
+          export ZIG_GLOBAL_CACHE_DIR="$TMPDIR/zig-global-cache"
+          zig build-exe \
+            --name hyprlock-blur-renderer \
+            -femit-bin=hyprlock-blur-renderer \
+            -target x86_64-linux-gnu.2.42 \
+            -O ReleaseSafe \
+            -fstrip \
+            -I ${pkgs.libpng.dev}/include \
+            -I ${pkgs.libglvnd.dev}/include \
+            -lc \
+            ${pkgs.libglvnd}/lib/libEGL.so \
+            ${pkgs.libglvnd}/lib/libGLESv2.so \
+            ${pkgs.libpng}/lib/libpng16.so \
+            -Mroot=main.zig
+          runHook postBuild
+        '';
+        installPhase = ''
+          runHook preInstall
+          install -Dm755 hyprlock-blur-renderer "$out/bin/hyprlock-blur-renderer"
+          patchelf \
+            --set-interpreter ${pkgs.stdenv.cc.bintools.dynamicLinker} \
+            --set-rpath ${lib.makeLibraryPath [pkgs.libglvnd pkgs.libpng pkgs.stdenv.cc.cc.lib]} \
+            "$out/bin/hyprlock-blur-renderer"
+          makeWrapper "$out/bin/hyprlock-blur-renderer" "$out/bin/hyprlock-blur" \
+            --set LIBGL_ALWAYS_SOFTWARE true \
+            --set LIBGL_DRIVERS_PATH ${pkgs.mesa}/lib/dri \
+            --set __EGL_VENDOR_LIBRARY_FILENAMES ${pkgs.mesa}/share/glvnd/egl_vendor.d/50_mesa.json \
+            --set MESA_SHADER_CACHE_DISABLE true
+          runHook postInstall
+        '';
+      };
+      toPlymouthColor = color:
+        lib.concatMapStringsSep ", " (
+          offset:
+            toString (
+              (lib.fromHexString (builtins.substring offset 2 color)) / 255.0
+            )
+        ) [0 2 4];
+      script = ''
+        Window.SetBackgroundTopColor(${toPlymouthColor colors.base00});
+        Window.SetBackgroundBottomColor(${toPlymouthColor colors.base00});
 
-      magick ${wallpaper} \
-        -resize '3840x2160^' \
-        -gravity center \
-        -extent 3840x2160 \
-        -blur 0x16 \
-        -strip \
-        "$themeDir/background.png"
+        screen.x = Window.GetX(0);
+        screen.y = Window.GetY(0);
+        screen.w = Window.GetWidth(0);
+        screen.h = Window.GetHeight(0);
+        center.x = screen.x + screen.w / 2;
+        center.y = screen.y + screen.h / 2;
+        scale = 1;
+        if (screen.w >= 2560)
+            scale = 2;
+        if (screen.h >= 1600)
+            scale = 2;
 
-      for scale in 1 2; do
-        width=$((400 * scale))
-        height=$((60 * scale))
-        inset=$((2 * scale))
-        far_x=$((width - 3 * scale))
-        far_y=$((height - 3 * scale))
-        point_size=$((16 * scale))
-        bullet_size=$((16 * scale))
-        bullet_center=$((8 * scale))
-        bullet_edge=$scale
-        progress_width=$((300 * scale))
-        progress_height=$((10 * scale))
+        background.source = Image("background.png");
+        background.image = background.source.Scale(screen.w, screen.h);
+        background.sprite = Sprite(background.image);
+        background.sprite.SetPosition(screen.x, screen.y, -100);
 
-        magick \
-          -size "''${width}x''${height}" xc:none \
-          -fill '#${colors.base00}cc' \
-          -stroke '#${colors.base05}' \
-          -strokewidth $((4 * scale)) \
-          -draw "rectangle ''${inset},''${inset} ''${far_x},''${far_y}" \
-          "$themeDir/entry-''${scale}x.png"
+        entry.image = Image("entry-" + scale + "x.png");
+        entry.empty_image = Image("entry-empty-" + scale + "x.png");
+        entry.sprite = Sprite(entry.image);
+        entry.x = center.x - entry.image.GetWidth() / 2;
+        entry.y = center.y - entry.image.GetHeight() / 2;
+        entry.sprite.SetPosition(entry.x, entry.y, 100);
+        entry.sprite.SetOpacity(0);
 
-        magick \
-          "$themeDir/entry-''${scale}x.png" \
-          -font ${font} \
-          -pointsize "$point_size" \
-          -fill '#${colors.base05}' \
-          -gravity center \
-          -annotate +0+0 'Enter Password' \
-          "$themeDir/entry-empty-''${scale}x.png"
+        bullet.image = Image("bullet-" + scale + "x.png");
+        bullet.sprites = [];
+        status.sprite = Sprite();
 
-        magick \
-          -size "''${bullet_size}x''${bullet_size}" xc:none \
-          -fill '#${colors.base05}' \
-          -draw "circle ''${bullet_center},''${bullet_center} ''${bullet_center},''${bullet_edge}" \
-          "$themeDir/bullet-''${scale}x.png"
+        progress.track_image = Image("progress-track-" + scale + "x.png");
+        progress.track_sprite = Sprite(progress.track_image);
+        progress.x = center.x - progress.track_image.GetWidth() / 2;
+        progress.y = center.y - progress.track_image.GetHeight() / 2;
+        progress.track_sprite.SetPosition(progress.x, progress.y, 10);
+        progress.track_sprite.SetOpacity(0);
 
-        magick \
-          -size "''${progress_width}x''${progress_height}" \
-          "xc:#${colors.base02}" \
-          "$themeDir/progress-track-''${scale}x.png"
+        progress.fill_source = Image("progress-fill-" + scale + "x.png");
+        progress.fill_sprite = Sprite(progress.fill_source.Scale(1, progress.fill_source.GetHeight()));
+        progress.fill_sprite.SetPosition(progress.x, progress.y, 11);
+        progress.fill_sprite.SetOpacity(0);
 
-        magick \
-          -size "''${progress_width}x''${progress_height}" \
-          "xc:#${colors.base05}" \
-          "$themeDir/progress-fill-''${scale}x.png"
-      done
+        global.fake_progress_limit = 0.7;
+        global.fake_progress_duration = 15.0;
+        global.animation_frame = 0;
+        global.fake_progress = 0.0;
+        global.fake_progress_active = 0;
+        global.fake_progress_start_time = 0.0;
+        global.password_shown = 0;
+        global.max_progress = 0.0;
 
-      cat > "$themeDir/${themeName}.plymouth" <<EOF
-      [Plymouth Theme]
-      Name=Hyprlock LUKS
-      Description=Hyprlock-matched encrypted-volume prompt
-      ModuleName=script
+        fun update_progress(progress_value)
+        {
+            if (progress_value > global.max_progress)
+            {
+                global.max_progress = progress_value;
+                width = Math.Int(progress.fill_source.GetWidth() * progress_value);
+                if (width < 1)
+                    width = 1;
+                if (width > progress.fill_source.GetWidth())
+                    width = progress.fill_source.GetWidth();
 
-      [script]
-      ImageDir=$themeDir
-      ScriptFile=/etc/plymouth/themes/${themeName}/${themeName}.script
-      EOF
+                progress.fill_image = progress.fill_source.Scale(width, progress.fill_source.GetHeight());
+                progress.fill_sprite.SetImage(progress.fill_image);
+            }
+        }
 
-      cat > "$themeDir/${themeName}.script" <<'EOF'
-      Window.SetBackgroundTopColor(${toPlymouthColor colors.base00});
-      Window.SetBackgroundBottomColor(${toPlymouthColor colors.base00});
+        fun show_progress()
+        {
+            progress.track_sprite.SetOpacity(1);
+            progress.fill_sprite.SetOpacity(1);
+        }
 
-      screen.x = Window.GetX(0);
-      screen.y = Window.GetY(0);
-      screen.w = Window.GetWidth(0);
-      screen.h = Window.GetHeight(0);
-      center.x = screen.x + screen.w / 2;
-      center.y = screen.y + screen.h / 2;
-      scale = 1;
-      if (screen.w >= 2560)
-          scale = 2;
-      if (screen.h >= 1600)
-          scale = 2;
+        fun hide_progress()
+        {
+            progress.track_sprite.SetOpacity(0);
+            progress.fill_sprite.SetOpacity(0);
+        }
 
-      background.source = Image("background.png");
-      background.image = background.source.Scale(screen.w, screen.h);
-      background.sprite = Sprite(background.image);
-      background.sprite.SetPosition(screen.x, screen.y, -100);
+        fun start_fake_progress()
+        {
+            global.animation_frame = 0;
+            global.fake_progress = 0.0;
+            global.fake_progress_start_time = 0.0;
+            global.max_progress = 0.0;
+            global.fake_progress_active = 1;
+        }
 
-      entry.image = Image("entry-" + scale + "x.png");
-      entry.empty_image = Image("entry-empty-" + scale + "x.png");
-      entry.sprite = Sprite(entry.image);
-      entry.x = center.x - entry.image.GetWidth() / 2;
-      entry.y = center.y - entry.image.GetHeight() / 2;
-      entry.sprite.SetPosition(entry.x, entry.y, 100);
-      entry.sprite.SetOpacity(0);
+        fun refresh()
+        {
+            global.animation_frame++;
+            if (global.fake_progress_active == 1)
+            {
+                elapsed = global.animation_frame / 50.0;
+                ratio = elapsed / global.fake_progress_duration;
+                if (ratio > 1.0)
+                    ratio = 1.0;
 
-      bullet.image = Image("bullet-" + scale + "x.png");
-      bullet.sprites = [];
-      status.sprite = Sprite();
+                eased = 1 - ((1 - ratio) * (1 - ratio));
+                global.fake_progress = eased * global.fake_progress_limit;
+                update_progress(global.fake_progress);
+            }
+        }
 
-      progress.track_image = Image("progress-track-" + scale + "x.png");
-      progress.track_sprite = Sprite(progress.track_image);
-      progress.x = center.x - progress.track_image.GetWidth() / 2;
-      progress.y = center.y - progress.track_image.GetHeight() / 2;
-      progress.track_sprite.SetPosition(progress.x, progress.y, 10);
-      progress.track_sprite.SetOpacity(0);
+        fun hide_bullets()
+        {
+            for (i = 0; bullet.sprites[i]; i++)
+                bullet.sprites[i].SetOpacity(0);
+        }
 
-      progress.fill_source = Image("progress-fill-" + scale + "x.png");
-      progress.fill_sprite = Sprite(progress.fill_source.Scale(1, progress.fill_source.GetHeight()));
-      progress.fill_sprite.SetPosition(progress.x, progress.y, 11);
-      progress.fill_sprite.SetOpacity(0);
+        fun display_password(prompt, bullet_count)
+        {
+            global.password_shown = 1;
+            global.fake_progress_active = 0;
+            hide_progress();
+            status.sprite.SetOpacity(0);
+            entry.sprite.SetOpacity(1);
+            hide_bullets();
 
-      global.fake_progress_limit = 0.7;
-      global.fake_progress_duration = 15.0;
-      global.animation_frame = 0;
-      global.fake_progress = 0.0;
-      global.fake_progress_active = 0;
-      global.fake_progress_start_time = 0.0;
-      global.password_shown = 0;
-      global.max_progress = 0.0;
+            if (bullet_count == 0)
+                entry.sprite.SetImage(entry.empty_image);
+            else
+                entry.sprite.SetImage(entry.image);
 
-      fun update_progress(progress_value)
-      {
-          if (progress_value > global.max_progress)
-          {
-              global.max_progress = progress_value;
-              width = Math.Int(progress.fill_source.GetWidth() * progress_value);
-              if (width < 1)
-                  width = 1;
-              if (width > progress.fill_source.GetWidth())
-                  width = progress.fill_source.GetWidth();
+            visible = bullet_count;
+            if (visible > 19)
+                visible = 19;
 
-              progress.fill_image = progress.fill_source.Scale(width, progress.fill_source.GetHeight());
-              progress.fill_sprite.SetImage(progress.fill_image);
-          }
-      }
+            dot_spacing = 3 * scale;
+            spacing = bullet.image.GetWidth() + dot_spacing;
+            start_x = center.x - (visible * spacing - dot_spacing) / 2;
+            bullet_y = center.y - bullet.image.GetHeight() / 2;
 
-      fun show_progress()
-      {
-          progress.track_sprite.SetOpacity(1);
-          progress.fill_sprite.SetOpacity(1);
-      }
+            for (i = 0; i < visible; i++)
+            {
+                if (!bullet.sprites[i])
+                    bullet.sprites[i] = Sprite(bullet.image);
 
-      fun hide_progress()
-      {
-          progress.track_sprite.SetOpacity(0);
-          progress.fill_sprite.SetOpacity(0);
-      }
+                bullet.sprites[i].SetPosition(start_x + i * spacing, bullet_y, 101);
+                bullet.sprites[i].SetOpacity(1);
+            }
+        }
 
-      fun start_fake_progress()
-      {
-          global.animation_frame = 0;
-          global.fake_progress = 0.0;
-          global.fake_progress_start_time = 0.0;
-          global.max_progress = 0.0;
-          global.fake_progress_active = 1;
-      }
+        fun display_question(prompt, entry_text)
+        {
+            global.fake_progress_active = 0;
+            hide_progress();
+            hide_bullets();
+            entry.sprite.SetImage(entry.image);
+            entry.sprite.SetOpacity(1);
 
-      fun refresh()
-      {
-          global.animation_frame++;
-          if (global.fake_progress_active == 1)
-          {
-              elapsed = global.animation_frame / 50.0;
-              ratio = elapsed / global.fake_progress_duration;
-              if (ratio > 1.0)
-                  ratio = 1.0;
+            question.image = Image.Text(entry_text, ${toPlymouthColor colors.base05}, 1, "JetBrainsMono Nerd Font " + 16 * scale);
+            status.sprite.SetImage(question.image);
+            status.sprite.SetPosition(center.x - question.image.GetWidth() / 2, center.y - question.image.GetHeight() / 2, 101);
+            status.sprite.SetOpacity(1);
+        }
 
-              eased = 1 - ((1 - ratio) * (1 - ratio));
-              global.fake_progress = eased * global.fake_progress_limit;
-              update_progress(global.fake_progress);
-          }
-      }
+        fun display_message(message)
+        {
+            status.image = Image.Text(message, ${toPlymouthColor colors.base08}, 1, "JetBrainsMono Nerd Font " + 14 * scale);
+            status.sprite.SetImage(status.image);
+            status.sprite.SetPosition(center.x - status.image.GetWidth() / 2, entry.y + entry.image.GetHeight() + 18 * scale, 101);
+            status.sprite.SetOpacity(1);
+        }
 
-      fun hide_bullets()
-      {
-          for (i = 0; bullet.sprites[i]; i++)
-              bullet.sprites[i].SetOpacity(0);
-      }
+        fun display_normal()
+        {
+            entry.sprite.SetOpacity(0);
+            status.sprite.SetOpacity(0);
+            hide_bullets();
 
-      fun display_password(prompt, bullet_count)
-      {
-          global.password_shown = 1;
-          global.fake_progress_active = 0;
-          hide_progress();
-          status.sprite.SetOpacity(0);
-          entry.sprite.SetOpacity(1);
-          hide_bullets();
+            mode = Plymouth.GetMode();
+            if ((mode == "boot" || mode == "resume") && global.password_shown == 1)
+            {
+                show_progress();
+                start_fake_progress();
+            }
+        }
 
-          if (bullet_count == 0)
-              entry.sprite.SetImage(entry.empty_image);
-          else
-              entry.sprite.SetImage(entry.image);
+        fun boot_progress(duration, progress_value)
+        {
+            if (global.fake_progress_start_time == 0.0)
+                global.fake_progress_start_time = duration;
 
-          visible = bullet_count;
-          if (visible > 19)
-              visible = 19;
+            if (duration > global.fake_progress_start_time && progress_value > global.fake_progress)
+            {
+                global.fake_progress_active = 0;
+                update_progress(progress_value);
+            }
+        }
 
-          dot_spacing = 3 * scale;
-          spacing = bullet.image.GetWidth() + dot_spacing;
-          start_x = center.x - (visible * spacing - dot_spacing) / 2;
-          bullet_y = center.y - bullet.image.GetHeight() / 2;
+        Plymouth.SetRefreshFunction(refresh);
+        Plymouth.SetDisplayPasswordFunction(display_password);
+        Plymouth.SetDisplayQuestionFunction(display_question);
+        Plymouth.SetMessageFunction(display_message);
+        Plymouth.SetDisplayNormalFunction(display_normal);
+        Plymouth.SetBootProgressFunction(boot_progress);
+      '';
+      theme =
+        pkgs.runCommand "${themeName}-plymouth-theme" {
+          nativeBuildInputs = [
+            hyprlockBlur
+            pkgs.imagemagick
+          ];
+        } ''
+          themeDir="$out/share/plymouth/themes/${themeName}"
+          mkdir -p "$themeDir"
 
-          for (i = 0; i < visible; i++)
-          {
-              if (!bullet.sprites[i])
-                  bullet.sprites[i] = Sprite(bullet.image);
+          hyprlock-blur \
+            --shaders ${pkgs.hyprlock.src}/src/renderer/Shaders.hpp \
+            --size 3840 2160 \
+            ${wallpaper} \
+            "$themeDir/background.png"
 
-              bullet.sprites[i].SetPosition(start_x + i * spacing, bullet_y, 101);
-              bullet.sprites[i].SetOpacity(1);
-          }
-      }
+          for scale in 1 2; do
+            width=$((400 * scale))
+            height=$((60 * scale))
+            inset=$((2 * scale))
+            far_x=$((width - 3 * scale))
+            far_y=$((height - 3 * scale))
+            point_size=$((16 * scale))
+            bullet_size=$((16 * scale))
+            bullet_center=$((8 * scale))
+            bullet_edge=$scale
+            progress_width=$((300 * scale))
+            progress_height=$((10 * scale))
 
-      fun display_question(prompt, entry_text)
-      {
-          global.fake_progress_active = 0;
-          hide_progress();
-          hide_bullets();
-          entry.sprite.SetImage(entry.image);
-          entry.sprite.SetOpacity(1);
+            magick \
+              -size "''${width}x''${height}" xc:none \
+              -fill '#${colors.base00}cc' \
+              -stroke '#${colors.base05}' \
+              -strokewidth $((4 * scale)) \
+              -draw "rectangle ''${inset},''${inset} ''${far_x},''${far_y}" \
+              "$themeDir/entry-''${scale}x.png"
 
-          question.image = Image.Text(entry_text, ${toPlymouthColor colors.base05}, 1, "JetBrainsMono Nerd Font " + 16 * scale);
-          status.sprite.SetImage(question.image);
-          status.sprite.SetPosition(center.x - question.image.GetWidth() / 2, center.y - question.image.GetHeight() / 2, 101);
-          status.sprite.SetOpacity(1);
-      }
+            magick \
+              "$themeDir/entry-''${scale}x.png" \
+              -font ${font} \
+              -pointsize "$point_size" \
+              -fill '#${colors.base05}' \
+              -gravity center \
+              -annotate +0+0 'Enter Password' \
+              "$themeDir/entry-empty-''${scale}x.png"
 
-      fun display_message(message)
-      {
-          status.image = Image.Text(message, ${toPlymouthColor colors.base08}, 1, "JetBrainsMono Nerd Font " + 14 * scale);
-          status.sprite.SetImage(status.image);
-          status.sprite.SetPosition(center.x - status.image.GetWidth() / 2, entry.y + entry.image.GetHeight() + 18 * scale, 101);
-          status.sprite.SetOpacity(1);
-      }
+            magick \
+              -size "''${bullet_size}x''${bullet_size}" xc:none \
+              -fill '#${colors.base05}' \
+              -draw "circle ''${bullet_center},''${bullet_center} ''${bullet_center},''${bullet_edge}" \
+              "$themeDir/bullet-''${scale}x.png"
 
-      fun display_normal()
-      {
-          entry.sprite.SetOpacity(0);
-          status.sprite.SetOpacity(0);
-          hide_bullets();
+            magick \
+              -size "''${progress_width}x''${progress_height}" \
+              "xc:#${colors.base02}" \
+              "$themeDir/progress-track-''${scale}x.png"
 
-          mode = Plymouth.GetMode();
-          if ((mode == "boot" || mode == "resume") && global.password_shown == 1)
-          {
-              show_progress();
-              start_fake_progress();
-          }
-      }
+            magick \
+              -size "''${progress_width}x''${progress_height}" \
+              "xc:#${colors.base05}" \
+              "$themeDir/progress-fill-''${scale}x.png"
+          done
 
-      fun boot_progress(duration, progress_value)
-      {
-          if (global.fake_progress_start_time == 0.0)
-              global.fake_progress_start_time = duration;
+          cat > "$themeDir/${themeName}.plymouth" <<EOF
+          [Plymouth Theme]
+          Name=Hyprlock LUKS
+          Description=Hyprlock-matched encrypted-volume prompt
+          ModuleName=script
 
-          if (duration > global.fake_progress_start_time && progress_value > global.fake_progress)
-          {
-              global.fake_progress_active = 0;
-              update_progress(progress_value);
-          }
-      }
+          [script]
+          ImageDir=/etc/plymouth/themes/${themeName}
+          ScriptFile=/etc/plymouth/themes/${themeName}/${themeName}.script
+          EOF
 
-      Plymouth.SetRefreshFunction(refresh);
-      Plymouth.SetDisplayPasswordFunction(display_password);
-      Plymouth.SetDisplayQuestionFunction(display_question);
-      Plymouth.SetMessageFunction(display_message);
-      Plymouth.SetDisplayNormalFunction(display_normal);
-      Plymouth.SetBootProgressFunction(boot_progress);
-      EOF
-    '';
+          cat > "$themeDir/${themeName}.script" <<'EOF'
+          ${script}
+          EOF
+        '';
+    };
   in {
     boot = {
       consoleLogLevel = 0;
@@ -305,11 +365,11 @@
         "vt.global_cursor_default=0"
       ];
       plymouth = {
+        inherit (theme) font;
         enable = true;
         showDelay = 0;
-        inherit font;
-        theme = themeName;
-        themePackages = [theme];
+        theme = theme.themeName;
+        themePackages = [theme.theme];
       };
     };
   };

@@ -2,8 +2,18 @@
 
 ## Environment
 
-Use Lix with flakes enabled. On Linux, enter the focused development shell with
-direnv or directly:
+Use Lix with flakes enabled. The private application monorepo uses SSH so Git
+can authenticate through the 1Password SSH agent without a GitHub token in Nix
+configuration. Enable the SSH agent in 1Password, add the key to GitHub as an
+authentication key, unlock 1Password, and verify the connection:
+
+```sh
+test -S "$HOME/.1password/agent.sock"
+ssh -T git@github.com
+```
+
+GitHub should identify the account and report that it does not provide shell
+access. Then enter the development shell:
 
 ```sh
 direnv allow
@@ -11,16 +21,20 @@ direnv allow
 nix develop
 ```
 
+Run `nh os switch` as the login user, without a leading `sudo`. `nh` elevates
+activation itself; starting it with `sudo` would hide the user's 1Password
+agent from the flake fetch.
+
 `.envrc` watches the flake and module roots. It optionally loads the ignored
 `.envrc.local` file for machine-local, short-lived settings. Do not store
 long-lived credentials there.
 
 Amp Orbs run `.agents/setup` once and `.agents/resume` after resumption. These
 scripts install or verify Lix, configure read-only Cachix trust, and activate
-the focused direnv shell. They do not configure nixbuild.net, BuildBuddy,
-Tailscale, or project secrets.
+the focused direnv shell. They do not configure BuildBuddy, Tailscale, or
+project secrets.
 
-## Commands
+## Checks
 
 ```sh
 nix fmt
@@ -29,12 +43,15 @@ nix flake check -L
 ```
 
 `nix fmt` runs Alejandra for Nix, Prettier for Markdown, JSON, and YAML, and
-shfmt for shell scripts. Checks include Statix, deadnix, ShellCheck, actionlint,
-workflow policy, Renovate validation, Git-convention fixtures, Gitleaks, and the
-Amp plugin tests.
+shfmt for shell scripts. Flake checks cover formatting, Statix, deadnix,
+ShellCheck, Renovate configuration, Git conventions, Gitleaks, Minuet's secret
+transport, and the Notion Calendar integration.
 
-The pre-push hook runs only branch validation and
-`nix flake check --all-systems --no-build`. It does not build host systems.
+The pre-push hook validates the branch and evaluates the flake without building
+the host. On each push to `master`, GitHub Actions repeats evaluation, builds the
+full `t1` closure, and uploads newly built paths to `anshulnoori.cachix.org`.
+The workflow requires `CACHIX_AUTH_TOKEN` and a read-only monorepo deploy key in
+`MONOREPO_SSH_KEY` as repository secrets.
 
 ## Git conventions
 
@@ -48,63 +65,29 @@ feat fix docs style refactor perf test build ci chore revert flake host module
 ```
 
 Use `revert: ...` for a conventional revert. Generated `Merge ...`,
-`Revert ...`, `fixup! ...`, and `squash! ...` commits are rejected. CI also
-rejects merge commits to preserve linear history.
-
-## CI and builds
-
-`Nixconf CI` runs on every branch push and on manual dispatch. It has no pull
-request trigger or gate job.
-
-1. The Git job validates the branch, commit range, linear history, and secrets.
-2. The quality job evaluates both Linux systems, then runs the native
-   `x86_64-linux` flake checks. Branch checks have read-only cache access;
-   `master` checks may publish results.
-
-There are no host build targets yet. When hosts are added, CI will call
-`nix build`: AMD64 targets will build on the GitHub runner and ARM64 device
-targets will use nixbuild.net. Developer machines, pre-push hooks, and Amp Orbs
-must not receive nixbuild.net credentials.
-
-Only the `master` check receives `CACHIX_AUTH_TOKEN`, scoped to the
-repository-specific `cachix watch-exec` step. CI does not persist the token or
-install a whole-store watcher. Trusted physical devices may publish explicit
-repository builds by retrieving the Cachix token from 1Password at runtime;
-they must not persist the token as plaintext.
+`Revert ...`, `fixup! ...`, and `squash! ...` commits are rejected. Keep history
+linear.
 
 ## Dependency updates
 
-Renovate scans daily in `prCreation: "approval"` mode. It creates update
-branches immediately and lists them in the required Dependency Dashboard, but
-does not create a pull request unless someone checks a dashboard approval box.
-Do not use those approval boxes: Amp review, Mako notification, and an explicit
-owner merge request are the promotion path. Renovate vulnerability-alert PRs
-are disabled to preserve this zero-PR contract. Nix flake input updates and
-GitHub Actions updates each use one grouped branch. Lock-file maintenance runs
-weekly and creates a branch only when `flake.lock` changes.
+Renovate scans daily in `prCreation: "approval"` mode. It creates grouped Nix
+flake update branches and lists them in the Dependency Dashboard. Weekly lock
+file maintenance creates a branch only when `flake.lock` changes. Nothing
+merges, builds, or activates an update automatically.
 
-CI completion on a `renovate/*` branch can be delivered to the project-local
-Amp plugin as a signed `workflow_run` webhook. The plugin verifies repository,
-workflow, actor, branch, commit, and signature before starting a private,
-read-only review thread. Only a later direct owner message may authorize a
-fast-forward merge and push.
+The `services.nixconf-update` user timer polls GitHub every six hours. It records
+active `renovate/*` revisions and compares `master` with the revision embedded
+in the running NixOS system. Waybar shows actionable state, and Mako sends at
+most one persistent notification for each branch revision. Clicking the
+indicator opens GitHub-provided diffs in a floating terminal. A confirmed
+update fast-forwards a clean `/etc/nixos` checkout to the inspected `master`
+revision and runs `nh os switch`; it never merges a Renovate branch.
 
-The deferred module `modules.homeManager.base` defines the disabled
-`services.nixconf-renovate-notifier` option. When enabled, the service polls
-GitHub every six hours and sends one desktop notification for each new branch
-SHA. It does not expose an inbound device webhook.
+Install and enable Renovate for `anshulnoori/nixconf` separately. The repository
+does not create external services, credentials, or repository settings.
 
-## External setup
+## Development policy
 
-These shared settings are intentionally not changed by repository code:
-
-- Install and enable Renovate for `anshulnoori/nixconf`.
-- Add the `CACHIX_AUTH_TOKEN` repository secret.
-- Run the Renovate review plugin in its owning private Amp Orb thread with
-  `RENOVATE_REVIEW_OWNER_THREAD` and `RENOVATE_REVIEW_WEBHOOK_SECRET`.
-- Register the generated private webhook URL with GitHub for `workflow_run`
-  events and use the same secret.
-- Add `NIXBUILDNET_TOKEN` only when ARM64 host build targets are introduced.
-
-No repository ruleset, webhook, secret, or external service is created
-automatically.
+nvf owns Neovim. Per-project flakes supply language servers, formatters,
+linters, build tools, and language toolchains. Do not add those tools globally
+to this flake.

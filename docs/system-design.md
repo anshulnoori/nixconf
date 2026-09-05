@@ -13,10 +13,10 @@ the user rather than silently choosing one.
 - The installation starts from the official NixOS 26.05 minimal ISO, verified
   and flashed to USB with Balena Etcher.
 - Work proceeds in this order: read-only inspection; an exact destructive disk
-  plan and fresh approval; encrypted base installation; base first-boot
-  validation with Secure Boot disabled; desktop activation and validation; and
-  Secure Boot enrollment and verification. A separate recovery specialization
-  is deferred; previous Limine generations are the current rollback path.
+  plan and fresh approval; encrypted `t1` installation; first-boot validation
+  with Secure Boot disabled; and Secure Boot enrollment and verification. A
+  separate recovery specialization is deferred; previous Limine generations
+  are the current rollback path.
 - The user reports that the new target SSD is empty. This workflow has not
   performed a destructive action or consumed approval for one. The live
   successor must identify the target disk, show the existing data, exact
@@ -99,18 +99,22 @@ separately maintained stable-Lix configuration.
 
 - Limine is the bootloader.
 - The official installer boots with Secure Boot temporarily disabled. The first
-  installed boot also keeps Secure Boot disabled while the user validates the
-  base system. The full desktop comes after that gate. Enrollment follows only
-  after the desktop stage passes.
-- Secure Boot setup follows the current CachyOS process where it fits NixOS and
-  Limine. The current [CachyOS Secure Boot guide](https://wiki.cachyos.org/configuration/secure_boot_setup/)
-  is a process reference, not a source of Arch-specific commands. On the MSI
-  board, firmware uses custom mode and its maximum-security compatibility
-  setting. The process enrolls local keys with Microsoft and OEM certificates,
-  signs Limine, enrolls its configuration checksum, enables Secure Boot, and
-  then verifies the active state.
+  installed boot also keeps firmware enforcement disabled while the user
+  validates the complete system. Limine generates local keys and signs the boot
+  chain during installation; firmware enrollment follows only after first-boot
+  checks pass.
+- Secure Boot uses NixOS's native Limine support with automatically generated
+  and manually enrolled `sbctl` keys. The MSI board stays in custom mode with its
+  maximum-security preset. Before resetting firmware keys, the runbook verifies
+  and exports the current firmware certificate sets, then verifies that the
+  firmware-default variables remain available in Setup Mode. Enrollment then
+  includes Microsoft certificates and those verified firmware-default
+  certificates for Option ROM and update compatibility. The exact procedure is in
+  [the Secure Boot runbook](./secure-boot.md).
 - The Secure Boot private keys remain below encrypted root. The firmware
   administrator password is recorded on paper.
+- Memtest86+ is copied to the EFI system partition, signed with the same local
+  key as Limine, and exposed as a Limine boot entry.
 - The normal kernel package is
   `pkgs.cachyosKernels.linuxPackages-cachyos-bore-lto-zen4` from
   `xddxdd/nix-cachyos-kernel`.
@@ -318,16 +322,16 @@ than minimum heat or noise.
 
 Use the latest released CoolerControl package from `nixos-unstable`, not an
 upstream-main build. Enable it with `programs.coolercontrol.enable = true` and
-include its GUI plus `lm_sensors`. The daemon starts at boot, but the GUI opens
-only manually; do not autostart its GUI or tray. CoolerControl has no official
-TUI. Bind its API and Web UI to loopback only at `localhost:11987`, with no LAN
-or tailnet exposure.
+provide `lm_sensors` for direct terminal readings. The daemon starts at boot,
+but the GUI opens only manually; do not autostart its GUI or tray. CoolerControl
+has no official TUI. Bind its API and Web UI to loopback only at
+`localhost:11987`, with no LAN or tailnet exposure.
 
 NixOS owns the CoolerControl package and service. CoolerControl owns its mutable
 calibration and profiles under encrypted root. Initially leave every fan
 channel unmanaged so the BIOS remains in control until live calibration and an
-explicit profile assignment. Use motherboard hwmon; keep `liquidctl` available
-but unused unless compatible hardware is detected. BIOS keeps independent safe
+explicit profile assignment. Use motherboard hwmon; add `liquidctl` only if a
+supported USB cooling device is installed later. BIOS keeps independent safe
 curves for pre-Linux boot, recovery, and service failure. Do not invent fan
 percentages before calibration. Build performance-first curves from live
 measurements; the user may later copy a proven runtime curve into BIOS manually.
@@ -335,13 +339,17 @@ measurements; the user may later copy a proven runtime curve into BIOS manually.
 ## Gaming
 
 - Steam enables the 32-bit graphics and audio stack.
-- Proton-GE is the default Steam compatibility runtime.
+- Nix exposes Proton-GE to Steam. Select it once as Steam's default
+  compatibility runtime; declarative activation does not rewrite Steam's VDF
+  state.
 - MangoHud provides runtime metrics. GOverlay provides its interactive
   configuration editor; Home Manager does not own the complete MangoHud
-  configuration.
+  configuration. Home activation updates only the shared Stylix palette and
+  typography keys in GOverlay's mutable MangoHud configuration.
 - GameMode, Gamescope, and Protontricks are installed.
 - Prism Launcher remains the Minecraft launcher.
 - Steam libraries and all Prism Launcher data use `/home/mvs/games`.
+- Add `/home/mvs/games/Steam` as a Steam library once through Steam's UI.
 - The game subvolume has no local snapshots. Minecraft worlds use a separate
   backup method.
 - Moonlight, Heroic, Lutris, UMU, Proton-CachyOS, and Wine-CachyOS are not
@@ -357,10 +365,11 @@ The `mvs` password is entered interactively, and Wi-Fi, Tailscale, and
 stays below LUKS and never enters the repository or Nix store.
 
 Add a runtime secrets mechanism only with the first real noninteractive
-consumer. Do not add a private submodule or separate secret flake preemptively.
-Secure Boot signing keys remain below encrypted root when that later stage is
-implemented. The normal installation does not create an offline
-administrator-key USB. A high-entropy LUKS recovery key is printed on paper.
+consumer. The private application monorepo uses SSH through the interactive
+1Password agent; no GitHub token is stored in Nix configuration. Secure Boot
+signing keys remain below encrypted root at `/var/lib/sbctl`. The normal
+installation does not create an offline administrator-key USB. A high-entropy
+LUKS recovery key is printed on paper.
 
 ## User environment
 
@@ -395,24 +404,37 @@ Additional decisions:
   Snacks dashboard, explorer, indentation, input, picker, notifier, quick-file,
   scope, scrolling, status-column, and word-reference features. Do not import
   LazyVim itself.
-- Language servers and their toolchains normally come from each project's Nix
-  development shell. The global set contains nixd, Marksman, Taplo, YAML, JSON,
-  and Lua language servers.
+- All language servers, formatters, linters, build tools, and language
+  toolchains come from each project's Nix development shell. nvf only declares
+  their command names and starts commands that exist on the project `PATH`.
 - Preserve the current Mac's Gradle task UI, `uv.nvim` integration,
   project-scoped Biome, project-scoped OCaml language server and formatter,
-  dotfile filetype support, mini.hipatterns hex and Tailwind previews, and the
-  on-demand `StartupTime` diagnostic.
-- Do not transfer the tmux navigator because zmx replaces tmux navigation, the
-  obsolete `/tmp/nvim.sock` cleanup, Mason, or hardcoded macOS, Homebrew,
-  Kotlin, and JDK paths.
+  dotfile filetype support, `mini.hipatterns` hex previews, and the on-demand
+  `StartupTime` diagnostic. The project Tailwind LSP and Neovim's native
+  document-color support own Tailwind color previews.
+- Snacks owns the dashboard, explorer, picker, and notifications. Alpha and
+  Neo-tree are not installed.
+- `mini.icons` owns icons and supplies its `nvim-web-devicons` compatibility
+  shim.
+- Conform owns format-on-save. LSP formatting is the fallback when a project
+  formatter is unavailable.
+- Each project supplies one diagnostic source for each language. Do not run the
+  Biome LSP and Biome through nvim-lint at the same time. In projects with a
+  Biome configuration, Biome also owns JSON diagnostics; the standalone JSON
+  language server attaches only outside those projects.
+- Smart-splits owns Neovim/tmux pane navigation and resizing. It loads eagerly
+  so tmux can identify Neovim panes before the first navigation key.
+- Do not transfer the obsolete `/tmp/nvim.sock` cleanup, Mason, or hardcoded
+  macOS, Homebrew, Kotlin, and JDK paths.
 - `amp.nvim` owns Amp agent interaction. Minuet provides Blink and virtual-text
   AI completion through
   `https://ai.mongoose-silverside.ts.net/v1/chat/completions`. The initial model
   is Minuet's OpenAI-compatible default, `deepseek/deepseek-v4-flash`, subject
   to validation against the authenticated LiteLLM model list. Streaming and the
   other Minuet completion defaults remain unchanged. The endpoint requires an
-  API token. Add its runtime secret delivery with Minuet rather than selecting
-  a secrets framework preemptively; the token must remain outside the Nix store.
+  API token. Minuet retrieves the item by UUID from 1Password's `credential`
+  field on first use and caches it only in the Neovim process. The token does
+  not enter the Nix store, process arguments, shell environment, or filesystem.
   Virtual-text suggestions trigger automatically after a short idle period.
   Blink exposes Minuet through a manual keybinding so that both interfaces do
   not request automatic completions concurrently. GitHub Copilot is excluded.
@@ -423,8 +445,9 @@ Additional decisions:
   shells.
 - CUPS, Syncthing, libvirt/QEMU, and unrequested network-sharing services are
   disabled initially.
-- No incoming SSH or Mosh service is enabled. The outbound OpenSSH client
-  remains available for Git and administering other tailnet hosts.
+- No incoming SSH or Mosh service is enabled. Mosh is the primary outbound
+  interactive shell. OpenSSH remains available for Mosh bootstrap, Git, and
+  noninteractive remote administration.
 - No general local-data backup is configured initially. Projects use remote Git
   repositories, documents use cloud services, and Minecraft worlds use a
   separate backup method.
@@ -448,12 +471,15 @@ Tailscale is installed declaratively but authenticated interactively after
 first boot. Its mutable state remains below LUKS; no reusable Tailscale auth key
 is stored in the repository.
 
-The firewall defaults to denying inbound traffic. Trust only the loopback
-interface that NixOS adds by default; trust no physical or VPN interface. Open
-no SSH, Mosh, or application ports. Allow only the Tailscale transport required
-by its NixOS module; each future service must open its own ports deliberately.
-CoolerControl remains loopback-only. Amp and the OpenSSH client make outbound
-connections and need no inbound exception.
+The firewall defaults to denying inbound traffic. It trusts no physical or VPN
+interface. It permits the Tailscale transport and LocalSend TCP port 53317 on
+`tailscale0` only. LAN interfaces do not accept the LocalSend port. Tailscale
+does not carry multicast discovery, so LocalSend peers use a Tailscale IP or
+MagicDNS name. The LocalSend launcher requires an active Tailscale address and
+rewrites only LocalSend's network whitelist before launch so discovery stays on
+the tailnet while all other mutable preferences remain intact. No SSH or Mosh
+port is open. CoolerControl remains loopback-only. Amp, Mosh, and OpenSSH make
+outbound connections and need no inbound exception.
 
 ## Graphical session and login
 
@@ -490,7 +516,9 @@ idle deadline suspends or hibernates the machine.
 1Password. It does not make 1Password an operating-system login or PAM
 provider. Enable the 1Password GUI, CLI, browser integration, SSH agent, Git
 signing integration, and required polkit policy. Initial sign-in remains
-interactive.
+interactive. NixOS installs GNOME Keyring's package, D-Bus service, portal, and
+required capability wrapper. Its standard graphical-session autostart owns the
+sole daemon; Home Manager does not start a duplicate service.
 
 Use official Hyprland ecosystem components where they directly fit, including
 Hyprland, hypridle, hyprlock, hyprpolkitagent, and the Hyprland portal. Waybar,
@@ -515,6 +543,8 @@ notification daemons, bars, or wallpaper daemons.
 - The Walker desktop menu opens Nixpkgs package search in an Omarchy-sized
   875×600 modal Kitty window. Explicit selections install into or remove from
   the user's Nix profile; the core system remains declarative.
+- Configuration actions start Neovim through direnv at `/etc/nixos`, so the
+  repository dev shell supplies editor tooling without global toolchains.
 - wlr-which-key mirrors the direct Super shortcuts after a completed Super tap;
   it does not own desktop actions or settings.
 - Hardware media keys and recovery-critical bindings remain direct.
@@ -554,19 +584,32 @@ keyboard-layout, agent, or duplicate power widgets.
 
 Elephant's clipboard provider owns clipboard history and Walker presents it.
 Cliphist is not enabled because a second watcher and history store would be
-duplicate infrastructure.
+duplicate infrastructure. Hyprland translates `Super+C`, `Super+V`, and
+`Super+X` into application clipboard shortcuts. Copy and paste use the
+terminal-safe `Ctrl+Insert` and `Shift+Insert` alternatives, which Kitty handles
+without interrupting the foreground process.
 
-Update state is checked by a lightweight user timer every six hours. It detects
-new `renovate/*` branch revisions and a merged configuration newer than the
-running revision. Waybar shows the state and Mako sends at most one notification
-per branch SHA. Clicking the module opens a floating Kitty window with the
-branch, diff, and deliberate update action. Nothing auto-merges or switches.
+Update state is checked by a lightweight user timer two minutes after boot and
+every six hours thereafter. It detects active `renovate/*` branch revisions and
+compares `master` with the Git revision embedded in the running system. Waybar
+shows the state and Mako sends at most one notification per branch SHA.
+Clicking the module opens a floating Kitty window with GitHub-provided diffs.
+After explicit confirmation, the tool can fast-forward a clean `/etc/nixos`
+`master` checkout to the inspected revision and run `nh os switch`. It never
+merges a Renovate branch, and nothing auto-merges or switches.
 
 ## Git identity
 
 There is no global author identity or signing key. Set
-`user.useConfigOnly=true` and select identity through native conditional Git
-includes and SSH host aliases.
+`user.useConfigOnly=true`. The configured Git executable selects identity from
+the owner in `remote.origin.url` on every invocation. A repository without an
+origin is local and defaults to the main profile. Other remotes do not
+participate; an unrecognized nonempty origin remains unset and fails safely.
+
+GitHub CLI clones over SSH so Git and GitHub CLI share the 1Password SSH agent.
+The private flake input uses the same path. `SSH_AUTH_SOCK` and OpenSSH's
+`IdentityAgent` both point to that agent. Run `nh` as the login user so the
+fetch inherits this authentication context; `nh` elevates activation itself.
 
 | Profile   | Author                                                           |
 | --------- | ---------------------------------------------------------------- |
@@ -574,12 +617,14 @@ includes and SSH host aliases.
 | Alternate | `Mervs <246713988+maroonverticalshape@users.noreply.github.com>` |
 
 Both profiles sign commits and tags with profile-specific 1Password SSH keys.
-Unknown repositories fail until assigned a local profile. `gh auth switch`
-changes GitHub API credentials only and does not select commit authorship.
+Their public keys also form Git's local allowed-signers file so signatures can
+be verified locally. Repositories with unknown remotes fail until assigned a
+local profile. `gh auth switch` changes GitHub API credentials only and does not
+select commit authorship.
 
 Shared behavior:
 
-- default branch `master`;
+- default branch `main`;
 - rebase pulls;
 - automatic upstream setup on first push;
 - histogram diff and moved-line highlighting;
@@ -589,10 +634,10 @@ Shared behavior:
 - Neovim editor;
 - aliases `co`, `br`, `ci`, and `st`.
 
-## Base first-boot gate
+## First-boot gate
 
 With Secure Boot still disabled, collect concrete evidence for every item
-before starting graphics and desktop work:
+before enrolling firmware keys:
 
 - the typed LUKS unlock and encrypted-root boundary;
 - current and previous-generation Limine entries;
@@ -605,18 +650,17 @@ before starting graphics and desktop work:
 - default-deny firewall state; and
 - absence of incoming SSH and Mosh listeners.
 
-The desktop stage must separately validate Plymouth, graphical automatic login,
-explicit logout authentication, hyprlock, and audio services. Secure Boot
-enrollment remains a final stage and requires its own post-enrollment
-verification.
+Also validate Plymouth, graphical automatic login, explicit logout
+authentication, hyprlock, and audio services. Secure Boot enrollment remains
+the final stage and follows [its dedicated runbook](./secure-boot.md), including
+post-enrollment verification of normal boots, rollback, and Memtest86+.
 
 ## Remaining physical facts
 
 - official latest-version status for the BIOS, SSD, and other fwupd devices;
 - the motherboard Super-I/O driver, if one is exposed after installation;
-- exact NixOS and Limine Secure Boot commands for the discovered system;
 - authenticated validation that the LiteLLM endpoint exposes Minuet's selected
   model alias; and
-- concrete evidence from the base first-boot checks.
+- concrete evidence from the first-boot checks.
 
 Remote game-server deployment is outside this system's scope.

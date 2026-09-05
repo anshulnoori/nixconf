@@ -20,13 +20,14 @@ must return to the user rather than being resolved silently.
 | Development toolchains | Per-project Nix development shells; no global language toolchains                 |
 | Package channel        | NixOS unstable, with pinned flake inputs                                          |
 | Kernel                 | CachyOS BORE ThinLTO Zen 4; previous Limine generations provide rollback          |
+| Boot verification      | Limine Secure Boot with local keys; signed Memtest86+ entry                       |
 
 ## Desktop
 
 | Role                 | Selection                                            | Integration notes                                               |
 | -------------------- | ---------------------------------------------------- | --------------------------------------------------------------- |
 | Compositor           | Hyprland                                             | Owns windows, workspaces, displays, keybindings, and animations |
-| Bar                  | Waybar                                               | Square CSS; launches system TUIs in Kitty                       |
+| Bar                  | Waybar                                               | Square CSS; launches system interfaces in Kitty                 |
 | Command launcher     | Walker + Elephant                                    | One launcher UI with one provider backend                       |
 | Desktop menu         | Walker + Elephant menus                              | Nested actions with full-tree search from the root              |
 | Shortcut overlay     | wlr-which-key + keyd                                 | Tap Super to discover and dispatch existing shortcuts           |
@@ -56,12 +57,16 @@ bindings or feature policy.
 Elephant's clipboard provider owns clipboard history. Do not also run cliphist;
 that would duplicate the clipboard watcher and history database.
 
+Hyprland maps `Super+C`, `Super+V`, and `Super+X` to universal copy, paste, and
+cut shortcuts. Copy and paste use `Ctrl+Insert` and `Shift+Insert`, which Kitty
+consumes as clipboard operations without sending `Ctrl+C` to the running shell.
+
 ## Terminal environment
 
 | Role                 | Selection | Integration notes                                            |
 | -------------------- | --------- | ------------------------------------------------------------ |
 | Terminal             | Kitty     | JetBrains Mono Nerd Font, square decorations, Gruvbox colors |
-| Session persistence  | zmx       | Hyprland remains responsible for visible pane tiling         |
+| Terminal sessions    | tmux      | Stylix colors, pane navigation, and native tool popups       |
 | Interactive shell    | Zsh       | Keep Bash and POSIX `sh` for scripts                         |
 | Prompt               | Starship  | Shared prompt across local and remote shells                 |
 | History              | Atuin     | Searchable shell history                                     |
@@ -75,22 +80,59 @@ Zsh is the interactive shell, but portable scripts must use an explicit
 `#!/usr/bin/env bash`. Interactive-shell selection does not make scripts
 portable.
 
-## System TUIs
+### tmux
 
-| Role                  | Selection             | Preferred command                                            |
-| --------------------- | --------------------- | ------------------------------------------------------------ |
-| Wi-Fi                 | Impala                | `impala`                                                     |
-| Bluetooth             | Bluetui               | `bluetui`                                                    |
-| Audio mixer           | WireMix               | `wiremix`                                                    |
-| File manager          | Yazi                  | `yazi`, wrapped as `y` to change the parent shell directory  |
-| System monitor        | btop                  | `btop`                                                       |
-| GPU monitor           | nvtop                 | `nvtop`                                                      |
-| Journal viewer        | lazyjournal           | `lj`                                                         |
-| Git UI                | lazygit               | `lg`                                                         |
-| Container UI          | lazydocker            | `lazydocker`                                                 |
-| Command documentation | tealdeer              | `tldr`                                                       |
-| Terminal browser      | Browsh                | `browsh`                                                     |
-| Mail                  | Private custom client | Package separately without publishing private source or data |
+Shells do not start tmux automatically. `tmux new -As main` starts or attaches
+to a session. The top status bar uses the same Stylix palette as Neovim.
+Nix manages all plugins, without TPM or runtime downloads.
+
+The prefix is `Ctrl+B`, followed by a separate key:
+
+| Key                 | Action                                             |
+| ------------------- | -------------------------------------------------- |
+| `o`                 | Sesh session picker in a compact, themed fzf popup |
+| `g` / `t`           | Lazygit / temporary shell popup                    |
+| `Space`             | Thumbs hints for copying paths, URLs, and hashes   |
+| `Ctrl+S` / `Ctrl+R` | Save / restore the resurrect snapshot              |
+| `\|` / `-`          | Side-by-side / stacked panes                       |
+| `d`                 | Detach without stopping the session                |
+
+Without the prefix, `Ctrl+h/j/k/l` moves between Neovim splits and tmux panes.
+`Ctrl+Alt+h/j/k/l` resizes them, leaving `Alt+j/k` for Neovim line movement.
+The navigation bindings replace shell shortcuts such as
+`Ctrl+L` for screen clearing inside tmux. The `clear` command remains available.
+
+Continuum saves layouts and directories every 15 minutes while its status hook
+is active. It restores the snapshot when a new tmux server starts.
+Process restoration is disabled: snapshots do not preserve running jobs or
+automatically restart Amp, SSH connections, or editors. Resurrect stores snapshots
+in its default `~/.tmux/resurrect` directory. The theme loads before continuum
+to preserve its autosave hook.
+
+Direnv and nix-direnv load approved project environments through the Zsh hook.
+New panes and windows retain the current directory. Sesh starts project sessions
+in their selected directories. The lazygit popup uses `direnv exec` because it
+does not start an interactive shell. Shell popups use the Zsh hook.
+No integration automatically approves `.envrc` files or copies project variables
+into the global tmux environment. For flake projects, `.envrc` can contain
+`use flake`, with `direnv allow` as a separate approval step.
+
+## System interfaces
+
+| Role                  | Selection     | Preferred command                                           |
+| --------------------- | ------------- | ----------------------------------------------------------- |
+| Wi-Fi                 | Impala        | `impala`                                                    |
+| Bluetooth             | Bluetui       | `bluetui`                                                   |
+| Audio mixer           | WireMix       | `wiremix`                                                   |
+| File manager          | Yazi          | `yazi`, wrapped as `y` to change the parent shell directory |
+| System monitor        | btop          | `btop`                                                      |
+| GPU monitor           | nvtop         | `nvtop`                                                     |
+| Journal viewer        | lazyjournal   | `lj`                                                        |
+| Git UI                | lazygit       | `lg`                                                        |
+| Container UI          | lazydocker    | `lazydocker`                                                |
+| Command documentation | tealdeer      | `tldr`                                                      |
+| Terminal browser      | Browsh        | `browsh`                                                    |
+| Mail                  | Custom client | Add when its package and runtime contracts are ready        |
 
 Waybar modules should open these applications in a consistently styled,
 floating Kitty window. Wi-Fi, Bluetooth, audio, system load, GPU load, and logs
@@ -119,7 +161,7 @@ Use the `sensors` command from `lm_sensors` for terminal sensor readings.
 | Archives               | ouch                 |
 | HTTP                   | xh                   |
 | File watching          | watchexec            |
-| Remote client          | OpenSSH              |
+| Remote client          | Mosh + OpenSSH       |
 | Terminal recording     | asciinema            |
 | Downloads              | aria2                |
 | Network diagnostics    | nmap                 |
@@ -162,7 +204,7 @@ underneath it.
 | Shared colors       | Custom modules consume `config.lib.stylix.colors`                                      |
 | GTK and Qt          | Stylix targets                                                                         |
 | Terminal            | Stylix Kitty target                                                                    |
-| Editor              | Stylix Neovim target or a generated Gruvbox configuration                              |
+| Editor              | Stylix nvf target                                                                      |
 | Desktop components  | Generate Waybar, Walker, Mako, SwayOSD, hyprlock, and Hyprland colors from the palette |
 | Custom applications | Consume the same generated palette rather than embedding hex values                    |
 | Primary font        | JetBrains Mono Nerd Font                                                               |
@@ -194,13 +236,13 @@ audio is required when Bluetooth latency is unacceptable.
 
 ## Credentials
 
-| Role                | Selection                            | Notes                                             |
-| ------------------- | ------------------------------------ | ------------------------------------------------- |
-| Password manager    | 1Password                            | Human-managed secrets                             |
-| CLI                 | `op`                                 | Runtime secret access                             |
-| SSH agent           | 1Password SSH agent                  | Git and outbound SSH authentication               |
-| Browser integration | 1Password extension for Brave Origin | Primary web credential flow                       |
-| Secret Service      | GNOME Keyring                        | Battle-tested Freedesktop Secret Service provider |
+| Role                | Selection                            | Notes                                                  |
+| ------------------- | ------------------------------------ | ------------------------------------------------------ |
+| Password manager    | 1Password                            | Human-managed secrets                                  |
+| CLI                 | `op`                                 | Runtime secret access                                  |
+| SSH agent           | 1Password SSH agent                  | Git and outbound SSH authentication                    |
+| Browser integration | 1Password extension for Brave Origin | Primary web credential flow                            |
+| Secret Service      | GNOME Keyring                        | NixOS graphical-session autostart owns the sole daemon |
 
 Secrets must not be written into the Nix store. Resolve them at runtime through
 1Password, protected files, or an appropriate secrets module.
@@ -225,17 +267,16 @@ bookmark service rather than copying browser profile files.
 
 ## Communication and productivity
 
-| Role             | Selection                                    | Packaging notes                                                   |
-| ---------------- | -------------------------------------------- | ----------------------------------------------------------------- |
-| Secure messaging | Signal Desktop                               | Native Linux client                                               |
-| Community chat   | Discord Canary + Vencord                     | Package declaratively; accept client-mod compatibility risk       |
-| WhatsApp         | WhatsApp Web installed as a Brave Origin app | No unofficial credential-holding wrapper                          |
-| iMessage         | BlueBubbles client                           | Connect only to the Mac over Tailscale                            |
-| Mail             | Private custom client                        | Existing application                                              |
-| Calendar         | Private Notion Calendar Electron package     | Personal distribution only; Waybar integration over a Unix socket |
-| Tasks            | Todoist                                      | Native client or Brave Origin app selected during packaging       |
-| Notes            | Obsidian                                     | Unfree package allowed explicitly                                 |
-| Canvas           | tldraw                                       | Offline package or Brave Origin app selected during packaging     |
+| Role             | Selection                                    | Packaging notes                                              |
+| ---------------- | -------------------------------------------- | ------------------------------------------------------------ |
+| Secure messaging | Signal Desktop                               | Native Linux client                                          |
+| Community chat   | Discord Canary + Vencord                     | Package declaratively; accept client-mod compatibility risk  |
+| WhatsApp         | WhatsApp Web installed as a Brave Origin app | No unofficial credential-holding wrapper                     |
+| iMessage         | BlueBubbles client                           | Connect only to the Mac over Tailscale                       |
+| Mail             | Custom client                                | Existing application                                         |
+| Calendar         | Notion Calendar Electron package             | Personal distribution; Waybar integration over a Unix socket |
+| Tasks            | Todoist                                      | Native client or Brave Origin app selected during packaging  |
+| Notes            | Obsidian                                     | Unfree package allowed explicitly                            |
 
 ### iMessage bridge
 
@@ -260,29 +301,39 @@ limited without it; those limitations are preferable to weakening SIP initially.
 | Role                           | Selection               | Notes                                                            |
 | ------------------------------ | ----------------------- | ---------------------------------------------------------------- |
 | Music                          | Official Spotify client | Keep the graphical client                                        |
-| Video, audio, and still images | mpv                     | Default media handler where practical                            |
+| Video, audio, and still images | mpv                     | Default media handler; MPRIS integrates with playerctl           |
 | Media retrieval                | yt-dlp                  | Integrate with mpv where useful                                  |
+| Transcoding and inspection     | FFmpeg                  | Full codec build for CLI work and DaVinci-compatible transcodes  |
 | Recording and streaming        | OBS Studio              | Includes the `v4l2loopback`-backed OBS virtual camera            |
 | Video editing                  | DaVinci Resolve         | Unfree package; codec limitations may require FFmpeg transcoding |
-| Local file transfer            | LocalSend               | Cross-platform local transfer                                    |
+| 3D creation                    | Blender                 | Stylix preset and native `.blend` file association               |
+| Local file transfer            | LocalSend               | Cross-platform transfer over Tailscale only                      |
+
+Blender uses the standard build while the machine has only integrated
+graphics. Select the CUDA-enabled package together with the future NVIDIA GPU
+module; do not install parallel Blender variants. Select the generated Stylix
+theme once in Blender's preferences.
 
 ## Gaming
 
-| Role                  | Selection      | Notes                                               |
-| --------------------- | -------------- | --------------------------------------------------- |
-| Platform              | Steam          | Enable 32-bit graphics and audio support            |
-| Compatibility runtime | Proton-GE      | Default Steam compatibility runtime                 |
-| Minecraft             | Prism Launcher | Per-instance Java and mod management                |
-| Performance overlay   | MangoHud       | FPS, frame time, and hardware metrics               |
-| Overlay editor        | GOverlay       | Interactive MangoHud configuration                  |
-| Performance policy    | GameMode       | Game process and I/O tuning; fixed CPU policy stays |
-| Nested compositor     | Gamescope      | Resolution, scaling, and fullscreen control         |
-| Prefix management     | Protontricks   | Per-game Wine and Proton changes                    |
+| Role                  | Selection      | Notes                                                 |
+| --------------------- | -------------- | ----------------------------------------------------- |
+| Platform              | Steam          | Enable 32-bit graphics and audio support              |
+| Compatibility runtime | Proton-GE      | Exposed declaratively; select as Steam's default once |
+| Minecraft             | Prism Launcher | Per-instance Java and mod management                  |
+| Performance overlay   | MangoHud       | FPS, frame time, and hardware metrics                 |
+| Overlay editor        | GOverlay       | Interactive MangoHud configuration                    |
+| Performance policy    | GameMode       | Game process and I/O tuning; fixed CPU policy stays   |
+| Nested compositor     | Gamescope      | Resolution, scaling, and fullscreen control           |
+| Prefix management     | Protontricks   | Per-game Wine and Proton changes                      |
 
 GeForce Now, Moonlight, Heroic, Lutris, and UMU are intentionally excluded.
 Steam libraries, Prism Launcher instances, and Minecraft worlds use
 `/home/mvs/games`. This Btrfs subvolume has no local snapshot policy. A
-separate backup method protects Minecraft worlds.
+separate backup method protects Minecraft worlds. After first launch, select
+Proton-GE as Steam's default compatibility tool and add
+`/home/mvs/games/Steam` as its library. Nix does not rewrite Steam's mutable VDF
+state.
 
 ## Networking and remote access
 
@@ -296,12 +347,22 @@ separate backup method protects Minecraft worlds.
 | Bluetooth UI          | Bluetui          | Primary pairing and device UI                                         |
 | Tailnet               | Tailscale        | Only selected VPN                                                     |
 | Incoming remote shell | Disabled         | Do not enable OpenSSH or Mosh services                                |
-| Outbound SSH          | OpenSSH client   | Git and administration of other systems                               |
-| Local transfer        | LocalSend        | GUI transfer between nearby devices                                   |
+| Outbound remote shell | Mosh             | Primary interactive client; OpenSSH provides bootstrap and fallback   |
+| Outbound SSH          | OpenSSH client   | Required by Mosh, Git, and noninteractive remote administration       |
+| Local transfer        | LocalSend        | Direct transfer by Tailscale IP or MagicDNS name                      |
 
 The Amp runner uses an outbound connection. It does not require an incoming SSH
 service. Wi-Fi credentials are entered interactively and stored as mutable state
 below LUKS.
+
+LocalSend accepts inbound TCP traffic on port 53317 only through `tailscale0`.
+The firewall blocks this port on LAN interfaces. Tailscale does not forward
+LocalSend multicast discovery, so each peer must use a Tailscale address. The
+packaged launcher refuses to start without an active Tailscale address and
+updates LocalSend's mutable interface whitelist with the machine's current
+Tailscale IPv4 and IPv6 addresses before every launch. This prevents LocalSend
+from advertising or scanning on physical LAN interfaces without replacing its
+other mutable preferences.
 
 ## Wallpaper, idle, and locking
 
@@ -340,21 +401,23 @@ other wallpaper daemon runs concurrently.
 | ZFS                  | Excluded                                  | Btrfs is the only root filesystem                |
 | Flake source         | `xddxdd/nix-cachyos-kernel`               | Use its pinned overlay                           |
 | Recovery             | Previous Limine generations and TTY login | Separate recovery specialization is deferred     |
+| Memory test          | Memtest86+ EFI                            | Signed and launched from Limine                  |
 
 GPU and other out-of-tree kernel modules must come from the selected kernel
 package set. Add proprietary NVIDIA modules only after the GPU is installed.
 
-## Private packages
+## Monorepo packages
 
-| Package                    | Constraint                                                                                   |
-| -------------------------- | -------------------------------------------------------------------------------------------- |
-| Notion Calendar            | Package the tested Electron application privately and do not redistribute copyrighted assets |
-| Mail client                | Keep private implementation and credentials out of the public flake                          |
-| tldraw offline application | Reuse existing personal packaging or install as a Brave Origin app                           |
-| TTFX                       | Add a local package only if the pinned nixpkgs does not provide it                           |
+| Package         | Constraint                                                           |
+| --------------- | -------------------------------------------------------------------- |
+| Notion Calendar | Use the tested Electron package from the pinned application monorepo |
+| Mail client     | Add only when its source and runtime contracts are ready             |
+| TTFX            | Add a local package only if the pinned nixpkgs does not provide it   |
 
-Private source, credentials, license material, and application data must never
-enter the public repository or Nix store unintentionally.
+The application monorepo is one normal root flake input. Notion Calendar's helper
+streams calendar state to Waybar over a Unix socket; Waybar opens the app on
+left-click and its menu on right-click. The custom mail client remains deferred
+until its source and runtime contracts are ready.
 
 ## Explicit exclusions
 
@@ -367,6 +430,7 @@ enter the public repository or Nix store unintentionally.
 | Global development language toolchains | Projects own their complete environments                 |
 | Zed                                    | Neovim is the selected editor                            |
 | GeForce Now                            | Not part of the migrated gaming stack                    |
+| tldraw                                 | No native package is available                           |
 | Terminal Desmos replacement            | Use Desmos itself in Brave Origin                        |
 | NetworkManager for Wi-Fi               | Conflicts with the selected standalone iwd/Impala design |
 | BlueBubbles Private API initially      | Requires disabling macOS SIP                             |

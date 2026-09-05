@@ -1,5 +1,5 @@
 {inputs, ...}: {
-  flake.modules.nixos.base = {pkgs, ...}: {
+  flake.modules.nixos.base = {
     imports = [inputs.disko.nixosModules.disko];
 
     boot = {
@@ -31,13 +31,7 @@
       };
     };
 
-    environment.systemPackages = [
-      pkgs.nvme-cli
-      pkgs.smartmontools
-    ];
-
     services = {
-      smartd.enable = true;
       fstrim = {
         enable = true;
         interval = "weekly";
@@ -57,37 +51,6 @@
         "w /sys/kernel/mm/transparent_hugepage/defrag - - - - defer+madvise"
         "w- /sys/kernel/mm/transparent_hugepage/khugepaged/max_ptes_none - - - - 409"
       ];
-
-      services = {
-        nixconf-storage-health = {
-          description = "Check Btrfs and NVMe health";
-          after = ["local-fs.target"];
-          requires = ["local-fs.target"];
-          path = [
-            pkgs.btrfs-progs
-            pkgs.nvme-cli
-          ];
-          script = ''
-            btrfs device stats --check /
-
-            for device in /dev/nvme*n1; do
-              [[ -b "$device" ]] || continue
-              nvme smart-log "$device"
-            done
-          '';
-          serviceConfig.Type = "oneshot";
-        };
-      };
-
-      timers.nixconf-storage-health = {
-        description = "Check Btrfs and NVMe health daily";
-        wantedBy = ["timers.target"];
-        timerConfig = {
-          OnCalendar = "daily";
-          Persistent = true;
-          RandomizedDelaySec = "1h";
-        };
-      };
     };
   };
 }

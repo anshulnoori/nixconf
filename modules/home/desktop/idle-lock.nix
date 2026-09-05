@@ -15,7 +15,13 @@ _: {
           {
             monitor = "";
             path = "${config.xdg.stateHome}/nixconf/wallpaper";
+            blur_size = 8;
             blur_passes = 3;
+            noise = 0.0117;
+            contrast = 0.8917;
+            brightness = 0.8172;
+            vibrancy = 0.1686;
+            vibrancy_darkness = 0.05;
           }
         ];
         animations.enabled = false;

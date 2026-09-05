@@ -15,7 +15,18 @@
       inherit system;
       config.allowUnfreePredicate = package:
         builtins.elem (inputs.nixpkgs.lib.getName package) [
+          "1password"
+          "1password-cli"
           "amp-cli"
+          "cuda_nvml_dev"
+          "davinci-resolve"
+          "discord-canary"
+          "discord-canary-unwrapped"
+          "objectbox-linux"
+          "obsidian"
+          "spotify"
+          "steam"
+          "steam-unwrapped"
           "todoist-electron"
         ];
     };

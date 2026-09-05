@@ -16,18 +16,6 @@
       text = builtins.readFile ../../scripts/check-branch-name.sh;
     };
 
-    workflowPolicy = pkgs.writeShellApplication {
-      name = "check-workflows";
-      runtimeInputs = [
-        pkgs.actionlint
-        pkgs.ripgrep
-        pkgs.shellcheck
-      ];
-      text = ''
-        exec ${lib.getExe pkgs.bash} ${../../scripts/check-workflows.sh} ${../..}
-      '';
-    };
-
     ampCliRelease = {
       version = "0.0.1788134497-gb6ce09";
       source = {
@@ -59,7 +47,6 @@
             pkgs.nix-direnv
           ];
         };
-        workflow-policy = workflowPolicy;
       }
       // lib.optionalAttrs (system == "x86_64-linux") {
         amp-cli = ampCli;
@@ -77,10 +64,6 @@
       gitleaks = {
         program = lib.getExe pkgs.gitleaks;
         meta.description = "Scan Git history for leaked secrets";
-      };
-      workflow-policy = {
-        program = lib.getExe workflowPolicy;
-        meta.description = "Validate GitHub workflow policy";
       };
     };
   };

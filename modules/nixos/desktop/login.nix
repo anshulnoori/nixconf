@@ -5,6 +5,37 @@ _: {
     pkgs,
     ...
   }: let
+    colors = config.lib.stylix.colors;
+    wallpaper = "${builtins.head config.boot.plymouth.themePackages}/share/plymouth/themes/${config.boot.plymouth.theme}/background.png";
+    themeConfig = (pkgs.formats.ini {}).generate "theme.conf" {
+      General = {
+        Background = wallpaper;
+        BackgroundColor = "#${colors.base00}";
+        FieldColor = "#cc${colors.base00}";
+        Foreground = "#${colors.base05}";
+        CheckingColor = "#${colors.base0D}";
+        FailureColor = "#${colors.base08}";
+        User = "mvs";
+        Session = "hyprland-uwsm.desktop";
+      };
+    };
+    theme = pkgs.runCommand "hyprlock-sddm-theme" {} ''
+      themeDir="$out/share/sddm/themes/hyprlock"
+      mkdir -p "$themeDir"
+      cp ${./sddm/Main.qml} "$themeDir/Main.qml"
+      cp ${themeConfig} "$themeDir/theme.conf"
+      cat > "$themeDir/metadata.desktop" <<'EOF'
+      [SddmGreeterTheme]
+      Name=Hyprlock
+      Description=Single-user login matching Hyprlock and Plymouth
+      Type=sddm-theme
+      MainScript=Main.qml
+      ConfigFile=theme.conf
+      Theme-Id=hyprlock
+      Theme-API=2.0
+      QtVersion=6
+      EOF
+    '';
     plymouth = lib.getExe' config.boot.plymouth.package "plymouth";
     quitPlymouth = pkgs.writeShellApplication {
       name = "quit-plymouth-after-desktop";
@@ -35,25 +66,41 @@ _: {
       '';
     };
   in {
-    services = {
-      displayManager.regreet.enable = true;
+    environment.systemPackages = [theme];
+    fonts.packages = [pkgs.nerd-fonts.jetbrains-mono];
 
-      greetd = {
-        greeterManagesPlymouth = true;
-        settings.initial_session = {
-          command = "${lib.getExe pkgs.uwsm} start -e -D Hyprland hyprland.desktop";
-          user = "mvs";
-        };
+    services.displayManager = {
+      defaultSession = "hyprland-uwsm";
+      # Preserve boot autologin, but require a password after `uwsm stop`.
+      autoLogin = {
+        enable = true;
+        user = "mvs";
+      };
+      sddm = {
+        enable = true;
+        wayland.enable = true;
+        theme = "hyprlock";
+        autoLogin.relogin = false;
       };
     };
 
     systemd.services = {
-      greetd.serviceConfig.ExecStartPre = "-${plymouth} deactivate";
+      display-manager = {
+        # Keep the retained splash until the desktop is ready, not vice versa.
+        after = lib.mkForce [
+          "acpid.service"
+          "systemd-logind.service"
+          "systemd-user-sessions.service"
+          "autovt@tty1.service"
+        ];
+        serviceConfig.ExecStartPre = "-${plymouth} deactivate";
+      };
       plymouth-quit-wait.wantedBy = lib.mkForce [];
       plymouth-quit = {
-        after = ["greetd.service"];
+        after = ["display-manager.service"];
         wantedBy = lib.mkForce ["graphical.target"];
         serviceConfig = {
+          Type = "simple";
           ExecStart = lib.mkForce [
             ""
             "${quitPlymouth}/bin/quit-plymouth-after-desktop"
@@ -63,9 +110,6 @@ _: {
       };
     };
 
-    security.pam.services = {
-      greetd.enableGnomeKeyring = true;
-      hyprlock = {};
-    };
+    security.pam.services.hyprlock = {};
   };
 }

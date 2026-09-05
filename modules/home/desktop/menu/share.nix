@@ -1,5 +1,9 @@
 _: {
-  flake.modules.homeManager.desktop = {pkgs, ...}: let
+  flake.modules.homeManager.desktop = {
+    config,
+    pkgs,
+    ...
+  }: let
     showQr = pkgs.writeShellApplication {
       name = "nixconf-show-qr";
       runtimeInputs = with pkgs; [
@@ -23,7 +27,6 @@ _: {
         coreutils
         findutils
         kitty
-        localsend
         util-linux
         uwsm
         wl-clipboard
@@ -31,7 +34,7 @@ _: {
       ];
       text = ''
         launch_localsend() {
-          exec setsid uwsm app -- localsend_app "$@"
+          exec setsid uwsm app -- ${config.home.profileDirectory}/bin/localsend_app "$@"
         }
 
         case "''${1:-}" in
