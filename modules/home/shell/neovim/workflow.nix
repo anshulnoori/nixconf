@@ -1,30 +1,39 @@
 _: {
-  flake.modules.homeManager.base = {pkgs, ...}: {
+  flake.modules.homeManager.base = {
+    lib,
+    pkgs,
+    ...
+  }: {
     programs.nvf.settings.vim = {
       debugger.nvim-dap = {
         enable = true;
         ui.enable = true;
       };
       utility.preview.markdownPreview.enable = true;
+      luaConfigRC.workflow = lib.hm.dag.entryAfter ["mappings"] (builtins.readFile ./workflow.lua);
 
       lazy.plugins = {
         neotest = {
           package = pkgs.vimPlugins.neotest;
           setupModule = "neotest";
+          setupOpts = {
+            status.virtual_text = true;
+            output.open_on_run = true;
+          };
           keys = [
             {
               key = "<leader>tt";
               mode = "n";
-              action = "function() require('neotest').run.run() end";
+              action = "function() require('neotest').run.run(vim.fn.expand('%')) end";
               lua = true;
-              desc = "Run nearest test";
+              desc = "Run File (Neotest)";
             }
             {
               key = "<leader>tT";
               mode = "n";
-              action = "function() require('neotest').run.run(vim.fn.expand('%')) end";
+              action = "function() require('neotest').run.run(vim.uv.cwd()) end";
               lua = true;
-              desc = "Run test file";
+              desc = "Run All Test Files (Neotest)";
             }
             {
               key = "<leader>ts";
