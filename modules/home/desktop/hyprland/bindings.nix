@@ -17,7 +17,6 @@ _: {
     hl.bind("F13", hl.dsp.exec_cmd("wlr-which-key"))
     hl.bind("SUPER + Q", hl.dsp.window.close())
     hl.bind("SUPER + L", hl.dsp.exec_cmd("hyprlock"))
-    hl.bind("SUPER + M", hl.dsp.exec_cmd("uwsm stop"))
     hl.bind("SUPER + C", send_shortcut_once("CTRL", "Insert"), { description = "Universal copy" })
     hl.bind("SUPER + V", send_shortcut_once("SHIFT", "Insert"), { description = "Universal paste" })
     hl.bind("SUPER + X", send_shortcut_once("CTRL", "X"), { description = "Universal cut" })
