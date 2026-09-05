@@ -422,9 +422,10 @@ Additional decisions:
   Biome LSP and Biome through nvim-lint at the same time. In projects with a
   Biome configuration, Biome also owns JSON diagnostics; the standalone JSON
   language server attaches only outside those projects.
-- Do not transfer the tmux navigator because zmx replaces tmux navigation, the
-  obsolete `/tmp/nvim.sock` cleanup, Mason, or hardcoded macOS, Homebrew,
-  Kotlin, and JDK paths.
+- Smart-splits owns Neovim/tmux pane navigation and resizing. It loads eagerly
+  so tmux can identify Neovim panes before the first navigation key.
+- Do not transfer the obsolete `/tmp/nvim.sock` cleanup, Mason, or hardcoded
+  macOS, Homebrew, Kotlin, and JDK paths.
 - `amp.nvim` owns Amp agent interaction. Minuet provides Blink and virtual-text
   AI completion through
   `https://ai.mongoose-silverside.ts.net/v1/chat/completions`. The initial model

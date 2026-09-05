@@ -129,7 +129,7 @@ There is no root theme directory for one standard scheme. Stylix owns the
 shared Gruvbox palette; application-specific adapters remain with their
 consumers. There is no local overlay directory until a package genuinely needs
 to participate in the global package set. `modules/flake/packages.nix` owns the
-pinned Amp derivation and repository tools. Brave Origin, zmx, Proton-GE,
+pinned Amp derivation and repository tools. Brave Origin, tmux, Proton-GE,
 MangoHud, and the other available applications come from pinned inputs or
 nixpkgs.
 

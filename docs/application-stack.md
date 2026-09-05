@@ -66,7 +66,7 @@ consumes as clipboard operations without sending `Ctrl+C` to the running shell.
 | Role                 | Selection | Integration notes                                            |
 | -------------------- | --------- | ------------------------------------------------------------ |
 | Terminal             | Kitty     | JetBrains Mono Nerd Font, square decorations, Gruvbox colors |
-| Session persistence  | zmx       | Hyprland remains responsible for visible pane tiling         |
+| Terminal sessions    | tmux      | Stylix colors, pane navigation, and native tool popups       |
 | Interactive shell    | Zsh       | Keep Bash and POSIX `sh` for scripts                         |
 | Prompt               | Starship  | Shared prompt across local and remote shells                 |
 | History              | Atuin     | Searchable shell history                                     |
@@ -79,6 +79,42 @@ Zsh is the interactive shell, but portable scripts must use an explicit
 `#!/bin/sh` shebang and Bash-specific scripts must use
 `#!/usr/bin/env bash`. Interactive-shell selection does not make scripts
 portable.
+
+### tmux
+
+Shells do not start tmux automatically. `tmux new -As main` starts or attaches
+to a session. The top status bar uses the same Stylix palette as Neovim.
+Nix manages all plugins, without TPM or runtime downloads.
+
+The prefix is `Ctrl+B`, followed by a separate key:
+
+| Key                 | Action                                             |
+| ------------------- | -------------------------------------------------- |
+| `o`                 | Sesh session picker in a compact, themed fzf popup |
+| `g` / `t`           | Lazygit / temporary shell popup                    |
+| `Space`             | Thumbs hints for copying paths, URLs, and hashes   |
+| `Ctrl+S` / `Ctrl+R` | Save / restore the resurrect snapshot              |
+| `                   | `/`-`                                              | Side-by-side / stacked panes |
+| `d`                 | Detach without stopping the session                |
+
+Without the prefix, `Ctrl+h/j/k/l` moves between Neovim splits and tmux panes.
+`Alt+h/j/k/l` resizes them. These bindings replace shell shortcuts such as
+`Ctrl+L` for screen clearing inside tmux. The `clear` command remains available.
+
+Continuum saves layouts and directories every 15 minutes while its status hook
+is active. It restores the snapshot when a new tmux server starts.
+Process restoration is disabled: snapshots do not preserve running jobs or
+automatically restart Amp, SSH connections, or editors. Resurrect stores snapshots
+in its default `~/.tmux/resurrect` directory. The theme loads before continuum
+to preserve its autosave hook.
+
+Direnv and nix-direnv load approved project environments through the Zsh hook.
+New panes and windows retain the current directory. Sesh starts project sessions
+in their selected directories. The lazygit popup uses `direnv exec` because it
+does not start an interactive shell. Shell popups use the Zsh hook.
+No integration automatically approves `.envrc` files or copies project variables
+into the global tmux environment. For flake projects, `.envrc` can contain
+`use flake`, with `direnv allow` as a separate approval step.
 
 ## System interfaces
 

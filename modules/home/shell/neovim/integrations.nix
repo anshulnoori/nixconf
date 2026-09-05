@@ -1,7 +1,48 @@
 _: {
-  flake.modules.homeManager.base = {pkgs, ...}: {
+  flake.modules.homeManager.base = {
+    pkgs,
+    lib,
+    ...
+  }: {
     programs.nvf.settings.vim = {
-      startPlugins = [pkgs.vimPlugins.nvim-nio];
+      # Load smart-splits directly at startup, not through lz.n. Its startup
+      # hook must run once so it does not mistake itself for nested Neovim.
+      startPlugins = [pkgs.vimPlugins.nvim-nio pkgs.vimPlugins.smart-splits-nvim];
+      extraPackages = [pkgs.tmux];
+      keymaps =
+        lib.concatMap (binding: [
+          {
+            key = "<C-${binding.key}>";
+            mode = "n";
+            action = "function() require('smart-splits').move_cursor_${binding.direction}() end";
+            lua = true;
+            desc = "Focus split ${binding.direction}";
+          }
+          {
+            key = "<A-${binding.key}>";
+            mode = "n";
+            action = "function() require('smart-splits').resize_${binding.direction}() end";
+            lua = true;
+            desc = "Resize split ${binding.direction}";
+          }
+        ]) [
+          {
+            key = "h";
+            direction = "left";
+          }
+          {
+            key = "j";
+            direction = "down";
+          }
+          {
+            key = "k";
+            direction = "up";
+          }
+          {
+            key = "l";
+            direction = "right";
+          }
+        ];
       lazy.plugins = {
         "amp.nvim" = {
           package = pkgs.vimPlugins.amp-nvim;

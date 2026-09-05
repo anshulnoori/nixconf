@@ -11,7 +11,6 @@ _: {
       sd
       watchexec
       yq
-      zmx
     ];
 
     programs = {
