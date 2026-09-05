@@ -12,7 +12,7 @@
         };
         sansSerif = {
           package = pkgs.callPackage ../../../packages/sf-pro.nix {};
-          name = "SF Pro";
+          name = "SF Pro Text";
         };
       };
       targets.limine.enable = false;
