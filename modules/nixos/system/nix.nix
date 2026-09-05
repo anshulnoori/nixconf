@@ -36,6 +36,7 @@
         "objectbox-linux"
         "notion-calendar"
         "obsidian"
+        "sf-pro"
         "spotify"
         "steam"
         "steam-unwrapped"

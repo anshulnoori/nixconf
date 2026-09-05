@@ -11,8 +11,8 @@
           name = "JetBrainsMono Nerd Font";
         };
         sansSerif = {
-          package = pkgs.nerd-fonts.jetbrains-mono;
-          name = "JetBrainsMono Nerd Font";
+          package = pkgs.callPackage ../../../packages/sf-pro.nix {};
+          name = "SF Pro";
         };
       };
       targets.limine.enable = false;

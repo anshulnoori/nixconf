@@ -24,6 +24,7 @@
           "discord-canary-unwrapped"
           "objectbox-linux"
           "obsidian"
+          "sf-pro"
           "spotify"
           "steam"
           "steam-unwrapped"
