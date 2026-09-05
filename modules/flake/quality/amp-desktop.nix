@@ -9,8 +9,12 @@
     home = host.home-manager.users.mvs;
     packages = inputs.monorepo.packages.${system};
     desktopFile = "com.anshulnoori.amp-linux.desktop";
+    hyprlandPortals = builtins.filter (package: lib.getName package == "xdg-desktop-portal-hyprland") host.xdg.portal.extraPortals;
   in {
     checks = lib.optionalAttrs (system == "x86_64-linux") {
+      amp-desktop-user-units = assert lib.assertMsg (hyprlandPortals == [host.programs.hyprland.portalPackage]) "Exactly the Hyprland-matched portal must be registered";
+        host.environment.etc."systemd/user".source;
+
       amp-desktop = assert lib.assertMsg (builtins.elem packages.amp-desktop home.home.packages) "Amp must use the monorepo package";
       assert lib.assertMsg (builtins.elem "${packages.amp-desktop}/share/applications/${desktopFile}" home.xdg.autostart.entries) "Amp autostart is missing";
       assert lib.assertMsg (home.xdg.mimeApps.defaultApplications."x-scheme-handler/com.ampcode.amp.macos.auth" == [desktopFile]) "Amp callback handler is missing";
