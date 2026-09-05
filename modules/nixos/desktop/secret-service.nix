@@ -6,5 +6,6 @@ _: {
     };
 
     security.pam.services.login.enableGnomeKeyring = lib.mkForce false;
+    security.pam.services.sddm.enableGnomeKeyring = true;
   };
 }
