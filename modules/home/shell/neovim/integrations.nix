@@ -29,8 +29,9 @@ _: {
           package = pkgs.vimPlugins.uv-nvim.overrideAttrs {
             runtimeDeps = [];
           };
-          ft = "python";
+          event = "DeferredUIEnter";
           setupModule = "uv";
+          setupOpts.picker_integration = true;
         };
 
         vimtex = {

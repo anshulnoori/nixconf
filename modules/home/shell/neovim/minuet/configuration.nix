@@ -11,7 +11,7 @@
       programs.nvf.settings.vim = {
         autocomplete.blink-cmp.setupOpts = {
           keymap."<A-y>" = [
-            (mkLuaInline "require('minuet').make_blink_map()")
+            (mkLuaInline "require('minuet').make_blink_map()[1]")
           ];
           sources.providers.minuet = {
             name = "minuet";

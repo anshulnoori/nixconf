@@ -3,8 +3,34 @@ _: {
     inherit (lib.generators) mkLuaInline;
   in {
     programs.nvf.settings.vim = {
+      diagnostics = {
+        enable = true;
+        config = {
+          underline = true;
+          update_in_insert = false;
+          severity_sort = true;
+          virtual_text = {
+            spacing = 4;
+            source = "if_many";
+            prefix = "●";
+          };
+          signs.text = mkLuaInline ''{ [1] = " ", [2] = " ", [3] = " ", [4] = " " }'';
+        };
+      };
       lsp = {
         enable = true;
+        trouble = {
+          enable = true;
+          setupOpts.modes.lsp.win.position = "right";
+          mappings = {
+            workspaceDiagnostics = null;
+            documentDiagnostics = null;
+            lspReferences = null;
+            quickfix = null;
+            locList = null;
+            symbols = null;
+          };
+        };
         formatOnSave = false;
         inlayHints.enable = true;
         servers = {
@@ -149,6 +175,27 @@ _: {
       };
 
       autocmds = [
+        {
+          event = ["LspAttach"];
+          desc = "Mac reference LSP navigation and code actions";
+          callback = mkLuaInline ''
+            function(args)
+              local function map(key, action, desc, mode)
+                vim.keymap.set(mode or "n", key, action, { buffer = args.buf, silent = true, desc = desc })
+              end
+              for key, source in pairs({ gd = "lsp_definitions", gr = "lsp_references", gI = "lsp_implementations",
+                gy = "lsp_type_definitions", ["<leader>ss"] = "lsp_symbols", ["<leader>sS"] = "lsp_workspace_symbols",
+                gai = "lsp_incoming_calls", gao = "lsp_outgoing_calls" }) do
+                map(key, function() Snacks.picker[source]() end, source)
+              end
+              map("gD", vim.lsp.buf.declaration, "Goto Declaration")
+              map("K", vim.lsp.buf.hover, "Hover")
+              map("gK", vim.lsp.buf.signature_help, "Signature Help")
+              map("<C-k>", vim.lsp.buf.signature_help, "Signature Help", "i")
+              map("<leader>ca", vim.lsp.buf.code_action, "Code Action", { "n", "x" })
+            end
+          '';
+        }
         {
           event = ["LspAttach"];
           desc = "Render Tailwind colors with Neovim's native LSP support";
