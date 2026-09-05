@@ -1,0 +1,44 @@
+{moduleWithSystem, ...}: {
+  flake.modules.nixos.desktop = moduleWithSystem (
+    {config, ...}: {pkgs, ...}: {
+      nixpkgs.overlays = [
+        (_final: _previous: {
+          xdg-desktop-portal = config.packages.xdg-desktop-portal-credential;
+        })
+      ];
+
+      services = {
+        gnome.gnome-keyring.enable = true;
+        pcscd.enable = true;
+        udev.packages = [pkgs.libfido2];
+      };
+
+      xdg.portal = {
+        enable = true;
+        extraPortals = [
+          pkgs.xdg-desktop-portal-gtk
+          pkgs.xdg-desktop-portal-hyprland
+          config.packages.credentialsd
+        ];
+
+        config.hyprland = {
+          default = [
+            "hyprland"
+            "gtk"
+          ];
+          "org.freedesktop.impl.portal.ScreenCast" = ["hyprland"];
+          "org.freedesktop.impl.portal.RemoteDesktop" = ["hyprland"];
+          "org.freedesktop.impl.portal.FileChooser" = ["gtk"];
+          "org.freedesktop.impl.portal.Settings" = ["gtk"];
+          "org.freedesktop.impl.portal.Secret" = ["gnome-keyring"];
+          "org.freedesktop.impl.portal.experimental.Credential" = ["credentialsd"];
+        };
+      };
+
+      systemd.user.services.xdg-desktop-portal = {
+        overrideStrategy = "asDropin";
+        environment.XDG_DESKTOP_PORTAL_ENABLE_EXPERIMENTAL = "credential";
+      };
+    }
+  );
+}

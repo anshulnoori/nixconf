@@ -1,4 +1,8 @@
-{lib, ...}: {
+{
+  inputs,
+  lib,
+  ...
+}: {
   perSystem = {
     pkgs,
     system,
@@ -39,9 +43,12 @@
         inherit (ampCliRelease.source) hash;
       };
     });
+
+    ampDesktopStack = pkgs.callPackage "${inputs.monorepo}/src/amp-desktop/nix/stack.nix" {};
   in {
     packages =
       {
+        inherit (ampDesktopStack) amp-desktop amp-desktop-webkitgtk credentialsd xdg-desktop-portal-credential;
         check-branch-name = branchNameCheck;
         inherit commitizen;
         orb-tools = pkgs.buildEnv {
