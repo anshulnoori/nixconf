@@ -98,7 +98,8 @@ The prefix is `Ctrl+B`, followed by a separate key:
 | `d`                 | Detach without stopping the session                |
 
 Without the prefix, `Ctrl+h/j/k/l` moves between Neovim splits and tmux panes.
-`Alt+h/j/k/l` resizes them. These bindings replace shell shortcuts such as
+`Ctrl+Alt+h/j/k/l` resizes them, leaving `Alt+j/k` for Neovim line movement.
+The navigation bindings replace shell shortcuts such as
 `Ctrl+L` for screen clearing inside tmux. The `clear` command remains available.
 
 Continuum saves layouts and directories every 15 minutes while its status hook

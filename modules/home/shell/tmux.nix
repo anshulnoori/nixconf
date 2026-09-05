@@ -77,10 +77,10 @@ _: {
         bind -n C-j if -F '#{@pane-is-vim}' 'send-keys C-j' 'select-pane -D'
         bind -n C-k if -F '#{@pane-is-vim}' 'send-keys C-k' 'select-pane -U'
         bind -n C-l if -F '#{@pane-is-vim}' 'send-keys C-l' 'select-pane -R'
-        bind -n M-h if -F '#{@pane-is-vim}' 'send-keys M-h' 'resize-pane -L 3'
-        bind -n M-j if -F '#{@pane-is-vim}' 'send-keys M-j' 'resize-pane -D 3'
-        bind -n M-k if -F '#{@pane-is-vim}' 'send-keys M-k' 'resize-pane -U 3'
-        bind -n M-l if -F '#{@pane-is-vim}' 'send-keys M-l' 'resize-pane -R 3'
+        bind -n C-M-h if -F '#{@pane-is-vim}' 'send-keys C-M-h' 'resize-pane -L 3'
+        bind -n C-M-j if -F '#{@pane-is-vim}' 'send-keys C-M-j' 'resize-pane -D 3'
+        bind -n C-M-k if -F '#{@pane-is-vim}' 'send-keys C-M-k' 'resize-pane -U 3'
+        bind -n C-M-l if -F '#{@pane-is-vim}' 'send-keys C-M-l' 'resize-pane -R 3'
         bind -T copy-mode-vi C-h select-pane -L
         bind -T copy-mode-vi C-j select-pane -D
         bind -T copy-mode-vi C-k select-pane -U

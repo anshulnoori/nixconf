@@ -58,7 +58,8 @@ The change uses the returned function without changing token transport or automa
 - The dashboard says Neovim, not LazyVim.
   Lazy, LazyExtras, and update-count actions are absent because Nix owns plugins.
 - `fc` and the dashboard configuration action use `/etc/nixos`.
-- Native Neovim split navigation replaces tmux navigation because this setup uses zmx.
+- Smart-splits extends Neovim split navigation across tmux panes after the migration from zmx.
+  Ctrl+Alt-h/j/k/l resizes splits without replacing Alt-j/k line movement.
 - No Mason, Copilot, Homebrew/JDK paths, obsolete socket cleanup, or global toolchains were imported.
 - Per-project flakes own LSP integrations, test/debug adapters, and debugger configurations.
   These are project responsibilities, not missing global editor features.

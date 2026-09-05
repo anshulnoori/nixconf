@@ -138,7 +138,10 @@ vim.defer_fn(function()
       mapping("<leader>sr", mode)
     end
     equal(mapping("<leader>bp").rhs, "<cmd>BufferLineTogglePin<cr>", "pin must not cycle buffers")
-    equal(mapping("<C-h>").rhs, "<C-w>h", "native split navigation, not tmux")
+    equal(mapping("<C-h>").desc, "Focus split left", "smart-splits extends native navigation")
+    equal(type(mapping("<C-h>").callback), "function", "smart-splits navigation callback")
+    equal(mapping("<A-j>").desc, "Move Down", "Alt-j retains line movement")
+    equal(mapping("<C-A-h>").desc, "Resize split left", "resize does not shadow line movement")
     equal(mapping("j", "x").expr, 1, "visual wrapped-line navigation")
     equal(mapping("<leader>cr").expr, 1, "rename prefills current word")
 

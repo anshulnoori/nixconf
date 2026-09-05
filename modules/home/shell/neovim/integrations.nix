@@ -9,40 +9,17 @@ _: {
       # hook must run once so it does not mistake itself for nested Neovim.
       startPlugins = [pkgs.vimPlugins.nvim-nio pkgs.vimPlugins.smart-splits-nvim];
       extraPackages = [pkgs.tmux];
-      keymaps =
-        lib.concatMap (binding: [
-          {
-            key = "<C-${binding.key}>";
-            mode = "n";
-            action = "function() require('smart-splits').move_cursor_${binding.direction}() end";
-            lua = true;
-            desc = "Focus split ${binding.direction}";
-          }
-          {
-            key = "<A-${binding.key}>";
-            mode = "n";
-            action = "function() require('smart-splits').resize_${binding.direction}() end";
-            lua = true;
-            desc = "Resize split ${binding.direction}";
-          }
-        ]) [
-          {
-            key = "h";
-            direction = "left";
-          }
-          {
-            key = "j";
-            direction = "down";
-          }
-          {
-            key = "k";
-            direction = "up";
-          }
-          {
-            key = "l";
-            direction = "right";
-          }
-        ];
+      # Extend the editor's window navigation after its generic keymaps load.
+      luaConfigRC.tmux-navigation = lib.hm.dag.entryAfter ["editor-interaction"] ''
+        for key, direction in pairs({ h = "left", j = "down", k = "up", l = "right" }) do
+          vim.keymap.set("n", "<C-" .. key .. ">", function()
+            require("smart-splits")["move_cursor_" .. direction]()
+          end, { silent = true, desc = "Focus split " .. direction })
+          vim.keymap.set("n", "<C-A-" .. key .. ">", function()
+            require("smart-splits")["resize_" .. direction]()
+          end, { silent = true, desc = "Resize split " .. direction })
+        end
+      '';
       lazy.plugins = {
         "amp.nvim" = {
           package = pkgs.vimPlugins.amp-nvim;
