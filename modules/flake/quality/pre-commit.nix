@@ -33,6 +33,7 @@
       };
       deadnix = {
         enable = true;
+        excludes = ["^_sources/"];
         stages = ["pre-commit"];
       };
       gitleaks = {

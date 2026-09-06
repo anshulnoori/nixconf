@@ -4,14 +4,16 @@ on:
   push:
     branches:
       - master
+  schedule:
+    - cron: "23 */6 * * *"
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: nixos-cache-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   cache:
@@ -22,7 +24,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Configure private monorepo access
         env:
@@ -54,6 +56,29 @@ jobs:
             accept-flake-config = true
             allow-import-from-derivation = true
 
+      - name: Update Proton GE sources
+        id: sources
+        if: github.event_name != 'push' && github.ref == 'refs/heads/master'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          keyfile=$(mktemp)
+          trap 'rm -f "$keyfile"' EXIT
+          printf '[keys]\ngithub = "%s"\n' "$GH_TOKEN" > "$keyfile"
+          nix run .#nvfetcher -- --keyfile "$keyfile"
+          if git diff --quiet -- _sources; then
+            exit 0
+          fi
+          git config user.name 'Anshul Noori'
+          git config user.email 'anshulnoori+github@gmail.com'
+          git add _sources/generated.nix _sources/generated.json
+          git -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -m 'build: update Proton GE sources'
+          if git log -1 --format=%B | grep -Ei 'Co-authored-by:|Amp-Thread-ID:|ampcode.com/threads/'; then
+            echo 'Refusing to publish prohibited commit attribution.' >&2
+            exit 1
+          fi
+          echo 'changed=true' >> "$GITHUB_OUTPUT"
+
       - name: Require Cachix upload access
         env:
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
@@ -70,7 +95,19 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Evaluate all systems
+        if: github.event_name != 'schedule' || steps.sources.outputs.changed == 'true'
         run: nix flake check --all-systems --no-build -L
 
+      - name: Check formatting and build both Proton variants
+        if: github.event_name != 'schedule' || steps.sources.outputs.changed == 'true'
+        run: nix build --no-link -L .#checks.x86_64-linux.treefmt .#proton-ge .#checks.x86_64-linux.proton-ge-aarch64
+
       - name: Build t1
+        if: github.event_name != 'schedule' || steps.sources.outputs.changed == 'true'
         run: nix build --no-link -L .#nixosConfigurations.t1.config.system.build.toplevel
+
+      # GITHUB_TOKEN pushes do not start another workflow. Build and cache above
+      # before publishing the exact commit that nixconf-update will install.
+      - name: Publish validated sources directly
+        if: steps.sources.outputs.changed == 'true'
+        run: git push origin HEAD:master

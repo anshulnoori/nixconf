@@ -1,0 +1,7 @@
+[proton-ge-x86_64]
+src.github = "GloriousEggroll/proton-ge-custom"
+fetch.url = "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/$ver/$ver-x86_64.tar.gz"
+
+[proton-ge-aarch64]
+src.github = "GloriousEggroll/proton-ge-custom"
+fetch.url = "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/$ver/$ver-aarch64.tar.gz"

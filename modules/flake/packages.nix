@@ -53,6 +53,8 @@
       {
         check-branch-name = branchNameCheck;
         inherit commitizen;
+        inherit (pkgs) nvfetcher;
+        proton-ge = pkgs.callPackage ../../packages/proton-ge.nix {};
         orb-tools = pkgs.buildEnv {
           name = "nixconf-orb-tools";
           paths = [
@@ -80,5 +82,8 @@
         meta.description = "Scan Git history for leaked secrets";
       };
     };
+
+    # Package both binary archives on the native builder; do not execute them.
+    checks.proton-ge-aarch64 = pkgs.callPackage ../../packages/proton-ge.nix {arch = "aarch64";};
   };
 }

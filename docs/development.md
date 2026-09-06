@@ -73,7 +73,19 @@ linear.
 Renovate scans daily in `prCreation: "approval"` mode. It creates grouped Nix
 flake update branches and lists them in the Dependency Dashboard. Weekly lock
 file maintenance creates a branch only when `flake.lock` changes. Nothing
-merges, builds, or activates an update automatically.
+merges or activates a Renovate update automatically.
+
+Proton GE uses `nvfetcher.toml` and the generated pins in `_sources/`.
+The build-and-cache workflow checks published releases every six hours.
+It packages both binary architectures and builds the full `t1` system before
+pushing the generated pins directly to `master`. It creates no pull requests.
+Failed validation prevents publication. A concurrent change to `master` also
+prevents publication because the workflow never force-pushes.
+
+To refresh the pins locally, run `nix run .#nvfetcher`.
+Do not edit `_sources/` manually. The generated files retain nvfetcher's format.
+The package override inherits Steam integration from nixpkgs.
+The ARM check packages ARM binaries on the native builder without executing them.
 
 The `services.nixconf-update` user timer polls GitHub every six hours. It records
 active `renovate/*` revisions and compares `master` with the revision embedded

@@ -2,6 +2,7 @@ _: {
   perSystem = {config, ...}: {
     treefmt = {
       flakeCheck = false;
+      settings.global.excludes = ["_sources/**"];
       programs = {
         alejandra.enable = true;
         prettier = {

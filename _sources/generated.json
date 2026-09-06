@@ -1,0 +1,32 @@
+{
+    "proton-ge-aarch64": {
+        "cargoLock": null,
+        "date": null,
+        "extract": null,
+        "name": "proton-ge-aarch64",
+        "passthru": null,
+        "pinned": false,
+        "src": {
+            "name": null,
+            "sha256": "sha256-d5KdzV+VGxobif5ZTZGHijrflRZAb2gHaXGYjuLP30M=",
+            "type": "url",
+            "url": "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton11-6/GE-Proton11-6-aarch64.tar.gz"
+        },
+        "version": "GE-Proton11-6"
+    },
+    "proton-ge-x86_64": {
+        "cargoLock": null,
+        "date": null,
+        "extract": null,
+        "name": "proton-ge-x86_64",
+        "passthru": null,
+        "pinned": false,
+        "src": {
+            "name": null,
+            "sha256": "sha256-ZZ+NcfL3hlk0ASCyDBxaFGSqE4k5MyoTdt6iL20twuQ=",
+            "type": "url",
+            "url": "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton11-6/GE-Proton11-6-x86_64.tar.gz"
+        },
+        "version": "GE-Proton11-6"
+    }
+}
