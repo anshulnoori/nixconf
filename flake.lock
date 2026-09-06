@@ -1080,11 +1080,11 @@
         "zigimg": "zigimg"
       },
       "locked": {
-        "lastModified": 1788665498,
-        "narHash": "sha256-NFuIIqD75rSKnVDuIIaDS1Kbvi6sqmZgFBGpeBv3rrM=",
+        "lastModified": 1788668367,
+        "narHash": "sha256-gdCin5aEw+gI+BAYgKXFF6P4/30dFgwxOjEqdiJn08U=",
         "ref": "refs/heads/main",
-        "rev": "a709a7f320046602d453a293a009426a10d845ea",
-        "revCount": 132,
+        "rev": "37d99fb8df42182b0fbf5ba42a1bf6f6d1959ef7",
+        "revCount": 133,
         "type": "git",
         "url": "ssh://git@github.com/anshulnoori/monorepo.git"
       },
