@@ -17,7 +17,7 @@ _: {
       ];
       extraPackages = [
         pkgs.texlab
-        pkgs.texliveMedium
+        pkgs.texliveFull
         pkgs.texpresso
         pkgs.tmux
       ];
