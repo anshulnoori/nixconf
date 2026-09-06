@@ -6,6 +6,9 @@ _: {
       limine = {
         enable = true;
         maxGenerations = 6;
+        extraConfig = ''
+          mouse: no
+        '';
       };
     };
   };
