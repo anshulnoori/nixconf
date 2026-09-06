@@ -40,12 +40,18 @@ _: {
         margin: 0 7.5px;
       }
 
-      #custom-notion-calendar {
+      #tray.notion-calendar {
         min-width: 12px;
         margin: 0 17px 0 0;
       }
 
-      #custom-notion-calendar.active { color: @accent; }
+      #tray.notion-calendar label.active {
+        color: @accent;
+        border-left: 3px solid @accent;
+        border-radius: 2px;
+        padding-left: 6px;
+        margin: 4px 0;
+      }
       #tray { margin-right: 16px; }
       #bluetooth { margin-right: 17px; }
       #network { margin-right: 13px; }
@@ -62,6 +68,24 @@ _: {
         color: #${colors.base08};
         margin-right: 17px;
       }
+
+      menu {
+        padding: 4px;
+        border: 1px solid #${colors.base03};
+        border-radius: 6px;
+      }
+      menuitem { padding: 4px 10px; }
+      menuitem label { color: @foreground; background-color: transparent; }
+      menuitem:hover { background-color: #${colors.base02}; }
+      menuitem:disabled label { color: #${colors.base04}; }
+      menuitem arrow { min-width: 8px; min-height: 8px; }
+      menuitem check, menuitem radio {
+        min-width: 12px;
+        min-height: 12px;
+        border: 1px solid @foreground;
+      }
+      menuitem check:checked, menuitem radio:checked { background-color: @accent; }
+      menu separator { min-height: 1px; background-color: #${colors.base03}; }
 
       tooltip {
         padding: 2px;

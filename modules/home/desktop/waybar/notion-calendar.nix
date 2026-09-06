@@ -1,14 +1,11 @@
-{inputs, ...}: {
-  flake.modules.homeManager.desktop = {pkgs, ...}: let
-    notionCalendar = inputs.monorepo.packages.${pkgs.stdenv.hostPlatform.system}.notion-calendar;
-  in {
-    programs.waybar.settings.mainBar."custom/notion-calendar" = {
-      exec = "${notionCalendar}/bin/notion-calendar-waybar --follow";
-      return-type = "json";
-      escape = true;
-      on-click = "${notionCalendar}/bin/notion-calendar-waybar --activate";
-      on-click-right = "${notionCalendar}/bin/notion-calendar-waybar --menu";
-      tooltip = true;
+_: {
+  flake.modules.homeManager.desktop = {
+    programs.waybar.settings.mainBar."tray#notion-calendar" = {
+      only-id-prefix = "Notion Calendar_status_icon_";
+      # Relative to XDG_RUNTIME_DIR; Notion atomically publishes text/tooltip.
+      # The native SNI owns menu actions and app lifetime, not a shell proxy.
+      text-file = "notion-calendar/waybar.json";
+      menu-on-left-click = true;
     };
   };
 }

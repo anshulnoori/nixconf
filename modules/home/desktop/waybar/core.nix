@@ -29,7 +29,7 @@ _: {
           "custom/update"
           "custom/storage-health"
           "group/tray-expander"
-          "custom/notion-calendar"
+          "tray#notion-calendar"
           "bluetooth"
           "network"
           "pulseaudio"

@@ -1,0 +1,148 @@
+diff --git a/include/modules/sni/item.hpp b/include/modules/sni/item.hpp
+index f2e8b3c..dbdbf90 100644
+--- a/include/modules/sni/item.hpp
++++ b/include/modules/sni/item.hpp
+@@ -6,6 +6,7 @@
+ #include <gtkmm/eventbox.h>
+ #include <gtkmm/icontheme.h>
+ #include <gtkmm/image.h>
++#include <gtkmm/label.h>
+ #include <gtkmm/menu.h>
+ #include <json/json.h>
+ #include <libdbusmenu-gtk/dbusmenu-gtk.h>
+@@ -84,6 +85,11 @@ class Item : public sigc::trackable {
+                 const Glib::VariantContainerBase& arguments);
+ 
+   void updateImage();
++  bool updateText();
++  Gtk::Label text_label_;
++  std::string text_file_;
++  sigc::connection text_connection_;
++  bool menu_on_left_click_ = false;
+   static Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant);
+   Glib::RefPtr<Gdk::Pixbuf> getIconPixbuf();
+   Glib::RefPtr<Gdk::Pixbuf> getAttentionIconPixbuf();
+diff --git a/src/modules/sni/item.cpp b/src/modules/sni/item.cpp
+index 843f386..6e968aa 100644
+--- a/src/modules/sni/item.cpp
++++ b/src/modules/sni/item.cpp
+@@ -17,6 +17,7 @@
+ #include "modules/sni/icon_manager.hpp"
+ #include "util/format.hpp"  // IWYU pragma: keep
+ #include "util/gtk_icon.hpp"
++#include "util/json.hpp"
+ 
+ template <>
+ struct fmt::formatter<Glib::VariantBase> : formatter<std::string> {
+@@ -68,7 +69,22 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
+ 
+   auto& window = const_cast<Bar&>(bar).window;
+   window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Item::onConfigure));
+-  event_box.add(image);
++  menu_on_left_click_ = config["menu-on-left-click"].asBool();
++  if (config["text-file"].isString()) {
++    text_file_ = config["text-file"].asString();
++    if (!std::filesystem::path(text_file_).is_absolute()) {
++      text_file_ = std::string(g_get_user_runtime_dir()) + "/" + text_file_;
++    }
++    text_label_.set_text("󰃭");
++    // Event markers are exported as DBusMenu icons. GTK otherwise hides menu
++    // images by default; this preference affects only the Waybar process.
++    g_object_set(gtk_settings_get_default(), "gtk-menu-images", TRUE, nullptr);
++    event_box.add(text_label_);
++    updateText();
++    text_connection_ = Glib::signal_timeout().connect(sigc::mem_fun(*this, &Item::updateText), 1000);
++  } else {
++    event_box.add(image);
++  }
+   event_box.add_events(Gdk::BUTTON_PRESS_MASK | Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
+   event_box.signal_button_press_event().connect(sigc::mem_fun(*this, &Item::handleClick));
+   event_box.signal_scroll_event().connect(sigc::mem_fun(*this, &Item::handleScroll));
+@@ -87,6 +103,7 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
+ }
+ 
+ Item::~Item() {
++  text_connection_.disconnect();
+   if (this->gtk_menu != nullptr) {
+     this->gtk_menu->popdown();
+     this->gtk_menu->detach();
+@@ -99,6 +116,30 @@ Item::~Item() {
+ 
+ bool Item::isReady() const { return ready_; }
+ 
++bool Item::updateText() {
++  // The producer atomically replaces this small JSON file. Keep the last valid
++  // state during replacement/startup; SNI still owns this widget's lifecycle.
++  std::ifstream input(text_file_);
++  if (!input) return true;
++  try {
++    const std::string contents((std::istreambuf_iterator<char>(input)), {});
++    const auto state = util::JsonParser().parse(contents);
++    if (!state["text"].isString() || !state["tooltip"].isString()) return true;
++    text_label_.set_text(state["text"].asString());
++    event_box.set_tooltip_text(state["tooltip"].asString());
++    // Keep event activity separate from the SNI's own Active/Passive classes.
++    auto style = text_label_.get_style_context();
++    if (state["class"].asString() == "active") {
++      style->add_class("active");
++    } else {
++      style->remove_class("active");
++    }
++  } catch (const std::exception&) {
++    // Invalid or partially written state must not break the tray/menu.
++  }
++  return true;
++}
++
+ bool Item::handleMouseEnter(GdkEventCrossing* const& e) {
+   event_box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+   return false;
+@@ -602,11 +643,20 @@ bool Item::handleClick(GdkEventButton* const& ev) {
+   auto parameters = Glib::VariantContainerBase::create_tuple(
+       {Glib::Variant<int>::create(ev->x_root + bar_.x_global),
+        Glib::Variant<int>::create(ev->y_root + bar_.y_global)});
+-  if ((ev->button == 1 && item_is_menu) || ev->button == 3) {
++  if ((ev->button == 1 && (item_is_menu || menu_on_left_click_)) ||
++      (ev->button == 3 && !menu_on_left_click_)) {
+     makeMenu();
+     if (gtk_menu != nullptr) {
+ #if GTK_CHECK_VERSION(3, 22, 0)
+-      gtk_menu->popup_at_pointer(reinterpret_cast<GdkEvent*>(ev));
++      if (!text_file_.empty() && bar_.orientation == Gtk::ORIENTATION_HORIZONTAL) {
++        const bool top = bar_.position == Gtk::POS_TOP;
++        gtk_menu->popup_at_widget(&event_box,
++            top ? Gdk::GRAVITY_SOUTH_WEST : Gdk::GRAVITY_NORTH_WEST,
++            top ? Gdk::GRAVITY_NORTH_WEST : Gdk::GRAVITY_SOUTH_WEST,
++            reinterpret_cast<GdkEvent*>(ev));
++      } else {
++        gtk_menu->popup_at_pointer(reinterpret_cast<GdkEvent*>(ev));
++      }
+ #else
+       gtk_menu->popup(ev->button, ev->time);
+ #endif
+@@ -615,7 +665,7 @@ bool Item::handleClick(GdkEventButton* const& ev) {
+       proxy_->call("ContextMenu", parameters);
+       return true;
+     }
+-  } else if (ev->button == 1) {
++  } else if (ev->button == 1 || (ev->button == 3 && menu_on_left_click_)) {
+     proxy_->call("Activate", parameters);
+     return true;
+   } else if (ev->button == 2) {
+diff --git a/src/modules/sni/tray.cpp b/src/modules/sni/tray.cpp
+index 285c103..9bb1646 100644
+--- a/src/modules/sni/tray.cpp
++++ b/src/modules/sni/tray.cpp
+@@ -60,6 +60,12 @@ void Tray::checkIgnoreList(std::unique_ptr<Item>* item_ptr) {
+ void Tray::queueUpdate() { dp.emit(); }
+ 
+ void Tray::onAdd(std::unique_ptr<Item>& item) {
++  // Separate tray instances can own selected items without duplicating them
++  // in the general tray (which can use its existing ignore-list).
++  if (config_["only-id-prefix"].isString() &&
++      item->id.rfind(config_["only-id-prefix"].asString(), 0) != 0) {
++    return;
++  }
+   spdlog::info("Tray::onAdd - item bus_name='{}', category='{}', icon_name='{}', title='{}'",
+                item->bus_name, item->category, item->icon_name, item->title);
+ 
