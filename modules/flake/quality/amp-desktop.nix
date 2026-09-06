@@ -16,7 +16,7 @@
         host.environment.etc."systemd/user".source;
 
       amp-desktop = assert lib.assertMsg (builtins.elem packages.amp-desktop home.home.packages) "Amp must use the monorepo package";
-      assert lib.assertMsg (builtins.elem "${packages.amp-desktop}/share/applications/${desktopFile}" home.xdg.autostart.entries) "Amp autostart is missing";
+      assert lib.assertMsg (!(builtins.elem "${packages.amp-desktop}/share/applications/${desktopFile}" home.xdg.autostart.entries)) "Amp must not autostart";
       assert lib.assertMsg (home.xdg.mimeApps.defaultApplications."x-scheme-handler/com.ampcode.amp.macos.auth" == [desktopFile]) "Amp callback handler is missing";
       assert lib.assertMsg (inputs.self.nixosConfigurations.t1.pkgs.xdg-desktop-portal == packages.xdg-desktop-portal-credential) "Credential portal must use the monorepo package";
       assert lib.assertMsg (builtins.elem packages.credentialsd host.xdg.portal.extraPortals) "credentialsd is missing";

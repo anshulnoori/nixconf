@@ -14,13 +14,6 @@
   in {
     home.packages = [ampDesktop];
 
-    xdg.autostart = {
-      enable = true;
-      entries = [
-        "${ampDesktop}/share/applications/com.ampcode.amp.macos.desktop"
-      ];
-    };
-
     xdg.mimeApps = {
       enable = true;
       defaultApplications."x-scheme-handler/com.ampcode.amp.macos.auth" = [
