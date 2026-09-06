@@ -50,6 +50,8 @@
 
     hyprland.url = "github:hyprwm/Hyprland";
 
+    hyprpolkitagent.url = "github:hyprwm/hyprpolkitagent/a97ef1654c003def8ee4c501aef03b4f1bde49c9";
+
     waybar = {
       url = "github:Alexays/Waybar/66139e4440b626e0d92c4b902185ced10ce78df7";
       inputs.nixpkgs.follows = "nixpkgs";

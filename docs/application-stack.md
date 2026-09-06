@@ -54,6 +54,11 @@ follow later Omarchy desktop changes. It deliberately substitutes Kitty for
 Alacritty and hyprpolkitagent for polkit-gnome. Omarchy is not the source for
 bindings or feature policy.
 
+The authentication agent uses a pinned, unreleased Hyprtoolkit revision with
+its upstream dependency set. This does not replace Hyprland's dependencies.
+Stylix supplies its Gruvbox colors and SF Pro Text font through
+`~/.config/hypr/hyprtoolkit.conf`.
+
 Elephant's clipboard provider owns clipboard history. Do not also run cliphist;
 that would duplicate the clipboard watcher and history database.
 
