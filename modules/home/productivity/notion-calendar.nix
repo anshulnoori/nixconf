@@ -4,6 +4,15 @@
   in {
     home.packages = [notionCalendar];
 
+    # Keep separate from the startup file managed by the app itself.
+    xdg.configFile."autostart/nix-notion-calendar.desktop".text = ''
+      [Desktop Entry]
+      Type=Application
+      Name=Notion Calendar
+      Exec=${notionCalendar}/bin/notion-calendar --from-login
+      Terminal=false
+    '';
+
     xdg.mimeApps = {
       enable = true;
       defaultApplications = {
