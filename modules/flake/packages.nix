@@ -20,13 +20,34 @@
       };
     };
 
-    ampCli = pkgs.amp-cli.overrideAttrs (_: {
-      inherit (ampCliRelease) version;
-      src = pkgs.fetchurl {
-        url = "https://static.ampcode.com/cli/${ampCliRelease.version}/amp-${ampCliRelease.source.platform}.gz";
-        inherit (ampCliRelease.source) hash;
-      };
-    });
+    ampCliArchive = pkgs.fetchurl {
+      url = "https://static.ampcode.com/cli/${ampCliRelease.version}/amp-${ampCliRelease.source.platform}.gz";
+      inherit (ampCliRelease.source) hash;
+    };
+
+    ampCli = pkgs.writeShellApplication {
+      name = "amp";
+      runtimeInputs = [pkgs.coreutils pkgs.gzip pkgs.ripgrep pkgs.util-linux];
+      text = ''
+        export AMP_HOME="''${AMP_HOME:-$HOME/.amp}"
+        bin_dir="$AMP_HOME/bin"
+        mkdir -p "$bin_dir"
+
+        (
+          flock 9
+          if [[ ! -e "$bin_dir/amp" ]]; then
+            temporary=$(mktemp "$bin_dir/.amp-bootstrap.XXXXXX")
+            trap 'rm -f "$temporary"' EXIT
+            gzip -dc ${ampCliArchive} > "$temporary"
+            chmod 0755 "$temporary"
+            mv "$temporary" "$bin_dir/amp"
+          fi
+        ) 9>"$AMP_HOME/.bootstrap.lock"
+
+        export PATH="$bin_dir:$PATH"
+        exec "$bin_dir/amp" "$@"
+      '';
+    };
   in {
     packages =
       {
