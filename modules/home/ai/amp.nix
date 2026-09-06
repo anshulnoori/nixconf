@@ -17,14 +17,14 @@
     xdg.autostart = {
       enable = true;
       entries = [
-        "${ampDesktop}/share/applications/com.anshulnoori.amp-linux.desktop"
+        "${ampDesktop}/share/applications/com.ampcode.amp.macos.desktop"
       ];
     };
 
     xdg.mimeApps = {
       enable = true;
       defaultApplications."x-scheme-handler/com.ampcode.amp.macos.auth" = [
-        "com.anshulnoori.amp-linux.desktop"
+        "com.ampcode.amp.macos.desktop"
       ];
     };
   };

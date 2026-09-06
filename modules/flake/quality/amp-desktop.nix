@@ -8,7 +8,7 @@
     host = inputs.self.nixosConfigurations.t1.config;
     home = host.home-manager.users.mvs;
     packages = inputs.monorepo.packages.${system};
-    desktopFile = "com.anshulnoori.amp-linux.desktop";
+    desktopFile = "com.ampcode.amp.macos.desktop";
     hyprlandPortals = builtins.filter (package: lib.getName package == "xdg-desktop-portal-hyprland") host.xdg.portal.extraPortals;
   in {
     checks = lib.optionalAttrs (system == "x86_64-linux") {
@@ -25,9 +25,29 @@
       assert lib.assertMsg (host.systemd.user.services.xdg-desktop-portal.environment.XDG_DESKTOP_PORTAL_ENABLE_EXPERIMENTAL == "credential") "Experimental credential portal is disabled";
       assert lib.assertMsg (host.services.gnome.gnome-keyring.enable && host.security.pam.services.sddm.enableGnomeKeyring) "SDDM keyring unlocking is disabled";
       assert lib.assertMsg (lib.versionAtLeast host.boot.kernelPackages.kernel.version "6.5" && host.services.dbus.implementation == "broker" && lib.versionAtLeast host.services.dbus.brokerPackage.version "34") "Credential portal requires ProcessFD support";
-        pkgs.runCommand "nixconf-amp-desktop" {} ''
+        pkgs.runCommand "nixconf-amp-desktop" {
+          nativeBuildInputs = [pkgs.stdenv.cc pkgs.pkg-config];
+          buildInputs = [pkgs.glib];
+        } ''
           test -x ${packages.amp-desktop}/bin/amp-desktop
           test -r ${packages.amp-desktop}/share/applications/${desktopFile}
+          cat > lookup.c <<'EOF'
+          #include <gio/gdesktopappinfo.h>
+          int main(void) {
+            GDesktopAppInfo *app = g_desktop_app_info_new("${desktopFile}");
+            if (!app) {
+              g_printerr("App info not found for ${desktopFile}\n");
+              return 1;
+            }
+            g_object_unref(app);
+            return 0;
+          }
+          EOF
+          $CC lookup.c -o lookup $(pkg-config --cflags --libs gio-unix-2.0)
+          XDG_DATA_HOME="$TMPDIR/data" \
+            XDG_DATA_DIRS=${packages.amp-desktop}/share \
+            PATH=${lib.escapeShellArg host.systemd.user.services.xdg-desktop-portal.environment.PATH} \
+            ./lookup
           touch "$out"
         '';
     };
