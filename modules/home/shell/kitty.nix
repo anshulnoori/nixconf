@@ -5,6 +5,8 @@ _: {
       keybindings = {
         "ctrl+insert" = "copy_to_clipboard";
         "shift+insert" = "paste_from_clipboard";
+        # Send distinct Shift+Enter to TUIs, with or without tmux.
+        "shift+enter" = "send_text all \\x1b[13;2u";
       };
       settings = {
         font_size = 9;
