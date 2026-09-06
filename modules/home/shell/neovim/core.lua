@@ -195,7 +195,7 @@ vim.api.nvim_create_autocmd({ "FocusGained", "TermClose", "TermLeave" }, {
 })
 vim.api.nvim_create_autocmd("FileType", {
   group = group,
-  pattern = { "text", "plaintex", "typst", "gitcommit", "markdown" },
+  pattern = { "text", "plaintex", "tex", "typst", "gitcommit", "markdown" },
   callback = function()
     vim.opt_local.wrap = true
     vim.opt_local.spell = true

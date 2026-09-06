@@ -105,6 +105,19 @@ _: {
               ".luarc.jsonc"
             ];
           };
+          texlab = {
+            cmd = ["texlab"];
+            filetypes = [
+              "bib"
+              "plaintex"
+              "tex"
+            ];
+            root_markers = [
+              ".git"
+              ".latexmkrc"
+              "latexmkrc"
+            ];
+          };
           biome = {
             cmd = [
               "biome"
