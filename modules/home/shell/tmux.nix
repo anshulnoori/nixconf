@@ -37,13 +37,15 @@ _: {
           extraConfig = ''
             # Restore layout and directories, never replay arbitrary commands.
             set -g @resurrect-processes 'false'
+            # Save on detach too: continuum's timer needs an attached status bar.
+            set-hook -g client-detached 'run-shell "#{@resurrect-save-script-path} quiet"'
           '';
         }
         {
           plugin = continuum;
           extraConfig = ''
             set -g @continuum-restore 'on'
-            set -g @continuum-save-interval '15'
+            set -g @continuum-save-interval '1'
           '';
         }
       ];

@@ -82,8 +82,12 @@ portable.
 
 ### tmux
 
-Shells do not start tmux automatically. `tmux new -As main` starts or attaches
-to a session. The top status bar uses the same Stylix palette as Neovim.
+Kitty automatically attaches to the most recently used tmux session. If no
+session exists, it creates one. Closing Kitty detaches without stopping the
+session. Exiting the last shell removes the session. Detached sessions remain
+available until you exit their shells or explicitly remove them.
+
+Other shells do not start tmux automatically. The top status bar uses the same Stylix palette as Neovim.
 Nix manages all plugins, without TPM or runtime downloads.
 
 The prefix is `Ctrl+B`, followed by a separate key:
