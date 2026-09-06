@@ -1,0 +1,151 @@
+--- a/src/ui/Dialog.cpp
++++ b/src/ui/Dialog.cpp
+@@ -55,8 +55,8 @@
+     if (newPrompt.empty())
+         newPrompt = "Password";
+ 
+-    // a real password prompt: pam wants typed input now, so reveal the field and button
+-    // if a preceding cue had hidden them. no-op when already visible (password-only auth).
++    // a real password prompt: pam wants typed input now, so reveal the field
++    // if a preceding cue had hidden it. no-op when already visible (password-only auth).
+     m_sawPasswordPrompt = true;
+     showPasswordField(true);
+ 
+@@ -79,10 +79,6 @@
+     m_passwordField->rebuild()->placeholder(std::string{newPrompt})->commence();
+     m_passwordField->setText(std::string{});
+     m_passwordField->setPassword(!echo);
+-    if (m_authEnabled && m_authButton) {
+-        m_authEnabled = false;
+-        m_authButton->setEnabled(false);
+-    }
+     m_passwordField->focus();
+ }
+ 
+@@ -95,12 +91,7 @@
+                           ->multiline(false)
+                           ->size({CDynamicSize::HT_SIZE_ABSOLUTE, CDynamicSize::HT_SIZE_ABSOLUTE, {(double)cfg.passwordFieldWidth, 36.0}})
+                           ->onTextEdited([this](CSharedPointer<CTextboxElement>, const std::string& s) {
+-                              m_currentPassword     = s;
+-                              const bool nowEnabled = !s.empty();
+-                              if (nowEnabled != m_authEnabled && m_authButton) {
+-                                  m_authEnabled = nowEnabled;
+-                                  m_authButton->setEnabled(nowEnabled);
+-                              }
++                              m_currentPassword = s;
+                               // keep the previous error visible until a new one arrives or the
+                               // dialog closes. clearing on first keystroke produced a red flash
+                               // because the helper restart resets the field, fires onTextEdited
+@@ -127,13 +118,9 @@
+     m_passwordVisible = show;
+     if (show) {
+         m_passwordWrap->addChild(m_passwordField);
+-        if (m_btnRow && m_authButton)
+-            m_btnRow->addChild(m_authButton);
+         m_passwordField->focus();
+     } else {
+         m_passwordWrap->removeChild(m_passwordField);
+-        if (m_btnRow && m_authButton)
+-            m_btnRow->removeChild(m_authButton);
+     }
+ }
+ 
+@@ -170,11 +157,11 @@
+         detailRows += m_req.details.size();
+     }
+     const double extraForDetails = detailRows > 0 ? (double)detailRows * 8.0 : 0.0;
+-    const double targetHeight    = (double)cfg.windowHeight + extraForDetails;
++    const double targetHeight    = (double)cfg.windowHeight + extraForDetails + (m_req.command.empty() ? 0.0 : 80.0);
+ 
+     m_window = CWindowBuilder::begin()
+                    ->preferredSize({(double)cfg.windowWidth, targetHeight})
+-                   ->minSize({460.0, targetHeight})
++                   ->minSize({420.0, targetHeight})
+                    ->maxSize({600.0, targetHeight})
+                    ->appTitle("Authentication Required")
+                    ->appClass("hyprpolkitagent")
+@@ -203,8 +190,8 @@
+ 
+     m_window->m_rootElement->addChild(CRectangleBuilder::begin()->color([] { return g_pAgent->backend()->getPalette()->m_colors.background; })->commence());
+ 
+-    auto outer = CColumnLayoutBuilder::begin()->size({CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_AUTO, {0.88F, 0.0F}})->gap(12)->commence();
+-    outer->setMargin(20);
++    auto outer = CColumnLayoutBuilder::begin()->size({CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_AUTO, {0.94F, 0.0F}})->gap(8)->commence();
++    outer->setMargin(12);
+     outer->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+     outer->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
+     m_window->m_rootElement->addChild(outer);
+@@ -213,18 +200,6 @@
+         auto wrap = CRowLayoutBuilder::begin()->commence();
+         wrap->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+         wrap->setPositionFlag(IElement::HT_POSITION_FLAG_HCENTER, true);
+-        wrap->addChild(CTextBuilder::begin()
+-                           ->text(std::string{"Authentication Required"})
+-                           ->fontSize({CFontSize::HT_FONT_H2})
+-                           ->color([] { return g_pAgent->backend()->getPalette()->m_colors.text; })
+-                           ->commence());
+-        outer->addChild(wrap);
+-    }
+-
+-    {
+-        auto wrap = CRowLayoutBuilder::begin()->commence();
+-        wrap->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+-        wrap->setPositionFlag(IElement::HT_POSITION_FLAG_HCENTER, true);
+ 
+         if (m_req.identities.size() > 1) {
+             auto                     cb = CComboboxBuilder::begin();
+@@ -351,28 +326,6 @@
+         m_infoWrap = makeWrap(m_infoLabel);
+     }
+ 
+-    {
+-        auto btnRow = CRowLayoutBuilder::begin()->gap(10)->commence();
+-        btnRow->setMargin(8);
+-        btnRow->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+-        btnRow->setPositionFlag(IElement::HT_POSITION_FLAG_HCENTER, true);
+-
+-        btnRow->addChild(
+-            CButtonBuilder::begin()->label(std::string{"Cancel"})->noBorder(true)->noBg(true)->onMainClick([](CSharedPointer<CButtonElement>) { g_pAgent->cancel(); })->commence());
+-
+-        m_authButton = CButtonBuilder::begin()
+-                           ->label(std::string{"Authenticate"})
+-                           ->enabled(false)
+-                           ->onMainClick([this](CSharedPointer<CButtonElement>) {
+-                               if (!m_currentPassword.empty())
+-                                   g_pAgent->submitPassword(m_currentPassword);
+-                           })
+-                           ->commence();
+-        btnRow->addChild(m_authButton);
+-        outer->addChild(btnRow);
+-        m_btnRow = btnRow;
+-    }
+-
+     std::vector<std::pair<std::string, std::string>> fields;
+     if (!m_req.actionId.empty())
+         fields.emplace_back("Action", m_req.actionId);
+--- a/src/ui/Dialog.hpp
++++ b/src/ui/Dialog.hpp
+@@ -39,7 +39,6 @@
+     Hyprutils::Memory::CSharedPointer<Hyprtoolkit::CTextElement>    m_errorLabel;
+     Hyprutils::Memory::CSharedPointer<Hyprtoolkit::CTextElement>    m_infoLabel;
+     Hyprutils::Memory::CSharedPointer<Hyprtoolkit::CTextElement>    m_capsLockLabel;
+-    Hyprutils::Memory::CSharedPointer<Hyprtoolkit::CButtonElement>  m_authButton;
+     Hyprutils::Memory::CSharedPointer<Hyprtoolkit::CButtonElement>  m_detailsButton;
+     Hyprutils::Memory::CSharedPointer<Hyprtoolkit::IElement>        m_detailsContainer;
+     Hyprutils::Memory::CSharedPointer<Hyprtoolkit::IElement>        m_detailsParent;
+@@ -48,7 +47,6 @@
+     Hyprutils::Memory::CSharedPointer<Hyprtoolkit::IElement>        m_errWrap;
+     Hyprutils::Memory::CSharedPointer<Hyprtoolkit::IElement>        m_infoWrap;
+     Hyprutils::Memory::CSharedPointer<Hyprtoolkit::IElement>        m_passwordWrap;
+-    Hyprutils::Memory::CSharedPointer<Hyprtoolkit::IElement>        m_btnRow;
+ 
+     Hyprutils::Signal::CHyprSignalListener                          m_closeListener;
+     Hyprutils::Signal::CHyprSignalListener                          m_keyListener;
+@@ -56,7 +54,6 @@
+     CPolkitListener::SAuthRequest                                   m_req;
+     std::string                                                     m_currentPassword;
+     bool                                                            m_promptEcho     = false;
+-    bool                                                            m_authEnabled    = false;
+     bool                                                            m_detailsVisible = false;
+     bool                                                            m_capsLockOn     = false;
+     bool                                                            m_capsShown      = false;

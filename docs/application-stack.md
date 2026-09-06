@@ -56,8 +56,12 @@ bindings or feature policy.
 
 The authentication agent uses a pinned, unreleased Hyprtoolkit revision with
 its upstream dependency set. This does not replace Hyprland's dependencies.
-Stylix supplies its Gruvbox colors and SF Pro Text font through
-`~/.config/hypr/hyprtoolkit.conf`.
+Its compact layout patch removes the large heading and action buttons, and reduces padding.
+The 420×170 prompt appears at the top right, with extra height for command prompts.
+Stylix supplies Gruvbox colors and JetBrains Mono through
+`~/.config/hypr/hyprtoolkit.conf`, matching notifications and the lock-screen field.
+The prompt keeps the action, account, password field, and error messages.
+Enter authenticates. Esc cancels.
 
 Elephant's clipboard provider owns clipboard history. Do not also run cliphist;
 that would duplicate the clipboard watcher and history database.
