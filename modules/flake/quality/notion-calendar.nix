@@ -27,7 +27,6 @@
         }) "Notion Calendar's Waybar module is misconfigured";
       assert lib.assertMsg (!(mainBar ? "custom/notion-calendar")) "Notion Calendar still has a separate custom item";
       assert lib.assertMsg (trayExpanderIndex != null && notionCalendarIndex == trayExpanderIndex + 1) "Notion Calendar is not immediately after Waybar's tray expander";
-      assert lib.assertMsg (lib.hasInfix "border-left: 3px solid @accent;" home.programs.waybar.style) "Notion Calendar's active event marker is missing";
       assert lib.assertMsg (builtins.elem "tray" mainBar."group/tray-expander".modules) "Waybar's StatusNotifierItem tray is missing";
       assert lib.assertMsg (builtins.elem "Notion Calendar_status_icon_" mainBar.tray.ignore-list) "Notion Calendar's duplicate tray icon is not ignored";
       assert lib.assertMsg (builtins.elem ../../home/desktop/waybar/tray-text.patch waybar.patches) "Waybar's native tray text support is missing";

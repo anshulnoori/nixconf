@@ -45,13 +45,6 @@ _: {
         margin: 0 17px 0 0;
       }
 
-      #tray.notion-calendar label.active {
-        color: @accent;
-        border-left: 3px solid @accent;
-        border-radius: 2px;
-        padding-left: 6px;
-        margin: 4px 0;
-      }
       #tray { margin-right: 16px; }
       #bluetooth { margin-right: 17px; }
       #network { margin-right: 13px; }
