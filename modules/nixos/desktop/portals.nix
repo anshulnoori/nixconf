@@ -16,7 +16,7 @@
     xdg.portal = {
       enable = true;
       xdgOpenUsePortal = true;
-      extraPortals = [ampPackages.credentialsd];
+      extraPortals = [ampPackages.credentialsd pkgs.xdg-desktop-portal-termfilechooser];
 
       config.hyprland = {
         default = [
@@ -26,7 +26,7 @@
         "org.freedesktop.impl.portal.ScreenCast" = ["hyprland"];
         "org.freedesktop.impl.portal.RemoteDesktop" = ["hyprland"];
         "org.freedesktop.impl.portal.AppChooser" = ["gtk"];
-        "org.freedesktop.impl.portal.FileChooser" = ["gtk"];
+        "org.freedesktop.impl.portal.FileChooser" = ["termfilechooser"];
         "org.freedesktop.impl.portal.Settings" = ["gtk"];
         "org.freedesktop.impl.portal.Secret" = ["gnome-keyring"];
         "org.freedesktop.impl.portal.experimental.Credential" = ["credentialsd"];
