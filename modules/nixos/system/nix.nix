@@ -33,6 +33,7 @@
         "davinci-resolve"
         "discord-canary"
         "discord-canary-unwrapped"
+        "namespace-devbox"
         "objectbox-linux"
         "notion-calendar"
         "obsidian"
