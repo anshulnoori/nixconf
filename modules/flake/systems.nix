@@ -20,7 +20,6 @@
           "amp-cli"
           "bluebubbles"
           "cuda_nvml_dev"
-          "davinci-resolve"
           "discord-canary"
           "discord-canary-unwrapped"
           "objectbox-linux"

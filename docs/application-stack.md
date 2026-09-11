@@ -310,16 +310,15 @@ limited without it; those limitations are preferable to weakening SIP initially.
 
 ## Media and creative applications
 
-| Role                           | Selection               | Notes                                                            |
-| ------------------------------ | ----------------------- | ---------------------------------------------------------------- |
-| Music                          | Official Spotify client | Keep the graphical client                                        |
-| Video, audio, and still images | mpv                     | Default media handler; MPRIS integrates with playerctl           |
-| Media retrieval                | yt-dlp                  | Integrate with mpv where useful                                  |
-| Transcoding and inspection     | FFmpeg                  | Full codec build for CLI work and DaVinci-compatible transcodes  |
-| Recording and streaming        | OBS Studio              | Includes the `v4l2loopback`-backed OBS virtual camera            |
-| Video editing                  | DaVinci Resolve         | Unfree package; codec limitations may require FFmpeg transcoding |
-| 3D creation                    | Blender                 | Stylix preset and native `.blend` file association               |
-| Local file transfer            | LocalSend               | Cross-platform transfer over Tailscale only                      |
+| Role                           | Selection               | Notes                                                  |
+| ------------------------------ | ----------------------- | ------------------------------------------------------ |
+| Music                          | Official Spotify client | Keep the graphical client                              |
+| Video, audio, and still images | mpv                     | Default media handler; MPRIS integrates with playerctl |
+| Media retrieval                | yt-dlp                  | Integrate with mpv where useful                        |
+| Transcoding and inspection     | FFmpeg                  | Full codec build for CLI transcoding and inspection    |
+| Recording and streaming        | OBS Studio              | Includes the `v4l2loopback`-backed OBS virtual camera  |
+| 3D creation                    | Blender                 | Stylix preset and native `.blend` file association     |
+| Local file transfer            | LocalSend               | Cross-platform transfer over Tailscale only            |
 
 Blender uses the standard build while the machine has only integrated
 graphics. Select the CUDA-enabled package together with the future NVIDIA GPU
