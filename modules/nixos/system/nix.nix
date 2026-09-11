@@ -29,6 +29,7 @@
         "1password"
         "1password-cli"
         "amp-cli"
+        "bluebubbles"
         "cuda_nvml_dev"
         "davinci-resolve"
         "discord-canary"
