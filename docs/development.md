@@ -48,8 +48,10 @@ ShellCheck, Renovate configuration, Git conventions, Gitleaks, Minuet's secret
 transport, and the Notion Calendar integration.
 
 The pre-push hook validates the branch and evaluates the flake without building
-the host. On each push to `master`, GitHub Actions repeats evaluation, builds the
-full `t1` closure, and uploads newly built paths to `anshulnoori.cachix.org`.
+the host. On each push to `master`, `renovate/**`, or `updates/**`, GitHub Actions
+repeats evaluation, builds the full `t1` closure, and uploads newly built paths
+to `anshulnoori.cachix.org`. Successful builds publish the commit status
+`nixconf/build` on the exact revision that was built.
 The workflow requires `CACHIX_AUTH_TOKEN` and a read-only monorepo deploy key in
 `MONOREPO_SSH_KEY` as repository secrets.
 
@@ -57,6 +59,7 @@ The workflow requires `CACHIX_AUTH_TOKEN` and a read-only monorepo deploy key in
 
 The repository is trunk-based. `master` is the default branch. Short-lived
 branches use `type/lowercase-kebab-description`; `renovate/*` is also allowed.
+The weekly workflow owns the fixed `updates/flake-lock` automation branch.
 
 Allowed conventional commit types are:
 
@@ -70,30 +73,61 @@ linear.
 
 ## Dependency updates
 
-Renovate scans daily in `prCreation: "approval"` mode. It creates grouped Nix
-flake update branches and lists them in the Dependency Dashboard. Weekly lock
-file maintenance creates a branch only when `flake.lock` changes. Nothing
-merges or activates a Renovate update automatically.
+Renovate scans supported non-Nix dependencies daily in `prCreation: "approval"`
+mode. It creates `renovate/**` branches and lists proposed updates in the
+Dependency Dashboard. Nix management is disabled there so that it cannot race
+the repository's weekly flake updater.
+
+The flake workflow runs Mondays at 04:41 UTC, or on manual dispatch.
+It runs `nix flake update` and publishes changes to the bot-owned
+`updates/flake-lock` branch. Each run replaces that branch using a lease;
+do not put manual work on it. Explicit revision pins in `flake.nix` stay pinned.
+The workflow builds the committed candidate and records a pending, success,
+or failure status under `nixconf/build`. It does not open or merge a pull request.
+Its token-authenticated push does not start another workflow, so validation
+runs in the same job. Failed candidates remain visible for inspection.
 
 Proton GE uses `nvfetcher.toml` and the generated pins in `_sources/`.
 The build-and-cache workflow checks published releases every six hours.
-It packages both binary architectures and builds the full `t1` system before
-pushing the generated pins directly to `master`. It creates no pull requests.
-Failed validation prevents publication. A concurrent change to `master` also
-prevents publication because the workflow never force-pushes.
+It packages both binary architectures and builds the full `t1` system on every
+scheduled run before pushing changed generated pins directly to `master`. It
+then records `nixconf/build` on that new commit because token-authenticated
+pushes do not start another workflow. It creates no pull requests. Failed
+validation prevents publication. A concurrent change to `master` also prevents
+publication because the workflow never force-pushes.
 
 To refresh the pins locally, run `nix run .#nvfetcher`.
 Do not edit `_sources/` manually. The generated files retain nvfetcher's format.
 The package override inherits Steam integration from nixpkgs.
 The ARM check packages ARM binaries on the native builder without executing them.
 
-The `services.nixconf-update` user timer polls GitHub every six hours. It records
-active `renovate/*` revisions and compares `master` with the revision embedded
-in the running NixOS system. Waybar shows actionable state, and Mako sends at
-most one persistent notification for each branch revision. Clicking the
-indicator opens GitHub-provided diffs in a floating terminal. A confirmed
-update fast-forwards a clean `/etc/nixos` checkout to the inspected `master`
-revision and runs `nh os switch`; it never merges a Renovate branch.
+Both workflows use `nh os build` for full-system builds and upload the system
+closure to Cachix before marking the commit successful. Pushes to `master`,
+`renovate/**`, and `updates/**` trigger validation. Fork pull requests do not
+receive private credentials or run these jobs.
+
+Set the repository variable `NIX_BUILD_RUNNER_LABELS` to a JSON array of
+your existing Namespace runner labels to run both jobs there. Without it,
+jobs use `["ubuntu-24.04"]`. The runner must be an x86_64 Linux GitHub Actions
+runner compatible with the Lix installer. This setting does not provision a runner.
+Both jobs require `MONOREPO_SSH_KEY` and `CACHIX_AUTH_TOKEN` Actions secrets.
+
+The `services.nixconf-update` user timer polls GitHub every six hours. It checks
+`renovate/*` and `updates/*`, omits merged branches, and compares `master` with
+the running system revision. Waybar distinguishes available updates, failed
+builds, ready-to-install revisions, and unavailable checks. Local results expire
+after 12 hours; weekly discovery results expire after eight days. Pending builds
+older than six hours are unavailable. Missing results and API errors never mean
+that the system is up to date.
+
+Mako notifies once per branch, revision, and build state. Clicking the indicator
+shows diffs and CI links. Installation requires a fresh successful `nixconf/build`
+lookup for the exact reviewed `master` commit. It fast-forwards a clean
+`/etc/nixos` checkout and runs `nh os switch`. It never merges a dependency branch
+or advances local pins. Cached build results reduce compilation on the PC.
+
+Run `bash scripts/test-nixconf-update.sh` to test states and installation guards
+without network access, desktop notifications, or system activation.
 
 Install and enable Renovate for `anshulnoori/nixconf` separately. The repository
 does not create external services, credentials, or repository settings.

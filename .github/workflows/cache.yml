@@ -4,12 +4,15 @@ on:
   push:
     branches:
       - master
+      - "renovate/**"
+      - "updates/**"
   schedule:
     - cron: "23 */6 * * *"
   workflow_dispatch:
 
 permissions:
   contents: write
+  statuses: write
 
 concurrency:
   group: nixos-cache-${{ github.ref }}
@@ -18,9 +21,17 @@ concurrency:
 jobs:
   cache:
     name: Evaluate, build, and cache t1
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.NIX_BUILD_RUNNER_LABELS || '["ubuntu-24.04"]') }}
     timeout-minutes: 120
     steps:
+      - name: Mark build pending
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=pending -f context=nixconf/build \
+            -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -95,19 +106,43 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Evaluate all systems
-        if: github.event_name != 'schedule' || steps.sources.outputs.changed == 'true'
         run: nix flake check --all-systems --no-build -L
 
       - name: Check formatting and build both Proton variants
-        if: github.event_name != 'schedule' || steps.sources.outputs.changed == 'true'
         run: nix build --no-link -L .#checks.x86_64-linux.treefmt .#proton-ge .#checks.x86_64-linux.proton-ge-aarch64
 
+      - name: Test updater states
+        run: nix build --no-link -L .#checks.x86_64-linux.nixconf-update
+
       - name: Build t1
-        if: github.event_name != 'schedule' || steps.sources.outputs.changed == 'true'
-        run: nix build --no-link -L .#nixosConfigurations.t1.config.system.build.toplevel
+        run: nix run .#nixosConfigurations.t1.pkgs.nh -- os build . --hostname t1 --no-nom --diff never --out-link result-system -L
+
+      - name: Upload system closure before marking ready
+        run: cachix push anshulnoori "$(readlink -f result-system)"
 
       # GITHUB_TOKEN pushes do not start another workflow. Build and cache above
       # before publishing the exact commit that nixconf-update will install.
       - name: Publish validated sources directly
         if: steps.sources.outputs.changed == 'true'
         run: git push origin HEAD:master
+
+      - name: Publish build status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECKED_OUT_SHA: ${{ github.sha }}
+          SOURCES_CHANGED: ${{ steps.sources.outputs.changed }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          STATUS_SHA=$CHECKED_OUT_SHA
+          state=failure
+          if [[ "$JOB_STATUS" == 'success' ]]; then
+            state=success
+          fi
+          if [[ "$SOURCES_CHANGED" == 'true' && "$state" == 'success' ]]; then
+            STATUS_SHA=$(git rev-parse HEAD)
+          fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${STATUS_SHA}" \
+            -f state="$state" \
+            -f context=nixconf/build \
+            -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"

@@ -10,22 +10,9 @@
     "enabled": false
   },
   "lockFileMaintenance": {
-    "enabled": true,
-    "schedule": ["before 6am on monday"],
-    "branchTopic": "nix-lock-file-maintenance"
+    "enabled": false
   },
   "nix": {
-    "enabled": true
-  },
-  "packageRules": [
-    {
-      "description": "Group Nix flake inputs",
-      "matchManagers": ["nix"],
-      "groupName": "Nix flake inputs",
-      "groupSlug": "nix-flake-inputs",
-      "separateMajorMinor": false,
-      "separateMultipleMajor": false,
-      "semanticCommitType": "flake"
-    }
-  ]
+    "enabled": false
+  }
 }

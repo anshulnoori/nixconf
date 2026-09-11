@@ -30,9 +30,40 @@ github_get() {
     --fail \
     --silent \
     --show-error \
+    --connect-timeout 10 \
+    --max-time 30 \
     --header 'Accept: application/vnd.github+json' \
     --header 'X-GitHub-Api-Version: 2022-11-28' \
     "$repository_api/$1"
+}
+
+build_status() {
+  local revision=$1
+  local response
+  if response=$(github_get "commits/$revision/statuses?per_page=100"); then
+    jq -c '
+      [.[] | select(.context == "nixconf/build")][0]
+      | if . == null then {state: "unknown"}
+        else {state, url: .target_url, updatedAt: .updated_at} end
+    ' <<<"$response"
+  else
+    printf '{"state":"unknown"}\n'
+  fi
+}
+
+record_check_failure() {
+  trap - ERR
+  local next_status
+  next_status=$(mktemp --tmpdir="$state_dir" update-status.XXXXXX)
+  if [[ -r $status_file ]] && jq -e 'type == "object"' "$status_file" >/dev/null 2>&1; then
+    jq '.error = "GitHub update check failed"' "$status_file" >"$next_status"
+  else
+    printf '{"error":"GitHub update check failed"}\n' >"$next_status"
+  fi
+  mv "$next_status" "$status_file"
+  notify_once unavailable "Nixconf checks unavailable" "GitHub could not be checked; saved results are not current."
+  signal_waybar
+  exit 1
 }
 
 running_revision() {
@@ -100,26 +131,59 @@ check_updates() {
   local main_update=false
   local checked_at
   local next_status
+  local build
+  local discovery_file
+  local candidate_file
+  local branch revision
 
   mkdir -p "$state_dir"
   exec 9>"$lock_file"
   flock 9
   touch "$notified_file"
+  set -E
+  trap record_check_failure ERR
   make_temporary_directory
 
   branches_file="$temporary_directory/branches.json"
   master_file="$temporary_directory/master.json"
   renovate_file="$temporary_directory/renovate.json"
   compare_file="$temporary_directory/master-compare.json"
+  discovery_file="$temporary_directory/discovery.json"
+  candidate_file="$temporary_directory/candidate.json"
 
   fetch_branches "$branches_file"
   github_get "branches/$default_branch" >"$master_file"
   master_revision=$(jq -er '.commit.sha' "$master_file")
   jq '[
     .[]
-    | select(.name | startswith("renovate/"))
+    | select(.name | startswith("renovate/") or startswith("updates/"))
     | {name, revision: .commit.sha}
   ] | sort_by(.name)' "$branches_file" >"$renovate_file"
+
+  printf '[]\n' >"$candidate_file"
+  while IFS=$'\t' read -r branch revision; do
+    # Drop branches already merged into master; compare exact SHAs, not branch names.
+    github_get "compare/$master_revision...$revision" >"$compare_file"
+    if jq -e '.status == "behind" or .status == "identical" or .files == []' "$compare_file" >/dev/null; then
+      continue
+    fi
+    build=$(build_status "$revision")
+    jq --arg name "$branch" --arg revision "$revision" --argjson build "$build" \
+      '. + [{name: $name, revision: $revision, build: $build}]' \
+      "$candidate_file" >"$candidate_file.next"
+    mv "$candidate_file.next" "$candidate_file"
+  done < <(jq -r '.[] | [.name, .revision] | @tsv' "$renovate_file")
+  mv "$candidate_file" "$renovate_file"
+
+  if github_get "actions/workflows/flake-update.yml/runs?branch=master&per_page=1" >"$discovery_file"; then
+    jq '.workflow_runs[0] | if . == null then {status: "unknown"} else
+      {status, conclusion, url: .html_url, updatedAt: .updated_at} end' \
+      "$discovery_file" >"$discovery_file.next"
+    mv "$discovery_file.next" "$discovery_file"
+  else
+    printf '{"status":"unknown"}\n' >"$discovery_file"
+  fi
+  build=$(build_status "$master_revision")
 
   current_revision=$(running_revision)
   if [[ $current_revision == "$master_revision" ]]; then
@@ -142,10 +206,16 @@ check_updates() {
     --arg runningRevision "$current_revision" \
     --arg relation "$relation" \
     --argjson mainUpdate "$main_update" \
+    --argjson checkedAtEpoch "$(date +%s)" \
+    --argjson build "$build" \
+    --slurpfile discovery "$discovery_file" \
     --slurpfile renovate "$renovate_file" \
     '{
       checkedAt: $checkedAt,
+      checkedAtEpoch: $checkedAtEpoch,
+      discovery: $discovery[0],
       main: {
+        build: $build,
         branch: $branch,
         revision: $masterRevision,
         runningRevision: $runningRevision,
@@ -159,38 +229,66 @@ check_updates() {
 
   if [[ $main_update == true ]]; then
     notify_once \
-      "$default_branch"$'\t'"$master_revision" \
-      "NixOS update available" \
-      "$default_branch is newer than the running system (${master_revision:0:12})"
+      "$default_branch"$'\t'"$master_revision"$'\t'"$(jq -r .state <<<"$build")" \
+      "NixOS update: $(jq -r .state <<<"$build")" \
+      "$default_branch ${master_revision:0:12}. Only successful builds can be installed."
   fi
 
-  while IFS=$'\t' read -r branch revision; do
+  while IFS=$'\t' read -r branch revision build; do
     [[ -n $branch && -n $revision ]] || continue
     notify_once \
-      "$branch"$'\t'"$revision" \
+      "$branch"$'\t'"$revision"$'\t'"$build" \
       "nixconf dependency update" \
-      "$branch at ${revision:0:12}"
-  done < <(jq -r '.[] | [.name, .revision] | @tsv' "$renovate_file")
+      "$branch at ${revision:0:12}: $build"
+  done < <(jq -r '.[] | [.name, .revision, .build.state] | @tsv' "$renovate_file")
+
+  if waybar_status | jq -e '.class == "unavailable"' >/dev/null; then
+    notify_once unavailable "Nixconf checks unavailable" "Dependency discovery or build checks are stale or unavailable."
+  else
+    grep -Fxv unavailable "$notified_file" >"$notified_file.next" || true
+    mv "$notified_file.next" "$notified_file"
+  fi
 
   sort -u -o "$notified_file" "$notified_file"
   signal_waybar
+  trap - ERR
 }
 
 waybar_status() {
   if [[ ! -r $status_file ]] || ! jq -e . "$status_file" >/dev/null 2>&1; then
-    printf '{"text":""}\n'
+    printf '{"text":"󰏗 ?","class":"unavailable","tooltip":"Update checks unavailable"}\n'
     return
   fi
 
   jq -c '
-    if .count == 0 then
+    def epoch: try fromdateiso8601 catch 0;
+    def build_label:
+      if . == "success" then "build passed"
+      elif . == "failure" or . == "error" then "build failed"
+      elif . == "pending" then "build pending"
+      else "build status unavailable" end;
+    ([.main.build] + [.renovate[]?.build]) as $builds
+    | (.error != null or .main.relation == "unknown" or (now - (.checkedAtEpoch // 0) > 43200)
+       or .discovery.status != "completed" or .discovery.conclusion != "success"
+       or (now - (.discovery.updatedAt // "" | epoch) > 691200)
+       or any($builds[]; .state == "unknown" or
+         (.state == "pending" and (now - (.updatedAt // "" | epoch) > 21600)))) as $unavailable
+    | if .error == null and (now - (.checkedAtEpoch // 0) <= 43200)
+         and any($builds[]; .state == "failure" or .state == "error") then
+      {text: "󰏗 !", class: "failed", tooltip: "Build failed. Click to inspect CI and discovery results."}
+    elif $unavailable then
+      {text: "󰏗 ?", class: "unavailable",
+       tooltip: ("Update checks stale or unavailable. " + (.error // "Inspect dependency discovery and build results."))}
+    elif .main.updateAvailable and .main.build.state == "success" then
+      {text: "󰏗 ✓", class: "ready", tooltip: ("Ready to install master " + .main.revision[0:12])}
+    elif .count == 0 then
       {text: ""}
     else
       ([
         if .main.updateAvailable then
-          "Running system → " + .main.branch + " " + (.main.revision[0:12])
+          "Running system → " + .main.branch + " " + (.main.revision[0:12]) + ": " + (.main.build.state | build_label)
         else empty end,
-        (.renovate[] | .name + " " + (.revision[0:12]))
+        (.renovate[] | .name + " " + (.revision[0:12]) + ": " + (.build.state | build_label))
       ]) as $updates
       | {
           text: ("󰏗 " + (.count | tostring)),
@@ -259,6 +357,14 @@ show_details() {
     printf 'Running revision: %s\n' "$current_revision"
     printf '%s revision: %s\n' "$default_branch" "$master_revision"
     printf 'Relationship: %s\n' "$(jq -r '.main.relation' "$status_file")"
+    jq -r '
+      "Check error: \(.error // "none")",
+      "Dependency discovery: \(.discovery.status // "unknown") / \(.discovery.conclusion // "unknown")",
+      (.discovery.url // ""),
+      "Master build: \(.main.build.state // "unknown")",
+      (.main.build.url // ""),
+      (.renovate[]? | "\(.name): \(.build.state)\n\(.build.url // "")")
+    ' "$status_file"
   } >"$report"
 
   if [[ $main_update == true ]]; then
@@ -279,18 +385,21 @@ show_details() {
       "$revision" \
       "$branch" \
       "$report"
-  done < <(jq -r '.renovate[] | [.name, .revision] | @tsv' "$status_file")
+  done < <(jq -r '.renovate[]? | [.name, .revision] | @tsv' "$status_file")
 
   if jq -e '.renovate | length > 0' "$status_file" >/dev/null; then
     {
-      printf '\nRenovate branches require Amp review and an explicit owner merge.\n'
-      printf 'This tool never merges a Renovate branch.\n'
+      printf '\nDependency branches require review and an explicit owner merge.\n'
+      printf 'This tool never merges a dependency branch.\n'
     } >>"$report"
   fi
 
   less "$report"
 
-  if [[ $main_update == true ]]; then
+  if [[ $main_update == true ]] && jq -e '
+    .error == null and .main.build.state == "success" and
+    (now - (.checkedAtEpoch // 0) <= 43200)
+  ' "$status_file" >/dev/null; then
     read -r -p \
       "Fast-forward $checkout to origin/$default_branch and switch now? [y/N] " \
       answer || true
@@ -307,10 +416,16 @@ apply_update() {
   local remote_line
   local remote_revision
   local fetched_revision
+  local build
 
   if [[ ! $expected_revision =~ ^[0-9a-f]{40}$ ]]; then
     printf 'A full expected revision is required.\n' >&2
     exit 2
+  fi
+  build=$(build_status "$expected_revision")
+  if ! jq -e '.state == "success"' <<<"$build" >/dev/null; then
+    printf 'Refusing to install a revision without a successful nixconf/build status.\n' >&2
+    exit 1
   fi
   if [[ ! -d $checkout/.git ]]; then
     printf '%s is not a Git checkout.\n' "$checkout" >&2
@@ -361,24 +476,26 @@ apply_update() {
   check_updates
 }
 
-case "${1:-check}" in
-check)
-  check_updates
-  ;;
-waybar)
-  waybar_status
-  ;;
-open)
-  exec present-terminal "Nixconf Updates" "$0" details
-  ;;
-details)
-  show_details
-  ;;
-apply)
-  apply_update "${2:-}"
-  ;;
-*)
-  printf 'Usage: nixconf-update [check|waybar|open|details|apply REVISION]\n' >&2
-  exit 2
-  ;;
-esac
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
+  case "${1:-check}" in
+  check)
+    check_updates
+    ;;
+  waybar)
+    waybar_status
+    ;;
+  open)
+    exec present-terminal "Nixconf Updates" "$0" details
+    ;;
+  details)
+    show_details
+    ;;
+  apply)
+    apply_update "${2:-}"
+    ;;
+  *)
+    printf 'Usage: nixconf-update [check|waybar|open|details|apply REVISION]\n' >&2
+    exit 2
+    ;;
+  esac
+fi
