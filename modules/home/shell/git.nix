@@ -46,7 +46,7 @@ _: {
             exec ${realGit} \
               -c user.name="Anshul Noori" \
               -c user.email="anshulnoori+github@gmail.com" \
-              -c user.signingKey="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINjLNqd9uRYC2EpxIj6CoSSwe0KOZ3q0mJeMEiMH+ATE" \
+              -c user.signingKey="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFzVmQzhajkwYF/s1jWyLwAAjGnmAhBqB3VEKP2S/Xwf" \
               "$@"
             ;;
           https://github.com/maroonverticalshape/*|ssh://git@github.com/maroonverticalshape/*|git@github.com:maroonverticalshape/*)
@@ -68,6 +68,7 @@ _: {
     ];
 
     xdg.configFile."git/allowed_signers".text = ''
+      anshulnoori+github@gmail.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFzVmQzhajkwYF/s1jWyLwAAjGnmAhBqB3VEKP2S/Xwf
       anshulnoori+github@gmail.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINjLNqd9uRYC2EpxIj6CoSSwe0KOZ3q0mJeMEiMH+ATE
       246713988+maroonverticalshape@users.noreply.github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ9q+hfnkUS3lNwGHuRprxjm6bd2Logahr2jHmLT+jC3
     '';

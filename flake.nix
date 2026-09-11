@@ -48,7 +48,9 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    hyprland.url = "github:hyprwm/Hyprland";
+    # Waybar still requires the workspace IDs removed by Hyprland's
+    # September 9 address/type IPC refactor. Keep the compatible locked revision.
+    hyprland.url = "github:hyprwm/Hyprland/c1239d02e759673977de0389d3945c7c9adbc1ee";
 
     hyprpolkitagent.url = "github:hyprwm/hyprpolkitagent/a97ef1654c003def8ee4c501aef03b4f1bde49c9";
 

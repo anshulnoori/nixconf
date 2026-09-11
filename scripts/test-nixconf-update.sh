@@ -57,6 +57,11 @@ github_get() {
 
 expect_class() {
   waybar_status | jq -e --arg expected "$1" '.class == $expected' >/dev/null
+  if [[ $1 == unavailable ]]; then
+    waybar_status | jq -e '.text == ""' >/dev/null
+  else
+    waybar_status | jq -e '.text != ""' >/dev/null
+  fi
   printf 'PASS: %s\n' "$2"
 }
 
@@ -123,4 +128,8 @@ running=$master
 jq -e '.count == 0 and .renovate == []' "$status_file" >/dev/null
 waybar_status | jq -e '.text == ""' >/dev/null
 echo 'PASS: merged candidates and current validated master produce no update'
+build_state=failure
+(check_updates)
+waybar_status | jq -e '.text == "" and .class == "failed"' >/dev/null
+echo 'PASS: failed build without an update stays hidden'
 echo 'PASS: updater state and installation guards'

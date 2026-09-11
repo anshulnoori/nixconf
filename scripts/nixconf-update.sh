@@ -256,7 +256,7 @@ check_updates() {
 
 waybar_status() {
   if [[ ! -r $status_file ]] || ! jq -e . "$status_file" >/dev/null 2>&1; then
-    printf '{"text":"󰏗 ?","class":"unavailable","tooltip":"Update checks unavailable"}\n'
+    printf '{"text":"","class":"unavailable","tooltip":"Update checks unavailable"}\n'
     return
   fi
 
@@ -267,7 +267,8 @@ waybar_status() {
       elif . == "failure" or . == "error" then "build failed"
       elif . == "pending" then "build pending"
       else "build status unavailable" end;
-    ([.main.build] + [.renovate[]?.build]) as $builds
+    .count as $count
+    | ([.main.build] + [.renovate[]?.build]) as $builds
     | (.error != null or .main.relation == "unknown" or (now - (.checkedAtEpoch // 0) > 43200)
        or .discovery.status != "completed" or .discovery.conclusion != "success"
        or (now - (.discovery.updatedAt // "" | epoch) > 691200)
@@ -296,6 +297,7 @@ waybar_status() {
           tooltip: (($updates + ["", "Click to inspect diffs and update safely"]) | join("\n"))
         }
     end
+    | if .class == "unavailable" or $count == 0 then .text = "" else . end
   ' "$status_file"
 }
 
