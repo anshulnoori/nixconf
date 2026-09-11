@@ -1,22 +1,9 @@
-{inputs, ...}: {
-  flake.modules.nixos.desktop = {pkgs, ...}: let
-    ampPackages = inputs.monorepo.packages.${pkgs.stdenv.hostPlatform.system};
-  in {
-    nixpkgs.overlays = [
-      (_final: _previous: {
-        xdg-desktop-portal = ampPackages.xdg-desktop-portal-credential;
-      })
-    ];
-
-    services = {
-      pcscd.enable = true;
-      udev.packages = [pkgs.libfido2];
-    };
-
+_: {
+  flake.modules.nixos.desktop = {pkgs, ...}: {
     xdg.portal = {
       enable = true;
       xdgOpenUsePortal = true;
-      extraPortals = [ampPackages.credentialsd pkgs.xdg-desktop-portal-termfilechooser];
+      extraPortals = [pkgs.xdg-desktop-portal-termfilechooser];
 
       config.hyprland = {
         default = [
@@ -29,13 +16,7 @@
         "org.freedesktop.impl.portal.FileChooser" = ["termfilechooser"];
         "org.freedesktop.impl.portal.Settings" = ["gtk"];
         "org.freedesktop.impl.portal.Secret" = ["gnome-keyring"];
-        "org.freedesktop.impl.portal.experimental.Credential" = ["credentialsd"];
       };
-    };
-
-    systemd.user.services.xdg-desktop-portal = {
-      overrideStrategy = "asDropin";
-      environment.XDG_DESKTOP_PORTAL_ENABLE_EXPERIMENTAL = "credential";
     };
   };
 }
