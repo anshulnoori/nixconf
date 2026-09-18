@@ -65,7 +65,10 @@ jobs:
             allow-import-from-derivation = true
 
       - name: Evaluate all systems
-        run: nix flake check --all-systems --no-build --no-update-lock-file -L
+        run: |
+          # Instantiate generated sources before the read-only flake check.
+          nix eval --raw --no-update-lock-file .#nixosConfigurations.t1.config.system.build.toplevel.drvPath >/dev/null
+          nix flake check --all-systems --no-build --no-update-lock-file -L
 
       - name: Check formatting and build both Proton variants
         run: nix build --no-link --no-update-lock-file -L .#checks.x86_64-linux.treefmt .#proton-ge .#checks.x86_64-linux.proton-ge-aarch64
