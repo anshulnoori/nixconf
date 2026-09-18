@@ -1,4 +1,4 @@
-name: Build and cache NixOS
+name: Validate NixOS
 
 on:
   push:
@@ -6,21 +6,19 @@ on:
       - master
       - "renovate/**"
       - "updates/**"
-  schedule:
-    - cron: "23 */6 * * *"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   statuses: write
 
 concurrency:
-  group: nixos-cache-${{ github.ref }}
+  group: nixos-validation-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  cache:
-    name: Evaluate, build, and cache t1
+  validate:
+    name: Evaluate and build t1
     runs-on: ${{ fromJSON(vars.NIX_BUILD_RUNNER_LABELS || '["ubuntu-24.04"]') }}
     timeout-minutes: 120
     steps:
@@ -35,7 +33,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Configure private monorepo access
         env:
@@ -45,7 +43,6 @@ jobs:
             echo "MONOREPO_SSH_KEY is required." >&2
             exit 1
           fi
-
           install -d -m 0700 "$HOME/.ssh"
           install -m 0600 /dev/null "$HOME/.ssh/nixconf-monorepo"
           printf '%s\n' "$MONOREPO_SSH_KEY" > "$HOME/.ssh/nixconf-monorepo"
@@ -67,82 +64,30 @@ jobs:
             accept-flake-config = true
             allow-import-from-derivation = true
 
-      - name: Update Proton GE sources
-        id: sources
-        if: github.event_name != 'push' && github.ref == 'refs/heads/master'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          keyfile=$(mktemp)
-          trap 'rm -f "$keyfile"' EXIT
-          printf '[keys]\ngithub = "%s"\n' "$GH_TOKEN" > "$keyfile"
-          nix run .#nvfetcher -- --keyfile "$keyfile"
-          if git diff --quiet -- _sources; then
-            exit 0
-          fi
-          git config user.name 'Anshul Noori'
-          git config user.email 'anshulnoori+github@gmail.com'
-          git add _sources/generated.nix _sources/generated.json
-          git -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -m 'build: update Proton GE sources'
-          if git log -1 --format=%B | grep -Ei 'Co-authored-by:|Amp-Thread-ID:|ampcode.com/threads/'; then
-            echo 'Refusing to publish prohibited commit attribution.' >&2
-            exit 1
-          fi
-          echo 'changed=true' >> "$GITHUB_OUTPUT"
-
-      - name: Require Cachix upload access
-        env:
-          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
-        run: |
-          if [[ -z "$CACHIX_AUTH_TOKEN" ]]; then
-            echo "CACHIX_AUTH_TOKEN is required." >&2
-            exit 1
-          fi
-
-      - name: Configure Cachix
-        uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17
-        with:
-          name: anshulnoori
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-
       - name: Evaluate all systems
-        run: nix flake check --all-systems --no-build -L
+        run: nix flake check --all-systems --no-build --no-update-lock-file -L
 
       - name: Check formatting and build both Proton variants
-        run: nix build --no-link -L .#checks.x86_64-linux.treefmt .#proton-ge .#checks.x86_64-linux.proton-ge-aarch64
+        run: nix build --no-link --no-update-lock-file -L .#checks.x86_64-linux.treefmt .#proton-ge .#checks.x86_64-linux.proton-ge-aarch64
 
       - name: Test updater states
-        run: nix build --no-link -L .#checks.x86_64-linux.nixconf-update
+        run: nix build --no-link --no-update-lock-file -L .#checks.x86_64-linux.nixconf-update
 
       - name: Build t1
-        run: nix run .#nixosConfigurations.t1.pkgs.nh -- os build . --hostname t1 --no-nom --diff never --out-link result-system -L
+        run: nix run --no-update-lock-file .#nixosConfigurations.t1.pkgs.nh -- os build . --hostname t1 --no-nom --diff never --out-link result-system -- --no-update-lock-file
 
-      - name: Upload system closure before marking ready
-        run: cachix push anshulnoori "$(readlink -f result-system)"
-
-      # GITHUB_TOKEN pushes do not start another workflow. Build and cache above
-      # before publishing the exact commit that nixconf-update will install.
-      - name: Publish validated sources directly
-        if: steps.sources.outputs.changed == 'true'
-        run: git push origin HEAD:master
+      - name: Ensure validation did not change committed inputs
+        run: git diff --exit-code
 
       - name: Publish build status
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           CHECKED_OUT_SHA: ${{ github.sha }}
-          SOURCES_CHANGED: ${{ steps.sources.outputs.changed }}
           JOB_STATUS: ${{ job.status }}
         run: |
-          STATUS_SHA=$CHECKED_OUT_SHA
           state=failure
-          if [[ "$JOB_STATUS" == 'success' ]]; then
-            state=success
-          fi
-          if [[ "$SOURCES_CHANGED" == 'true' && "$state" == 'success' ]]; then
-            STATUS_SHA=$(git rev-parse HEAD)
-          fi
-          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${STATUS_SHA}" \
-            -f state="$state" \
-            -f context=nixconf/build \
+          if [[ "$JOB_STATUS" == 'success' ]]; then state=success; fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${CHECKED_OUT_SHA}" \
+            -f state="$state" -f context=nixconf/build \
             -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"

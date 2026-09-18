@@ -3,14 +3,12 @@
 
   nixConfig = {
     extra-substituters = [
-      "https://anshulnoori.cachix.org"
       "https://attic.xuyh0120.win/lantian"
       "https://afnix-hydra.s3-bulk-web.afnix.fr/"
       "https://hyprland.cachix.org"
       "https://nix-community.cachix.org"
     ];
     extra-trusted-public-keys = [
-      "anshulnoori.cachix.org-1:jzLsepTKLr8/jDh8WdI4uhyimUTDSmxN5ispn1uN/Q0="
       "lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc="
       "afnix:oqt801y+IwJ09XRtNDQYCKb7zuCw9DQXQk8fDWPkwxM="
       "hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc="
@@ -56,10 +54,8 @@
     # September 9 address/type IPC refactor. Keep the compatible locked revision.
     hyprland.url = "github:hyprwm/Hyprland/c1239d02e759673977de0389d3945c7c9adbc1ee";
 
-    hyprpolkitagent.url = "github:hyprwm/hyprpolkitagent/a97ef1654c003def8ee4c501aef03b4f1bde49c9";
-
     waybar = {
-      url = "github:Alexays/Waybar/66139e4440b626e0d92c4b902185ced10ce78df7";
+      url = "github:Alexays/Waybar";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -84,6 +80,7 @@
 
     monorepo.url = "git+ssh://git@github.com/anshulnoori/monorepo.git";
 
+    # Intentional rice snapshot. Do not advance with routine dependency updates.
     omarchy-rice = {
       url = "github:basecamp/omarchy/a7f8f2495f4990044b7791d8f11a32cf14d34b39";
       flake = false;

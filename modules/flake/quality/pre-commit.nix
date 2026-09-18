@@ -56,6 +56,7 @@
       shellcheck = {
         enable = true;
         files = "^(\\.agents/(setup|resume)|scripts/.*\\.sh)$";
+        args = ["--external-sources"];
         stages = ["pre-commit"];
       };
       nix-flake-eval = {

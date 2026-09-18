@@ -41,7 +41,6 @@
             config.pre-commit.settings.enabledPackages
             ++ [
               pkgs.alejandra
-              pkgs.cachix
               pkgs.git
               pkgs.jq
               pkgs.marksman

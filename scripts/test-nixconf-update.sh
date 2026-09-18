@@ -2,134 +2,228 @@
 set -euo pipefail
 
 scratch=$(mktemp -d)
-export XDG_STATE_HOME="$scratch/state" XDG_RUNTIME_DIR="$scratch"
+trap 'rm -rf "$scratch"' EXIT
+export HOME="$scratch/home" XDG_CONFIG_HOME="$scratch/config" GIT_CONFIG_NOSYSTEM=1
+mkdir -p "$HOME" "$XDG_CONFIG_HOME"
+unset GIT_CONFIG_COUNT GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE || true
 # shellcheck source=scripts/nixconf-update.sh
 source "$(dirname "${BASH_SOURCE[0]}")/nixconf-update.sh"
-trap 'cleanup; rm -rf "$scratch"' EXIT
+ssh-keygen -q -t ed25519 -N '' -f "$scratch/test-key"
+printf 'anshulnoori@gmail.com %s\n' "$(cat "$scratch/test-key.pub")" >"$scratch/allowed"
+real_git=$(command -v git)
 
-master=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-candidate=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-running=cccccccccccccccccccccccccccccccccccccccc
-build_state=success
-discovery_state=success
-network_failure=false
-branch_relation=ahead
-timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-
-running_revision() { echo "$running"; }
+git() {
+  if [[ " $* " == *' push '* ]]; then
+    printf 'push\n' >>"$events"
+    [[ $failure != push ]] || return 1
+  fi
+  "$real_git" "$@"
+}
+running_revision() { cat "$installed"; }
 signal_waybar() { :; }
-notify_once() { :; }
-github_get() {
-  if [[ $network_failure == true ]]; then return 22; fi
-  case "$1" in
-  branches\?*)
-    jq -n --arg revision "$candidate" '[{name:"updates/flake-lock",commit:{sha:$revision}}]'
+notify-send() { :; }
+sudo() { [[ $failure != sudo ]]; }
+nix() {
+  case "$*" in
+  'flake update')
+    if [[ $failure != unchanged ]]; then printf 'new lock\n' >flake.lock; fi
     ;;
-  branches/master) jq -n --arg sha "$master" '{commit:{sha:$sha}}' ;;
-  compare/*)
-    if [[ $1 == "compare/$master...$candidate" ]]; then
-      jq -n --arg status "$branch_relation" '{status:$status}'
-    else
-      echo '{"status":"ahead"}'
-    fi
-    ;;
-  commits/*/statuses*)
-    if [[ $build_state == unknown ]]; then
-      echo '[]'
-      return
-    fi
-    # GitHub returns newest first. An old success must not override a failed rerun.
-    jq -n --arg state "$build_state" --arg timestamp "$timestamp" \
-      '[{context:"unrelated",state:"success"},
-          {context:"nixconf/build",state:$state,updated_at:$timestamp},
-          {context:"nixconf/build",state:"success",updated_at:"2020-01-01T00:00:00Z"}]'
-    ;;
-  actions/workflows/*)
-    jq -n --arg conclusion "$discovery_state" --arg timestamp "$timestamp" \
-      '{workflow_runs:[{status:"completed",conclusion:$conclusion,updated_at:$timestamp}]}'
+  'run .#nvfetcher')
+    printf 'generate\n' >>"$events"
+    [[ $failure != generation ]] || return 1
     ;;
   *)
-    echo "Unexpected API request: $1" >&2
-    return 1
+    printf 'validate\n' >>"$events"
+    [[ $failure != validation ]] || return 1
     ;;
   esac
 }
-
-expect_class() {
-  waybar_status | jq -e --arg expected "$1" '.class == $expected' >/dev/null
-  if [[ $1 == unavailable ]]; then
-    waybar_status | jq -e '.text == ""' >/dev/null
-  else
-    waybar_status | jq -e '.text != ""' >/dev/null
+nh() {
+  [[ $1 == os && $2 == switch && $3 == "$worktree" ]]
+  [[ " $* " != *' --update '* ]]
+  [[ " $* " == *' -- --no-update-lock-file '* ]]
+  [[ -z $(git -C "$worktree" status --porcelain) ]]
+  git -C "$worktree" verify-commit HEAD
+  printf 'switch\n' >>"$events"
+  [[ $failure != switch ]] || return 1
+  if [[ $failure != wrong-revision ]]; then
+    git -C "$worktree" rev-parse HEAD >"$installed"
   fi
-  printf 'PASS: %s\n' "$2"
+  if [[ $failure == remote-race ]]; then
+    # Another writer advances the remote while the local candidate switches.
+    git -C "$checkout" -c commit.gpgSign=false commit --allow-empty -m 'test: concurrent writer'
+    "$real_git" -C "$checkout" push origin HEAD:master
+  fi
 }
 
-expect_class unavailable 'missing state is not up to date'
-(check_updates)
-expect_class ready 'validated master is ready to install'
-jq -e --arg sha "$candidate" '.renovate[0].revision == $sha and .renovate[0].build.state == "success"' "$status_file" >/dev/null
+fixture() {
+  local name=$1
+  checkout="$scratch/$name/repo"
+  state_dir="$scratch/$name/state"
+  status_file="$state_dir/update-status.json"
+  worktree="$state_dir/update-worktree"
+  lock_file="$scratch/$name/update.lock"
+  installed="$scratch/$name/installed"
+  events="$scratch/$name/events"
+  failure=none
+  scheduled=false
+  phase=starting
+  mkdir -p "$checkout" "$state_dir"
+  : >"$events"
+  "$real_git" init -q --bare "$scratch/$name/remote"
+  git -C "$checkout" init -q -b master
+  git -C "$checkout" config user.name 'Anshul Noori'
+  git -C "$checkout" config user.email anshulnoori@gmail.com
+  git -C "$checkout" config gpg.format ssh
+  git -C "$checkout" config gpg.ssh.program ssh-keygen
+  git -C "$checkout" config gpg.ssh.allowedSignersFile "$scratch/allowed"
+  git -C "$checkout" config user.signingKey "$scratch/test-key"
+  git -C "$checkout" config commit.gpgSign true
+  git -C "$checkout" remote add origin "$scratch/$name/remote"
+  mkdir "$checkout/_sources"
+  printf 'old lock\n' >"$checkout/flake.lock"
+  printf '{}\n' >"$checkout/_sources/generated.json"
+  printf '{}\n' >"$checkout/_sources/generated.nix"
+  printf 'original\n' >"$checkout/user-work"
+  printf '.pre-commit-config.yaml\n' >"$checkout/.gitignore"
+  git -C "$checkout" add .
+  git -C "$checkout" commit -q -m 'test: initial state'
+  "$real_git" -C "$checkout" push -q origin HEAD:master
+  git -C "$checkout" rev-parse HEAD >"$installed"
+  printf 'generated hook config\n' >"$checkout/.pre-commit-config.yaml"
+  printf '#!%s\ntest -r .pre-commit-config.yaml\n' "$(command -v bash)" >"$checkout/.git/hooks/pre-commit"
+  cp "$checkout/.git/hooks/pre-commit" "$checkout/.git/hooks/pre-push"
+  chmod +x "$checkout/.git/hooks/pre-commit" "$checkout/.git/hooks/pre-push"
+}
 
-build_state=failure
-(check_updates)
-expect_class failed 'latest failed build supersedes older success'
-if (apply_update "$master") 2>"$scratch/error"; then
-  echo 'FAIL: accepted failed build' >&2
-  exit 1
-fi
-grep -q 'without a successful' "$scratch/error"
-
-build_state=pending
-(check_updates)
-expect_class updates 'pending build is available but not ready'
-
-build_state=unknown
-(check_updates)
-expect_class unavailable 'no exact-SHA build result is not ready'
-
-build_state=success
-discovery_state=failure
-(check_updates)
-expect_class unavailable 'failed discovery is not up to date'
-
-discovery_state=success
-timestamp=2020-01-01T00:00:00Z
-(check_updates)
-expect_class unavailable 'stale remote discovery is visible'
-
-timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-(check_updates)
-jq '.checkedAtEpoch = 0' "$status_file" >"$scratch/old"
-mv "$scratch/old" "$status_file"
-expect_class unavailable 'stale local cache is visible'
-
-network_failure=true
-# Do not put check_updates in an if condition: Bash would suppress errexit.
-set +e
-(
+run_case() {
+  local expected=$1 action=${2:-update} result
+  # Do not use an if-condition: it disables Bash errexit inside the function.
+  set +e
+  (
+    set -e
+    run_update "$action"
+  ) >"$state_dir/test.log" 2>&1
+  result=$?
   set -e
-  check_updates
-)
-result=$?
-set -e
-if ((result == 0)); then
-  echo 'FAIL: accepted network failure' >&2
-  exit 1
-fi
-expect_class unavailable 'API failure invalidates saved success'
+  if [[ $expected == success && $result != 0 ]] || [[ $expected == failure && $result == 0 ]]; then
+    cat "$state_dir/test.log" >&2
+    die "Expected $expected, got exit $result"
+  fi
+}
 
-network_failure=false
-(check_updates)
-expect_class ready 'successful check recovers from failure'
+fixture origin-guard
+if (validate_origin) 2>/dev/null; then die 'Accepted unexpected push destination'; fi
+# All transport below is real Git against a disposable bare repository only.
+validate_origin() { [[ $("$real_git" -C "$checkout" remote get-url origin) == "$scratch/"* ]]; }
 
-branch_relation=behind
-running=$master
-(check_updates)
-jq -e '.count == 0 and .renovate == []' "$status_file" >/dev/null
-waybar_status | jq -e '.text == ""' >/dev/null
-echo 'PASS: merged candidates and current validated master produce no update'
-build_state=failure
-(check_updates)
-waybar_status | jq -e '.text == "" and .class == "failed"' >/dev/null
-echo 'PASS: failed build without an update stays hidden'
-echo 'PASS: updater state and installation guards'
+fixture success
+printf 'staged work\n' >"$checkout/user-work"
+git -C "$checkout" add user-work
+printf 'dirty work\n' >"$checkout/user-work"
+printf 'untracked work\n' >"$checkout/untracked"
+before=$(git -C "$checkout" status --porcelain)
+run_case success
+[[ $(git --git-dir="$scratch/success/remote" rev-parse master) == "$(cat "$installed")" ]]
+[[ $(git -C "$checkout" status --porcelain) == "$before" ]]
+[[ $(git -C "$checkout" show :user-work) == 'staged work' ]]
+[[ $(cat "$checkout/user-work") == 'dirty work' && $(cat "$checkout/untracked") == 'untracked work' ]]
+[[ $(tail -2 "$events") == $'switch\npush' ]]
+[[ ! -e $worktree ]]
+jq -e '.state == "success"' "$status_file" >/dev/null
+echo 'PASS: signed candidate switches before push; dirty and untracked user work survives'
+
+for failure_case in signing validation switch wrong-revision sudo attribution remote-race; do
+  fixture "$failure_case"
+  failure=$failure_case
+  if [[ $failure == signing ]]; then git -C "$checkout" config user.signingKey "$scratch/missing-key"; fi
+  if [[ $failure == sudo ]]; then scheduled=true; fi
+  if [[ $failure == attribution ]]; then
+    # shellcheck disable=SC2016 # The hook expands its own argument.
+    printf '#!%s\nprintf "\\nCo-authored-by: unwanted\\n" >> "$1"\n' "$(command -v bash)" >"$checkout/.git/hooks/commit-msg"
+    chmod +x "$checkout/.git/hooks/commit-msg"
+  fi
+  run_case failure
+  [[ -e $worktree/.git ]]
+  if grep -qx push "$events"; then die "Pushed after $failure"; fi
+  jq -e '.state == "failed"' "$status_file" >/dev/null
+  if [[ $failure == signing || $failure == validation || $failure == attribution || $failure == sudo ]]; then
+    if grep -qx switch "$events"; then die "Switched after $failure"; fi
+  fi
+  echo "PASS: $failure blocks publication and preserves candidate"
+done
+
+fixture push-retry
+failure=push
+run_case failure
+candidate=$(cat "$installed")
+[[ $(git -C "$worktree" rev-parse HEAD) == "$candidate" ]]
+failure=none
+run_case success resume
+[[ $(git --git-dir="$scratch/push-retry/remote" rev-parse master) == "$candidate" ]]
+echo 'PASS: installed but unpublished signed revision can resume without GitHub comparison'
+
+fixture unchanged
+failure=unchanged
+run_case success
+[[ $(cat "$events") == generate && ! -e $worktree ]]
+echo 'PASS: unchanged installed pins do not switch or push'
+
+fixture generation-retry
+failure=generation
+run_case failure
+failure=none
+run_case success resume
+[[ $(grep -c '^generate$' "$events") == 2 ]]
+echo 'PASS: incomplete source generation resumes before signing or switching'
+
+fixture ancestry
+base=$(cat "$installed")
+git -C "$checkout" commit -q --allow-empty -m 'test: newer local commit'
+newer=$(git -C "$checkout" rev-parse HEAD)
+[[ $(revision_relation "$checkout" "$base" "$newer") == ahead ]]
+[[ $(revision_relation "$checkout" "$newer" "$base") == behind ]]
+git -C "$checkout" switch -q -c sibling "$base"
+git -C "$checkout" commit -q --allow-empty -m 'test: sibling commit'
+sibling=$(git -C "$checkout" rev-parse HEAD)
+[[ $(revision_relation "$checkout" "$newer" "$sibling") == diverged ]]
+[[ $(revision_relation "$checkout" aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa "$newer") == unknown ]]
+printf '%s\n' "$sibling" >"$installed"
+run_case failure
+[[ ! -e $worktree ]]
+printf '%s\n' aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa >"$installed"
+run_case failure
+[[ ! -e $worktree ]]
+echo 'PASS: local ancestry handles ahead, behind, diverged, and absent installed commits without substituting HEAD'
+
+fixture downgrade
+base=$(cat "$installed")
+git -C "$checkout" commit -q --allow-empty -m 'test: installed unpublished revision'
+git -C "$checkout" rev-parse HEAD >"$installed"
+git -C "$checkout" update-ref refs/heads/master "$base"
+run_case failure
+[[ ! -e $worktree && ! -s $events ]]
+echo 'PASS: a newer installed revision is never automatically downgraded'
+
+fixture unexpected-staged
+failure=signing
+git -C "$checkout" config user.signingKey "$scratch/missing-key"
+run_case failure
+git -C "$checkout" config user.signingKey "$scratch/test-key"
+printf 'unexpected edit\n' >"$worktree/user-work"
+git -C "$worktree" add user-work
+failure=none
+run_case failure resume
+if grep -qx switch "$events"; then die 'Switched with unexpected staged files'; fi
+echo 'PASS: resume does not automatically commit unrelated staged edits'
+
+write_status failed 'Approval needed'
+waybar_status | jq -e '.class == "failed" and .text != "" and .tooltip == "Approval needed"' >/dev/null
+write_status running 'Switching signed candidate'
+waybar_status | jq -e '.class == "updates" and .text != ""' >/dev/null
+write_status success 'Published'
+waybar_status | jq -e '.class == "ready" and .text == ""' >/dev/null
+printf '{"main":{"relation":"identical"},"count":0}\n' >"$status_file"
+waybar_status | jq -e '.class == "unavailable"' >/dev/null
+echo 'PASS: Waybar JSON exposes local failures, progress, and success'
+echo 'PASS: local updater tests'

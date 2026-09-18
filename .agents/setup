@@ -3,8 +3,6 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 lix_user="${SUDO_USER:-$(id -un)}"
-cachix_url="https://anshulnoori.cachix.org"
-cachix_key="anshulnoori.cachix.org-1:jzLsepTKLr8/jDh8WdI4uhyimUTDSmxN5ispn1uN/Q0="
 tools_profile="$HOME/.local/state/nixconf/orb-profile"
 
 as_root() {
@@ -57,8 +55,6 @@ cat >>"$config_tmp" <<EOF
 experimental-features = nix-command flakes
 accept-flake-config = true
 trusted-users = root $lix_user
-trusted-substituters = $cachix_url
-extra-trusted-public-keys = $cachix_key
 # end nixconf Amp Orb settings
 EOF
 as_root install -m 0644 "$config_tmp" /etc/nix/nix.conf

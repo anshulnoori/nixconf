@@ -58,7 +58,6 @@
         orb-tools = pkgs.buildEnv {
           name = "nixconf-orb-tools";
           paths = [
-            pkgs.cachix
             pkgs.direnv
             pkgs.nix-direnv
           ];

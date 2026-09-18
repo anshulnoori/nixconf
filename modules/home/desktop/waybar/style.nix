@@ -53,9 +53,20 @@ _: {
         color: #${colors.base08};
         margin-right: 17px;
       }
-      #custom-update.updates {
-        color: @warning;
+      #custom-update.updates,
+      #custom-update.unavailable,
+      #custom-update.failed {
         margin-right: 17px;
+      }
+      #custom-update.updates,
+      #custom-update.updates label,
+      #custom-update.unavailable,
+      #custom-update.unavailable label {
+        color: @warning;
+      }
+      #custom-update.failed,
+      #custom-update.failed label {
+        color: #${colors.base08};
       }
       #custom-storage-health.warning {
         color: #${colors.base08};

@@ -1,50 +1,22 @@
-{inputs, ...}: {
-  flake.modules.homeManager.desktop = {
-    config,
-    pkgs,
-    ...
-  }: let
-    colors = config.lib.stylix.colors;
-  in {
-    services.hyprpolkitagent = {
-      enable = true;
-      package = inputs.hyprpolkitagent.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
-        patches = (old.patches or []) ++ [./hyprpolkitagent/compact.patch];
-      });
-    };
+_: {
+  flake.modules.homeManager.desktop = {pkgs, ...}: {
+    services.hyprpolkitagent.enable = true;
 
-    xdg.configFile."hyprpolkitagent/hyprpolkitagent.conf".text = ''
-      general {
-        window_width = 420
-        window_height = 170
-        password_field_width = 380
-        show_details = false
-      }
-    '';
+    systemd.user.services.hyprpolkitagent.Service.Environment = [
+      "QT_QPA_PLATFORMTHEME=qt6ct"
+      "QT_PLUGIN_PATH=${pkgs.qt6Packages.qt6ct}/lib/qt-6/plugins"
+      "QT_SCALE_FACTOR=0.85"
+    ];
 
-    xdg.configFile."hypr/hyprtoolkit.conf".text = ''
-      background = 0xff${colors.base00}
-      base = 0xff${colors.base00}
-      alternate_base = 0xff${colors.base02}
-      text = 0xff${colors.base05}
-      bright_text = 0xff${colors.base06}
-      link_text = 0xff${colors.base0D}
-      accent = 0xff${colors.base0D}
-      accent_secondary = 0xff${colors.base0C}
-      font_family = ${config.stylix.fonts.monospace.name}
-      font_family_monospace = ${config.stylix.fonts.monospace.name}
-      font_size = 12
-      small_font_size = 11
-      h1_size = 16
-      h2_size = 14
-      h3_size = 12
-      rounding_large = 0
-      rounding_small = 0
+    xdg.configFile."hypr/application-style.conf".text = ''
+      roundness = 0
+      border_width = 2
+      reduce_motion = true
     '';
 
     wayland.windowManager.hyprland.extraConfig = ''
       hl.window_rule({
-        match = { class = "^hyprpolkitagent$" },
+        match = { title = "^Hyprland Polkit Agent$" },
         float = true,
         rounding = 0,
         no_anim = true,

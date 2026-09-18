@@ -97,7 +97,7 @@ index 843f386..6e968aa 100644
  bool Item::handleMouseEnter(GdkEventCrossing* const& e) {
    event_box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
    return false;
-@@ -602,11 +643,20 @@ bool Item::handleClick(GdkEventButton* const& ev) {
+@@ -612,14 +653,23 @@ bool Item::handleClick(GdkEventButton* const& ev) {
    auto parameters = Glib::VariantContainerBase::create_tuple(
        {Glib::Variant<int>::create(ev->x_root + bar_.x_global),
         Glib::Variant<int>::create(ev->y_root + bar_.y_global)});
@@ -105,7 +105,10 @@ index 843f386..6e968aa 100644
 +  if ((ev->button == 1 && (item_is_menu || menu_on_left_click_)) ||
 +      (ev->button == 3 && !menu_on_left_click_)) {
      makeMenu();
-     if (gtk_menu != nullptr) {
+     // Some items advertise a Menu path without serving com.canonical.dbusmenu (e.g. Steam), so
+     // the client never gets a layout root. Use the item's own ContextMenu for those instead of
+     // popping up an empty GTK menu.
+     if (gtk_menu != nullptr && hasMenuLayout()) {
  #if GTK_CHECK_VERSION(3, 22, 0)
 -      gtk_menu->popup_at_pointer(reinterpret_cast<GdkEvent*>(ev));
 +      if (!text_file_.empty() && bar_.orientation == Gtk::ORIENTATION_HORIZONTAL) {

@@ -75,12 +75,14 @@ the password in `/etc/shadow`.
   upstream revisions rather than unpinned branches.
 - `wlr-which-key`, Walker, and Elephant come from the pinned nixpkgs revision;
   all three are available on both `x86_64-linux` and `aarch64-linux`.
-- Amp CLI is pinned as a local flake package to an exact upstream release and
-  source hash rather than taken from the slower nixpkgs package update cycle.
-- Update automation may propose changes daily, but never activates or merges
-  them automatically.
-- Full checks, generation diffs, and an explicit promotion happen before an
-  update reaches the running system.
+- Amp CLI has a release/hash-pinned bootstrap. Its writable executable keeps
+  Amp's self-updater, independently of NixOS revisions.
+- Local automation updates dependency pins every three days, or on manual
+  request. It preserves user work through an isolated Git worktree.
+- The updater signs and validates the candidate before `nh os switch`. It pushes
+  only after successful activation of that exact signed revision.
+- CI validates pushed revisions without generating updates or publishing a
+  personal binary cache. Niks3 and R2 are deferred.
 - Garbage collection and generation limits must prevent nightly builds from
   growing the store without bound.
 - The desktop provides the revision-aware Waybar and Mako update notification
@@ -589,38 +591,33 @@ duplicate infrastructure. Hyprland translates `Super+C`, `Super+V`, and
 terminal-safe `Ctrl+Insert` and `Shift+Insert` alternatives, which Kitty handles
 without interrupting the foreground process.
 
-Update state is checked by a lightweight user timer two minutes after boot and
-every six hours thereafter. It detects active `renovate/*` branch revisions and
-compares `master` with the Git revision embedded in the running system. Waybar
-shows the state and Mako sends at most one notification per branch SHA.
-Clicking the module opens a floating Kitty window with GitHub-provided diffs.
-After explicit confirmation, the tool can fast-forward a clean `/etc/nixos`
-`master` checkout to the inspected revision and run `nh os switch`. It never
-merges a Renovate branch, and nothing auto-merges or switches.
+The local update timer starts ten minutes after boot and every three days
+thereafter. Waybar shows local progress, failure, and stale results. Mako reports
+success or failure. Clicking the module opens candidate details and a manual
+update or resume prompt in a floating terminal.
+
+The updater leaves `/etc/nixos` unchanged and retains failed candidates in its
+state directory. It compares actual Git objects with the installed revision,
+including unpublished local commits. Unknown or diverged histories stop the
+update. Signing and activation still require the existing 1Password and sudo
+authorization. Automation does not export keys or weaken sudo policy. Recovery
+uses `nixconf-update resume` in a terminal.
 
 ## Git identity
 
-There is no global author identity or signing key. Set
-`user.useConfigOnly=true`. The configured Git executable selects identity from
-the owner in `remote.origin.url` on every invocation. A repository without an
-origin is local and defaults to the main profile. Other remotes do not
-participate; an unrecognized nonempty origin remains unset and fails safely.
+Git uses one global identity: `Anshul Noori <anshulnoori@gmail.com>`.
+The standard Git executable replaces the remote-dependent identity wrapper.
+Commits and tags use the Anshul SSH signing key in 1Password.
+The allowed-signers file retains historical identities for signature verification, not author selection.
 
-GitHub CLI clones over SSH so Git and GitHub CLI share the 1Password SSH agent.
-The private flake input uses the same path. `SSH_AUTH_SOCK` and OpenSSH's
-`IdentityAgent` both point to that agent. Run `nh` as the login user so the
-fetch inherits this authentication context; `nh` elevates activation itself.
+Git rewrites GitHub HTTPS and Git-protocol remotes to SSH.
+GitHub CLI also clones over SSH. Its API requests still use HTTPS.
+The GitHub SSH host selects the Anshul public key explicitly.
+`SSH_AUTH_SOCK` and OpenSSH's `IdentityAgent` both point to the 1Password agent.
+SSH reads and writes both require authentication. The 1Password authorization policy controls prompts.
 
-| Profile   | Author                                                           |
-| --------- | ---------------------------------------------------------------- |
-| Main      | `Anshul Noori <anshulnoori+github@gmail.com>`                    |
-| Alternate | `Mervs <246713988+maroonverticalshape@users.noreply.github.com>` |
-
-Both profiles sign commits and tags with profile-specific 1Password SSH keys.
-Their public keys also form Git's local allowed-signers file so signatures can
-be verified locally. Repositories with unknown remotes fail until assigned a
-local profile. `gh auth switch` changes GitHub API credentials only and does not
-select commit authorship.
+The private flake input uses SSH. When `nh` runs as the login user, fetching uses this authentication context.
+`nh` elevates activation separately. `gh auth switch` changes GitHub API credentials, not commit authorship.
 
 Shared behavior:
 

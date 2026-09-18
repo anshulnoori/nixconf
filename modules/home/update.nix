@@ -9,17 +9,20 @@ _: {
       name = "nixconf-update";
       runtimeInputs = [
         pkgs.coreutils
-        pkgs.curl
         pkgs.git
         pkgs.gnugrep
         pkgs.jq
-        pkgs.less
         pkgs.libnotify
         pkgs.nh
         pkgs.procps
         pkgs.util-linux
       ];
-      text = builtins.readFile ../../scripts/nixconf-update.sh;
+      # Keep the user's signing tools and privileged activation wrapper available.
+      text =
+        ''
+          export PATH="${config.home.profileDirectory}/bin:/run/wrappers/bin:/run/current-system/sw/bin:$PATH"
+        ''
+        + builtins.readFile ../../scripts/nixconf-update.sh;
     };
   in {
     options.services.nixconf-update.enable =
@@ -29,19 +32,23 @@ _: {
       home.packages = [updateTool];
 
       systemd.user.services.nixconf-update = {
-        Unit.Description = "Check nixconf updates";
+        Unit = {
+          Description = "Generate, sign, switch, and publish local nixconf updates";
+          # Activation must not interrupt its own switch-before-push transaction.
+          X-SwitchMethod = "keep-old";
+        };
         Service = {
           Type = "oneshot";
-          ExecStart = "${lib.getExe updateTool} check";
+          ExecStart = "${lib.getExe updateTool} scheduled";
+          TimeoutStartSec = "6h";
         };
       };
 
       systemd.user.timers.nixconf-update = {
-        Unit.Description = "Check nixconf updates every six hours";
+        Unit.Description = "Update nixconf locally every three days";
         Timer = {
-          OnBootSec = "2m";
-          OnCalendar = "*-*-* 00/6:00:00";
-          Persistent = true;
+          OnBootSec = "10m";
+          OnUnitActiveSec = "3d";
           Unit = "nixconf-update.service";
         };
         Install.WantedBy = ["timers.target"];

@@ -85,8 +85,8 @@
 
       home.activation.initializeWallpaper = lib.hm.dag.entryAfter ["writeBoundary"] ''
         $DRY_RUN_CMD mkdir -p ${lib.escapeShellArg (builtins.dirOf wallpaperState)}
-        if [[ ! -e ${lib.escapeShellArg wallpaperState} && ! -L ${lib.escapeShellArg wallpaperState} ]]; then
-          $DRY_RUN_CMD ln -s ${lib.escapeShellArg (toString wallpaper)} ${lib.escapeShellArg wallpaperState}
+        if [[ ! -e ${lib.escapeShellArg wallpaperState} ]]; then
+          $DRY_RUN_CMD ln -sfn ${lib.escapeShellArg "${config.xdg.dataHome}/wallpapers/gruvbox/flexoki-orb.png"} ${lib.escapeShellArg wallpaperState}
         fi
       '';
 

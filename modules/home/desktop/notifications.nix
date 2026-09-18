@@ -10,13 +10,13 @@ _: {
         anchor = "top-right";
         group-by = "app-name,summary,body";
         default-timeout = 5000;
-        width = 420;
-        outer-margin = 20;
-        padding = "10,15";
+        width = 320;
+        outer-margin = 8;
+        padding = "8,10";
         border-size = 2;
         border-radius = 0;
-        max-icon-size = 32;
-        font = "JetBrainsMono Nerd Font 14";
+        max-icon-size = 24;
+        font = "${config.stylix.fonts.monospace.name} 10";
         text-color = "#${colors.base05}";
         border-color = "#${colors.base0D}";
         background-color = "#${colors.base00}";
@@ -28,7 +28,6 @@ _: {
         "mode=do-not-disturb app-name=nixconf-update".invisible = false;
         "app-name=nixconf-menu" = {
           anchor = "bottom-center";
-          width = 360;
         };
         "urgency=critical" = {
           default-timeout = 0;
@@ -42,15 +41,15 @@ _: {
           default-timeout = 0;
           layer = "overlay";
         };
-        "summary~='Screenshot saved'" = {
-          max-icon-size = 160;
+        "summary~=\"Screenshot saved\"" = {
+          max-icon-size = 64;
           on-button-left = "invoke-default-action";
-          format = "<b>%s</b>\n%b";
+          format = "<b>%s</b>\\n%b";
         };
-        "summary~='Screen recording saved'" = {
-          max-icon-size = 160;
+        "summary~=\"Screen recording saved\"" = {
+          max-icon-size = 64;
           on-button-left = "invoke-default-action";
-          format = "<b>%s</b>\n%b";
+          format = "<b>%s</b>\\n%b";
         };
       };
     };

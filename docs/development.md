@@ -30,9 +30,8 @@ agent from the flake fetch.
 long-lived credentials there.
 
 Amp Orbs run `.agents/setup` once and `.agents/resume` after resumption. These
-scripts install or verify Lix, configure read-only Cachix trust, and activate
-the focused direnv shell. They do not configure BuildBuddy, Tailscale, or
-project secrets.
+scripts install or verify Lix and activate the focused direnv shell. They do
+not configure a personal binary cache, BuildBuddy, Tailscale, or project secrets.
 
 ## Checks
 
@@ -49,17 +48,16 @@ transport, and the Notion Calendar integration.
 
 The pre-push hook validates the branch and evaluates the flake without building
 the host. On each push to `master`, `renovate/**`, or `updates/**`, GitHub Actions
-repeats evaluation, builds the full `t1` closure, and uploads newly built paths
-to `anshulnoori.cachix.org`. Successful builds publish the commit status
-`nixconf/build` on the exact revision that was built.
-The workflow requires `CACHIX_AUTH_TOKEN` and a read-only monorepo deploy key in
-`MONOREPO_SSH_KEY` as repository secrets.
+repeats evaluation and builds the full `t1` closure. The workflow reports
+`nixconf/build` on the exact committed revision. It never updates pins, commits,
+pushes, or uploads build results to a personal binary cache.
+It requires a read-only monorepo deploy key in `MONOREPO_SSH_KEY`.
 
 ## Git conventions
 
 The repository is trunk-based. `master` is the default branch. Short-lived
 branches use `type/lowercase-kebab-description`; `renovate/*` is also allowed.
-The weekly workflow owns the fixed `updates/flake-lock` automation branch.
+The local updater reserves `build/local-update` for its isolated worktree.
 
 Allowed conventional commit types are:
 
@@ -73,64 +71,90 @@ linear.
 
 ## Dependency updates
 
-Renovate scans supported non-Nix dependencies daily in `prCreation: "approval"`
-mode. It creates `renovate/**` branches and lists proposed updates in the
-Dependency Dashboard. Nix management is disabled there so that it cannot race
-the repository's weekly flake updater.
+Updates originate on `t1`, not in CI. The user timer runs ten minutes after
+boot, then every three days while the user manager runs. Manual updates use:
 
-The flake workflow runs Mondays at 04:41 UTC, or on manual dispatch.
-It runs `nix flake update` and publishes changes to the bot-owned
-`updates/flake-lock` branch. Each run replaces that branch using a lease;
-do not put manual work on it. Explicit revision pins in `flake.nix` stay pinned.
-The workflow builds the committed candidate and records a pending, success,
-or failure status under `nixconf/build`. It does not open or merge a pull request.
-Its token-authenticated push does not start another workflow, so validation
-runs in the same job. Failed candidates remain visible for inspection.
+```sh
+nixconf-update update
+```
 
-Proton GE uses `nvfetcher.toml` and the generated pins in `_sources/`.
-The build-and-cache workflow checks published releases every six hours.
-It packages both binary architectures and builds the full `t1` system on every
-scheduled run before pushing changed generated pins directly to `master`. It
-then records `nixconf/build` on that new commit because token-authenticated
-pushes do not start another workflow. It creates no pull requests. Failed
-validation prevents publication. A concurrent change to `master` also prevents
-publication because the workflow never force-pushes.
+The updater creates an isolated worktree under
+`~/.local/state/nixconf/update-worktree`. It uses the newer compatible commit
+from local `master` and remote `master`. It preserves staged, unstaged, and
+untracked files in `/etc/nixos`. Uncommitted configuration changes do not enter
+the update. Diverged histories and unknown installed revisions stop the update.
 
-To refresh the pins locally, run `nix run .#nvfetcher`.
-Do not edit `_sources/` manually. The generated files retain nvfetcher's format.
-The package override inherits Steam integration from nixpkgs.
-The ARM check packages ARM binaries on the native builder without executing them.
+The update sequence is:
 
-Both workflows use `nh os build` for full-system builds and upload the system
-closure to Cachix before marking the commit successful. Pushes to `master`,
-`renovate/**`, and `updates/**` trigger validation. Fork pull requests do not
-receive private credentials or run these jobs.
+1. Fetch `master` and create the clean `build/local-update` worktree.
+2. Run `nix flake update` and `nix run .#nvfetcher` there.
+3. Commit changed pins with `git commit -S` as `Anshul Noori <anshulnoori@gmail.com>`.
+4. Verify signatures and final commit messages, then validate the signed candidate.
+5. Run `nh os switch` against that clean candidate without another dependency update.
+6. Verify that the running system reports the signed candidate revision.
+7. Inspect final commit messages again, then push the exact revision to `master`.
 
-Set the repository variable `NIX_BUILD_RUNNER_LABELS` to a JSON array of
-your existing Namespace runner labels to run both jobs there. Without it,
-jobs use `["ubuntu-24.04"]`. The runner must be an x86_64 Linux GitHub Actions
-runner compatible with the Lix installer. This setting does not provision a runner.
-Both jobs require `MONOREPO_SSH_KEY` and `CACHIX_AUTH_TOKEN` Actions secrets.
+The updater never force-pushes. Signing, validation, or activation failures
+prevent publication. A failed push retains the installed commit locally.
+Successful publication removes the temporary worktree and its reserved branch.
+The original checkout stays unchanged, even after success.
 
-The `services.nixconf-update` user timer polls GitHub every six hours. It checks
-`renovate/*` and `updates/*`, omits merged branches, and compares `master` with
-the running system revision. Waybar distinguishes available updates, failed
-builds, ready-to-install revisions, and unavailable checks. Local results expire
-after 12 hours; weekly discovery results expire after eight days. Pending builds
-older than six hours are unavailable. Missing results and API errors never mean
-that the system is up to date.
+CI validates the pushed revision after activation. CI success is not an
+activation prerequisite in this local-first model. Public upstream caches remain
+available, but there is no personal binary cache. Niks3 and R2 are deferred.
 
-Mako notifies once per branch, revision, and build state. Clicking the indicator
-shows diffs and CI links. Installation requires a fresh successful `nixconf/build`
-lookup for the exact reviewed `master` commit. It fast-forwards a clean
-`/etc/nixos` checkout and runs `nh os switch`. It never merges a dependency branch
-or advances local pins. Cached build results reduce compilation on the PC.
+### Authentication and recovery
 
-Run `bash scripts/test-nixconf-update.sh` to test states and installation guards
-without network access, desktop notifications, or system activation.
+The updater uses the configured Git signing key and 1Password agent. The SSH
+authentication key and signing key can be different. Signature verification
+requires the matching public key in Git's allowed-signers file. Private monorepo
+fetches and repository pushes also require authentication.
 
-Install and enable Renovate for `anshulnoori/nixconf` separately. The repository
-does not create external services, credentials, or repository settings.
+The existing password-required sudo policy remains unchanged. The timer checks
+noninteractive sudo before activation. A locked agent, denied signing request,
+or unavailable sudo authorization stops the run. Fully unattended activation is
+not guaranteed under this policy. No private key export or passwordless sudo
+rule is part of this workflow.
+
+If an update stops, inspect the log and retained candidate:
+
+```sh
+journalctl --user -u nixconf-update
+git -C ~/.local/state/nixconf/update-worktree status
+git -C ~/.local/state/nixconf/update-worktree log -1 --show-signature
+nixconf-update resume
+```
+
+Run `resume` in a terminal as the login user. Approve 1Password and sudo requests
+there. Resume validates and switches the retained candidate before publication.
+If the remote advanced, reconcile the histories manually before resumption.
+Do not delete a retained worktree that contains an unpublished installed commit.
+If the installed revision is unknown, establish a clean committed system revision
+manually before enabling automatic updates.
+
+Waybar shows local progress, failures, and stale results. Mako reports success
+or failure. Clicking the indicator opens candidate details and a manual resume
+or update prompt. The UI does not depend on GitHub comparison or discovery APIs.
+
+### Update sources and CI
+
+Explicit compatibility pins in `flake.nix` remain unchanged. Proton GE uses
+`nvfetcher.toml` and generated files under `_sources/`. The ARM check packages
+ARM binaries without executing them. Amp keeps its separate self-updater:
+Nix pins its bootstrap, not the mutable executable under `~/.amp/bin`.
+
+Renovate's Nix manager remains disabled. Its optional non-Nix proposals are not
+part of the local updater and never activate automatically.
+
+The validation-only workflow uses `nh os build`. Fork pull requests do not
+receive private credentials or run this job. The workflow needs
+`MONOREPO_SSH_KEY`, but no Cachix secret. The variable `NIX_BUILD_RUNNER_LABELS`
+selects existing runner labels as a JSON array. Its default is `["ubuntu-24.04"]`.
+The runner must support x86_64 Linux and the Lix installer.
+
+Run `bash scripts/test-nixconf-update.sh` for isolated Git and SSH-signature tests.
+These tests stub builds, activation, and notifications. Their pushes target only
+disposable local repositories, never GitHub.
 
 ## Development policy
 
