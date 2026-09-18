@@ -3,7 +3,8 @@
     imports = [inputs.stylix.nixosModules.stylix];
     stylix = {
       enable = true;
-      base16Scheme = "${pkgs.base16-schemes}/share/themes/gruvbox-dark-hard.yaml";
+      # Evaluation must not require a built package in a fresh CI store.
+      base16Scheme = "${inputs.stylix.inputs.tinted-schemes}/base16/gruvbox-dark-hard.yaml";
       polarity = "dark";
       fonts = {
         monospace = {
