@@ -25,11 +25,11 @@ _: {
         on-click = "${captureScreenrecord} stop";
       };
       "custom/update" = {
-        exec = "nixconf-update waybar";
+        exec = "${config.services.nixconf-update.package}/bin/nixconf-update waybar";
         return-type = "json";
         interval = 300;
         signal = 10;
-        on-click = "nixconf-update open";
+        on-click = "${config.services.nixconf-update.package}/bin/nixconf-update open";
       };
       "custom/storage-health" = {
         exec = "nixconf-storage-health waybar";

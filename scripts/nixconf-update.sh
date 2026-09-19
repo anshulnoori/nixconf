@@ -23,8 +23,9 @@ write_status() {
   mkdir -p "$state_dir"
   next_status=$(mktemp "$state_dir/status.XXXXXX")
   jq -n --arg state "$1" --arg message "$2" --arg phase "$phase" \
+    --arg candidate "${3:-}" \
     --arg running "$(running_revision)" --argjson time "$(date +%s)" \
-    '{state:$state,message:$message,phase:$phase,runningRevision:$running,checkedAtEpoch:$time}' >"$next_status"
+    '{state:$state,message:$message,phase:$phase,candidateRevision:$candidate,runningRevision:$running,checkedAtEpoch:$time}' >"$next_status"
   mv "$next_status" "$status_file"
   signal_waybar
 }
@@ -32,8 +33,8 @@ write_status() {
 failed() {
   local code=$?
   trap - ERR
-  write_status failed "Update stopped during $phase. Signing or sudo may need approval in a terminal. Inspect journalctl --user -u nixconf-update; run nixconf-update resume if a candidate exists."
-  notify-send --app-name=nixconf-update 'Nixconf update stopped' "Phase: $phase. Signing or sudo may need approval. Run nixconf-update resume in a terminal." || true
+  write_status failed "Update stopped during $phase. Inspect journalctl --user -u nixconf-update, then retry the service."
+  notify-send --app-name=nixconf-update 'Nixconf update stopped' "Phase: $phase. Check the service journal; signing may need 1Password approval." || true
   exit "$code"
 }
 
@@ -77,7 +78,7 @@ fetch_master() {
 
 prepare_update() {
   local base relation current
-  [[ ! -e $worktree ]] || die "Candidate exists at $worktree. Inspect it and run nixconf-update resume."
+  [[ ! -e $worktree ]] || die "Candidate exists at $worktree. Inspect it and retry the service."
   fetch_master
   base=$(git -C "$checkout" rev-parse "refs/heads/$default_branch")
   relation=$(revision_relation "$checkout" "$base" "$remote_revision")
@@ -126,8 +127,8 @@ verify_publication() {
 }
 
 finish_update() {
-  local candidate current relation path
-  [[ -e $worktree/.git ]] || die 'No retained candidate. Run nixconf-update update.'
+  local candidate current relation path message
+  [[ -e $worktree/.git ]] || die 'No retained candidate.'
   [[ $(git -C "$worktree" symbolic-ref --short HEAD) == "$candidate_branch" ]] || die 'Unexpected candidate branch.'
   if [[ ! -e $(git -C "$worktree" rev-parse --git-path nixconf-generated) ]]; then generate_pins; fi
   phase=signing
@@ -149,9 +150,9 @@ finish_update() {
   if ! git -C "$worktree" diff --cached --quiet; then
     phase=signing
     git -C "$worktree" -c user.name='Anshul Noori' -c user.email=anshulnoori@gmail.com \
-      commit -S -m 'build: update local dependency pins'
+      commit -S -m 'chore(nix): update flake.lock'
   fi
-  [[ -z $(git -C "$worktree" status --porcelain) ]] || die 'Candidate is dirty after commit; refusing activation.'
+  [[ -z $(git -C "$worktree" status --porcelain) ]] || die 'Candidate is dirty after commit; refusing publication.'
   candidate=$(git -C "$worktree" rev-parse HEAD)
   fetch_master
   relation=$(revision_relation "$worktree" "$remote_revision" "$candidate")
@@ -182,40 +183,34 @@ finish_update() {
       .#checks.x86_64-linux.proton-ge-aarch64 .#checks.x86_64-linux.nixconf-update
   )
   [[ $(git -C "$worktree" rev-parse HEAD) == "$candidate" && -z $(git -C "$worktree" status --porcelain) ]] ||
-    die 'Candidate changed during validation; refusing activation.'
+    die 'Candidate changed during validation; refusing publication.'
   phase=building
   write_status running "Building signed candidate $candidate without activation."
   nh os build "$worktree" --hostname t1 --no-nom --diff never --out-link "$state_dir/result-system" -- --no-update-lock-file
   [[ $(git -C "$worktree" rev-parse HEAD) == "$candidate" && -z $(git -C "$worktree" status --porcelain) ]] ||
-    die 'Candidate changed during build; refusing activation.'
-  if [[ $1 != switch ]]; then
-    write_status available "Built ${candidate:0:12}. Run nixconf-update switch when ready to activate and publish it."
-    notify-send --app-name=nixconf-update 'Nixconf update available' "Built ${candidate:0:12}. Run nixconf-update switch when ready." || true
-    return
-  fi
-  phase=switching
-  write_status running "Switching to signed candidate $candidate."
-  # No --update here: build and activate the clean, already signed revision.
-  nh os switch "$worktree" --hostname t1 --no-nom --diff never --out-link "$state_dir/result-system" \
-    -- --no-update-lock-file
-  [[ $(running_revision) == "$candidate" ]] || die 'Installed revision does not match the signed candidate; refusing publication.'
-  [[ $(git -C "$worktree" rev-parse HEAD) == "$candidate" && -z $(git -C "$worktree" status --porcelain) ]] ||
-    die 'Candidate changed during activation; refusing publication.'
+    die 'Candidate changed during build; refusing publication.'
   phase=publishing
-  write_status running "Signed revision $candidate is installed; publishing it."
+  write_status running "Signed revision $candidate built successfully; publishing it."
   validate_origin
   fetch_master
   case "$(revision_relation "$worktree" "$remote_revision" "$candidate")" in
   identical | ahead) ;;
-  *) die 'Remote changed during activation. Installed candidate retained; reconcile manually, then resume.' ;;
+  *) die 'Remote changed during build. Candidate retained; reconcile manually, then retry.' ;;
   esac
   verify_publication "$candidate"
-  # Normal fast-forward push only; races fail safely and retain the installed commit.
+  # Normal fast-forward push only; races fail safely and retain the built commit.
   git -C "$worktree" push origin "$candidate:refs/heads/$default_branch"
+  message="Built and published ${candidate:0:12}. Local checkout unchanged; reconcile or pull before nh os switch."
+  if [[ $(git -C "$checkout" symbolic-ref --quiet --short HEAD || true) == "$default_branch" &&
+  -z $(git -C "$checkout" status --porcelain) ]] &&
+    git -C "$checkout" merge-base --is-ancestor HEAD "$candidate"; then
+    git -C "$checkout" merge --ff-only "$candidate"
+    message="Built and published ${candidate:0:12}. Ready for nh os switch."
+  fi
   git -C "$checkout" worktree remove "$worktree"
   git -C "$checkout" update-ref -d "refs/heads/$candidate_branch" "$candidate"
-  write_status success "Installed and published signed revision $candidate."
-  notify-send --app-name=nixconf-update 'Nixconf updated' "Installed and published ${candidate:0:12}." || true
+  write_status available "$message" "$candidate"
+  notify-send --app-name=nixconf-update 'Nixconf update available' "$message" || true
 }
 
 run_update() {
@@ -226,8 +221,8 @@ run_update() {
   trap failed ERR
   trap 'die "Update interrupted"' TERM INT
   validate_origin
-  if [[ $1 == update && ! -e $worktree ]]; then prepare_update; fi
-  finish_update "$1"
+  if [[ ! -e $worktree ]]; then prepare_update; fi
+  finish_update
   trap - ERR TERM INT
 }
 
@@ -236,8 +231,9 @@ waybar_status() {
     printf '{"text":"","class":"unavailable","tooltip":"No local update run yet. Click to update."}\n'
     return
   fi
-  jq -c '
+  jq -c --arg installed "$(running_revision)" '
     if .state == "failed" then {text:"󰏗 !",class:"failed",tooltip:.message}
+    elif .state == "available" and .candidateRevision == $installed then {text:"",class:"ready",tooltip:"Built update is installed."}
     elif .state == "available" then {text:"󰏗",class:"updates",tooltip:.message}
     elif .state == "running" and now - .checkedAtEpoch > 21600 then {text:"󰏗 ?",class:"unavailable",tooltip:"Local update did not finish. Inspect the journal and retained candidate."}
     elif .state == "running" then {text:"󰏗 …",class:"updates",tooltip:.message}
@@ -247,31 +243,23 @@ waybar_status() {
 }
 
 show_details() {
-  local answer
   if [[ -r $status_file ]]; then jq -r '.message, ("Phase: " + .phase)' "$status_file"; fi
   if [[ -e $worktree/.git ]]; then
     git -C "$worktree" --no-pager log -1 --show-signature
     git -C "$worktree" --no-pager diff HEAD
     printf '\nRetained candidate: %s\n' "$worktree"
-    read -r -p 'Validate, switch, and publish this candidate? [y/N] ' answer
-    if [[ $answer == [yY] ]]; then run_update switch; fi
-  else
-    read -r -p 'Generate, sign, and build updates without switching? [y/N] ' answer
-    if [[ $answer == [yY] ]]; then run_update update; fi
   fi
+  printf '\nActivate manually with nh os switch.\nLogs: journalctl --user -u nixconf-update\nRetry: systemctl --user start nixconf-update.service\n'
 }
 
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
-  case "${1:-update}" in
-  update | resume | switch) run_update "${1:-update}" ;;
-  scheduled)
-    run_update update
-    ;;
+  case "${1:-scheduled}" in
+  scheduled) run_update ;;
   check | waybar) waybar_status ;;
   open) exec present-terminal 'Nixconf Updates' "$0" details ;;
   details) show_details ;;
   *)
-    printf 'Usage: nixconf-update [update|resume|switch|scheduled|check|waybar|open|details]\n' >&2
+    printf 'Internal update service: unsupported operation\n' >&2
     exit 2
     ;;
   esac

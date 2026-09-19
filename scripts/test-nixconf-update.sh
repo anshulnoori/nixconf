@@ -39,23 +39,15 @@ nix() {
   esac
 }
 nh() {
-  [[ $1 == os && ($2 == switch || $2 == build) && $3 == "$worktree" ]]
+  [[ $1 == os && $2 == build && $3 == "$worktree" ]]
   [[ " $* " != *' --update '* ]]
   [[ " $* " == *' -- --no-update-lock-file '* ]]
   [[ -z $(git -C "$worktree" status --porcelain) ]]
   git -C "$worktree" verify-commit HEAD
-  if [[ $2 == build ]]; then
-    printf 'build\n' >>"$events"
-    [[ $failure != build ]] || return 1
-    return
-  fi
-  printf 'switch\n' >>"$events"
-  [[ $failure != switch ]] || return 1
-  if [[ $failure != wrong-revision ]]; then
-    git -C "$worktree" rev-parse HEAD >"$installed"
-  fi
+  printf 'build\n' >>"$events"
+  [[ $failure != build ]] || return 1
   if [[ $failure == remote-race ]]; then
-    # Another writer advances the remote while the local candidate switches.
+    # Another writer advances the remote while the local candidate builds.
     git -C "$checkout" -c commit.gpgSign=false commit --allow-empty -m 'test: concurrent writer'
     "$real_git" -C "$checkout" push origin HEAD:master
   fi
@@ -130,33 +122,31 @@ before=$(git -C "$checkout" status --porcelain)
 original=$(cat "$installed")
 run_case success
 [[ $(cat "$installed") == "$original" ]]
-[[ $(git --git-dir="$scratch/success/remote" rev-parse master) == "$original" ]]
-if grep -Eq '^(switch|push)$' "$events"; then die 'Build-only update switched or pushed'; fi
+[[ $(git --git-dir="$scratch/success/remote" rev-parse master) != "$original" ]]
+[[ $(git -C "$checkout" rev-parse HEAD) == "$original" ]]
 jq -e '.state == "available"' "$status_file" >/dev/null
-candidate=$(git -C "$worktree" rev-parse HEAD)
-run_case success
-run_case success resume
-[[ $(git -C "$worktree" rev-parse HEAD) == "$candidate" ]]
-[[ $(grep -c '^generate$' "$events") == 1 ]]
-if grep -Eq '^(switch|push)$' "$events"; then die 'Retained candidate switched without approval'; fi
-echo 'PASS: update and resume build without activation or publication and preserve the candidate'
-run_case success switch
-[[ $(git --git-dir="$scratch/success/remote" rev-parse master) == "$(cat "$installed")" ]]
 [[ $(git -C "$checkout" status --porcelain) == "$before" ]]
 [[ $(git -C "$checkout" show :user-work) == 'staged work' ]]
 [[ $(cat "$checkout/user-work") == 'dirty work' && $(cat "$checkout/untracked") == 'untracked work' ]]
-[[ $(tail -2 "$events") == $'switch\npush' ]]
+[[ $(tail -2 "$events") == $'build\npush' ]]
 [[ ! -e $worktree ]]
-jq -e '.state == "success"' "$status_file" >/dev/null
-echo 'PASS: signed candidate switches before push; dirty and untracked user work survives'
+jq -e '.message | contains("checkout unchanged")' "$status_file" >/dev/null
+echo 'PASS: signed candidate builds before push without activation; dirty checkout survives'
 
-for failure_case in signing validation build switch wrong-revision attribution remote-race; do
+fixture clean-checkout
+original=$(cat "$installed")
+run_case success
+[[ $(git -C "$checkout" rev-parse HEAD) == $(git --git-dir="$scratch/clean-checkout/remote" rev-parse master) ]]
+[[ $(git -C "$checkout" log -1 --format=%s) == 'chore(nix): update flake.lock' ]]
+[[ $(cat "$installed") == "$original" ]]
+git -C "$checkout" verify-commit HEAD
+jq -e '.message | contains("Ready for nh os switch")' "$status_file" >/dev/null
+git -C "$checkout" rev-parse HEAD >"$installed"
+waybar_status | jq -e '.class == "ready" and .text == ""' >/dev/null
+echo 'PASS: clean master fast-forwards to the built signed commit without switching'
+
+for failure_case in signing validation build attribution remote-race; do
   fixture "$failure_case"
-  action=update
-  if [[ $failure_case == switch || $failure_case == wrong-revision || $failure_case == remote-race ]]; then
-    run_case success
-    action=switch
-  fi
   failure=$failure_case
   if [[ $failure == signing ]]; then git -C "$checkout" config user.signingKey "$scratch/missing-key"; fi
   if [[ $failure == attribution ]]; then
@@ -164,7 +154,7 @@ for failure_case in signing validation build switch wrong-revision attribution r
     printf '#!%s\nprintf "\\nCo-authored-by: unwanted\\n" >> "$1"\n' "$(command -v bash)" >"$checkout/.git/hooks/commit-msg"
     chmod +x "$checkout/.git/hooks/commit-msg"
   fi
-  run_case failure "$action"
+  run_case failure
   [[ -e $worktree/.git ]]
   if grep -qx push "$events"; then die "Pushed after $failure"; fi
   jq -e '.state == "failed"' "$status_file" >/dev/null
@@ -175,17 +165,13 @@ for failure_case in signing validation build switch wrong-revision attribution r
 done
 
 fixture push-retry
-run_case success
 failure=push
-run_case failure switch
-candidate=$(cat "$installed")
-[[ $(git -C "$worktree" rev-parse HEAD) == "$candidate" ]]
+run_case failure
+candidate=$(git -C "$worktree" rev-parse HEAD)
 failure=none
-run_case success resume
-[[ -e $worktree/.git ]]
-run_case success switch
+run_case success
 [[ $(git --git-dir="$scratch/push-retry/remote" rev-parse master) == "$candidate" ]]
-echo 'PASS: installed but unpublished signed revision can resume without GitHub comparison'
+echo 'PASS: failed push retries the same built signed revision'
 
 fixture unchanged
 failure=unchanged
@@ -199,7 +185,7 @@ run_case failure
 failure=none
 run_case success resume
 [[ $(grep -c '^generate$' "$events") == 2 ]]
-if grep -Eq '^(switch|push)$' "$events"; then die 'Generation retry activated the candidate'; fi
+[[ $(tail -2 "$events") == $'build\npush' ]]
 echo 'PASS: incomplete source generation resumes before signing or switching'
 
 fixture ancestry

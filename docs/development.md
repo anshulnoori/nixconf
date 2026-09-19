@@ -72,10 +72,10 @@ linear.
 ## Dependency updates
 
 Updates originate on `t1`, not in CI. The user timer runs ten minutes after
-boot, then every three days while the user manager runs. Manual updates use:
+boot, then every three days while the user manager runs. To request a build now:
 
 ```sh
-nixconf-update update
+systemctl --user start nixconf-update.service
 ```
 
 The updater creates an isolated worktree under
@@ -90,20 +90,22 @@ The update sequence is:
 2. Run `nix flake update` and `nix run .#nvfetcher` there.
 3. Commit changed pins with `git commit -S` as `Anshul Noori <anshulnoori@gmail.com>`.
 4. Verify signatures and final commit messages, then validate the signed candidate.
-5. Run `nh os build` against that clean candidate, retain it, and notify you.
-6. Wait for you to run `nixconf-update switch` or approve the switch in the details prompt.
-7. Revalidate the candidate and run `nh os switch` without updating its pins.
-8. Verify the installed revision, inspect signatures and messages again, then push it to `master`.
+5. Run stock `nh os build` against that clean candidate.
+6. After a successful build, verify signatures and messages again, then push to `master`.
+7. Fast-forward a clean `/etc/nixos` checkout on `master` and notify you.
+8. You run stock `nh os switch` whenever you want to activate the update.
 
-Neither the timer nor `update` or `resume` activates or pushes a candidate.
-Repeated runs retain the pending candidate rather than replacing it.
+Automatic commits use `chore(nix): update flake.lock`. The service never activates
+the system and does not wait for a later activation before publishing.
+There is no shell wrapper or user-facing updater command.
 
-The updater never force-pushes. Signing, validation, or activation failures
-prevent publication. A failed push retains the installed commit locally.
+The updater never force-pushes. Signing, validation, or build failures
+prevent publication. A failed push retains the built commit locally for retry.
 Successful publication removes the temporary worktree and its reserved branch.
-The original checkout stays unchanged, even after success.
+Dirty checkouts and experimental branches stay unchanged; the notification tells
+you to reconcile or pull before switching.
 
-CI checks repository maintenance after activation. CI success is not an
+CI checks repository maintenance after publication. CI success is not an
 activation prerequisite in this local-first model. Public upstream caches remain
 available, but there is no personal binary cache. Niks3 and R2 are deferred.
 
@@ -125,22 +127,21 @@ If an update stops, inspect the log and retained candidate:
 journalctl --user -u nixconf-update
 git -C ~/.local/state/nixconf/update-worktree status
 git -C ~/.local/state/nixconf/update-worktree log -1 --show-signature
-nixconf-update resume
+systemctl --user start nixconf-update.service
 ```
 
-Run `resume` in a terminal as the login user and approve 1Password requests.
-Resume validates and builds the retained candidate without switching. When ready,
-run `nixconf-update switch` to activate and publish it.
+Retry the service as the login user and approve 1Password requests.
+It validates and builds the retained candidate before publication, without switching.
+When ready, run `nh os switch` to activate the configuration in `/etc/nixos`.
 If the remote advanced, reconcile the histories manually before resumption.
-Do not delete a retained worktree that contains an unpublished installed commit.
+Do not delete a retained worktree that contains an unpublished commit.
 If the installed revision is unknown, establish a clean committed system revision
 manually before enabling automatic updates.
 
 Waybar shows available updates, local progress, failures, and stale results.
 Mako notifies you when a build is ready, or when an operation succeeds or fails.
-Clicking the indicator opens candidate details and asks for explicit switch
-approval, or offers to build an update if none exists. The UI does not depend
-on GitHub comparison or discovery APIs.
+Clicking the indicator opens read-only details and recovery instructions.
+The UI does not depend on GitHub comparison or discovery APIs.
 
 ### Update sources and CI
 

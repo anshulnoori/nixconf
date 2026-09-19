@@ -17,7 +17,7 @@ _: {
         pkgs.procps
         pkgs.util-linux
       ];
-      # Keep the user's signing tools and privileged activation wrapper available.
+      # Keep the user's configured Git identity and signing tools available.
       text =
         ''
           export PATH="${config.home.profileDirectory}/bin:/run/wrappers/bin:/run/current-system/sw/bin:$PATH"
@@ -25,12 +25,17 @@ _: {
         + builtins.readFile ../../scripts/nixconf-update.sh;
     };
   in {
-    options.services.nixconf-update.enable =
-      lib.mkEnableOption "the revision-aware nixconf update workflow";
+    options.services.nixconf-update = {
+      enable = lib.mkEnableOption "background NixOS update builds";
+      package = lib.mkOption {
+        type = lib.types.package;
+        readOnly = true;
+        default = updateTool;
+        internal = true;
+      };
+    };
 
     config = lib.mkIf config.services.nixconf-update.enable {
-      home.packages = [updateTool];
-
       systemd.user.services.nixconf-update = {
         Unit = {
           Description = "Build local nixconf updates and notify when ready";
