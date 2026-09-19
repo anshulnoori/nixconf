@@ -125,13 +125,18 @@ verify_publication() {
   # Inspect final messages, including anything appended by hooks or signing tools.
   while read -r commit; do
     message=$(git -C "$worktree" log -1 --format=%B "$commit")
-    if grep -Eiq 'Co-authored-by:|Amp-Thread-ID:|ampcode\.com/threads/|(^|[[:space:]])(generated|authored|written|committed|signed)[[:space:]]+(by|with)[[:space:]]+(AI|Amp|an? agent)' <<<"$message"; then
+    if rg -iq 'Co-authored-by:|Amp-Thread-ID:|ampcode\.com/threads/|(^|[[:space:]])(generated|authored|written|committed|signed)[[:space:]]+(by|with)[[:space:]]+(AI|Amp|an? agent)' <<<"$message"; then
       die "Prohibited attribution in $commit; correct and re-sign it before retrying."
       return 1
     fi
     git -C "$worktree" verify-commit "$commit" || return
   done < <(git -C "$worktree" rev-list "$remote_revision..$revision")
   git -C "$worktree" verify-commit "$revision"
+}
+
+update_summary() {
+  nix store diff-closures --json "$1" "$2" |
+    jq -er '.packages | length | "\(.) package\(if . == 1 then "" else "s" end) changed"'
 }
 
 finish_update() {
@@ -213,8 +218,9 @@ finish_update() {
     die 'Candidate changed during build; refusing publication.'
   if [[ $interactive == false ]]; then
     jq -n --arg revision "$candidate" --arg tree "$tree" '{revision:$revision,tree:$tree}' >"$built"
-    write_status available 'Built. Click to switch.' '' "$(readlink -f "$state_dir/result-system")"
-    notify-send --app-name=nixconf-update --expire-time=10000 'Update Available' 'Built. Click to switch.' || true
+    message=$(update_summary /run/current-system "$state_dir/result-system")
+    write_status available "$message" '' "$(readlink -f "$state_dir/result-system")"
+    notify-send --app-name=nixconf-update --expire-time=10000 'Update Available' "$message" || true
     return
   fi
   phase=publishing

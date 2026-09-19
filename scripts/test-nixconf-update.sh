@@ -30,6 +30,9 @@ notify-send() { printf '%s\n' "$@" >"$scratch/notification"; }
 sudo() { die 'Build-only updates must not request sudo'; }
 nix() {
   case "$*" in
+  'store diff-closures --json /run/current-system '*)
+    printf '%s\n' "$summary_diff"
+    ;;
   'flake update')
     if [[ $failure != unchanged ]]; then printf 'new lock\n' >flake.lock; fi
     ;;
@@ -92,6 +95,7 @@ fixture() {
   events="$scratch/$name/events"
   failure=none
   phase=starting
+  summary_diff='{"schema":"lix-closure-diff-v1","packages":{"example":{"versionsBefore":["1"],"versionsAfter":["2"],"sizeDelta":1}}}'
   mkdir -p "$checkout" "$state_dir"
   : >"$events"
   "$real_git" init -q --bare "$scratch/$name/remote"
@@ -145,6 +149,14 @@ if (validate_origin) 2>/dev/null; then die 'Accepted unexpected push destination
 # All transport below is real Git against a disposable bare repository only.
 validate_origin() { [[ $("$real_git" -C "$checkout" remote get-url origin) == "$scratch/"* ]]; }
 
+fixture summary
+[[ $(update_summary /run/current-system "$state_dir/result-system") == '1 package changed' ]]
+summary_diff='{"schema":"lix-closure-diff-v1","packages":{"added":{"versionsBefore":[],"versionsAfter":["1"],"sizeDelta":999},"removed":{"versionsBefore":["2"],"versionsAfter":[],"sizeDelta":-1},"updated":{"versionsBefore":["1"],"versionsAfter":["2","3"],"sizeDelta":0}}}'
+[[ $(update_summary /run/current-system "$state_dir/result-system") == '3 packages changed' ]]
+summary_diff='{"schema":"lix-closure-diff-v1","packages":{}}'
+[[ $(update_summary /run/current-system "$state_dir/result-system") == '0 packages changed' ]]
+echo 'PASS: summary counts package names, including additions, removals, and multiple version changes'
+
 fixture success
 printf 'staged work\n' >"$checkout/user-work"
 git -C "$checkout" add user-work
@@ -158,10 +170,11 @@ run_case success
 [[ $(git -C "$checkout" rev-parse HEAD) == "$original" ]]
 jq -e '.state == "available" and .candidateRevision == "" and .candidateSystem != ""' "$status_file" >/dev/null
 waybar_status | jq -e '.class == "updates" and .text == "󰏗"' >/dev/null
-grep -Fx -- '--expire-time=10000' "$scratch/notification"
-grep -Fx 'Update Available' "$scratch/notification"
-grep -Fx 'Built. Click to switch.' "$scratch/notification"
-if grep -Eq '^(commit|push|switch)$' "$events"; then die 'Background update requested an interactive action'; fi
+rg -Fx -- '--expire-time=10000' "$scratch/notification"
+rg -Fx 'Update Available' "$scratch/notification"
+rg -Fx '1 package changed' "$scratch/notification"
+jq -e '.message == "1 package changed"' "$status_file" >/dev/null
+if rg -q '^(commit|push|switch)$' "$events"; then die 'Background update requested an interactive action'; fi
 [[ -e $worktree/.git ]]
 echo 'PASS: background build retains uncommitted pins without signing, pushing, switching, or clearing the icon'
 run_case success true
@@ -202,12 +215,12 @@ for failure_case in signing validation build attribution remote-race local-sourc
   fi
   run_case failure "$action"
   [[ -e $worktree/.git ]]
-  if grep -qx push "$events"; then die "Pushed after $failure"; fi
+  if rg -qx push "$events"; then die "Pushed after $failure"; fi
   jq -e '.state == "failed"' "$status_file" >/dev/null
-  grep -Fx 'Update Failed' "$scratch/notification"
-  if [[ $failure == signing ]]; then grep -Fx 'Signing failed.' "$scratch/notification"; fi
+  rg -Fx 'Update Failed' "$scratch/notification"
+  if [[ $failure == signing ]]; then rg -Fx 'Signing failed.' "$scratch/notification"; fi
   if [[ $failure == signing || $failure == validation || $failure == attribution || $failure == build ]]; then
-    if grep -qx switch "$events"; then die "Switched after $failure"; fi
+    if rg -qx switch "$events"; then die "Switched after $failure"; fi
   fi
   echo "PASS: $failure blocks publication and preserves candidate"
 done
@@ -220,7 +233,7 @@ candidate=$(git -C "$worktree" rev-parse HEAD)
 failure=none
 : >"$events"
 run_case success
-if grep -Eq '^(commit|push|switch)$' "$events"; then die 'Background retry published an interactive candidate'; fi
+if rg -q '^(commit|push|switch)$' "$events"; then die 'Background retry published an interactive candidate'; fi
 run_case success true
 [[ $(git --git-dir="$scratch/push-retry/remote" rev-parse master) == "$candidate" ]]
 echo 'PASS: failed push retries the same built signed revision'
@@ -228,9 +241,9 @@ echo 'PASS: failed push retries the same built signed revision'
 fixture unattended-signing
 git -C "$checkout" config user.signingKey "$scratch/missing-key"
 run_case success
-if grep -Eq '^(commit|push|switch)$' "$events"; then die 'Background update needed signing credentials'; fi
+if rg -q '^(commit|push|switch)$' "$events"; then die 'Background update needed signing credentials'; fi
 run_case failure true
-grep -Fx 'Signing failed.' "$scratch/notification"
+rg -Fx 'Signing failed.' "$scratch/notification"
 echo 'PASS: missing signing credentials never block the background build; only the interactive handoff signs'
 
 for failure_case in switch cancel; do
@@ -263,7 +276,7 @@ run_case success
 failure=build
 run_case failure true
 git -C "$worktree" verify-commit HEAD
-if grep -Eq '^(push|switch)$' "$events"; then die 'Published after signed build failure'; fi
+if rg -q '^(push|switch)$' "$events"; then die 'Published after signed build failure'; fi
 echo 'PASS: signed revision must also build before publication or activation'
 
 fixture apply-downgrade
@@ -286,7 +299,7 @@ failure=generation
 run_case failure
 failure=none
 run_case success
-[[ $(grep -c '^generate$' "$events") == 2 ]]
+[[ $(rg -c '^generate$' "$events") == 2 ]]
 [[ $(tail -1 "$events") == build ]]
 echo 'PASS: incomplete source generation resumes before signing or switching'
 
@@ -339,7 +352,7 @@ printf 'unexpected edit\n' >"$worktree/user-work"
 git -C "$worktree" add user-work
 failure=none
 run_case failure true
-if grep -qx switch "$events"; then die 'Switched with unexpected staged files'; fi
+if rg -qx switch "$events"; then die 'Switched with unexpected staged files'; fi
 echo 'PASS: resume does not automatically commit unrelated staged edits'
 
 fixture indicator-ancestry

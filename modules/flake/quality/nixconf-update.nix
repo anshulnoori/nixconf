@@ -2,7 +2,7 @@ _: {
   perSystem = {pkgs, ...}: {
     checks.nixconf-update =
       pkgs.runCommand "nixconf-update-tests" {
-        nativeBuildInputs = with pkgs; [bash coreutils diffutils git gnugrep jq openssh openssl util-linux];
+        nativeBuildInputs = with pkgs; [bash coreutils diffutils git gnugrep jq openssh openssl ripgrep util-linux];
       } ''
         mkdir scripts
         cp ${../../../scripts/nixconf-update.sh} scripts/nixconf-update.sh

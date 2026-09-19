@@ -10,11 +10,11 @@ _: {
       runtimeInputs = [
         pkgs.coreutils
         pkgs.git
-        pkgs.gnugrep
         pkgs.jq
         pkgs.libnotify
         pkgs.nh
         pkgs.procps
+        pkgs.ripgrep
         pkgs.util-linux
       ];
       # Keep the user's configured Git identity and signing tools available.
