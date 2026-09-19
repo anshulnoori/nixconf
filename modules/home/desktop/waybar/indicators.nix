@@ -29,7 +29,7 @@ _: {
         return-type = "json";
         interval = 5;
         signal = 10;
-        on-click = "${config.home.profileDirectory}/bin/present-terminal 'NixOS Update' ${pkgs.nh}/bin/nh os switch /etc/nixos --ask --diff always";
+        on-click = "${config.home.profileDirectory}/bin/present-terminal 'NixOS Update' ${config.services.nixconf-update.package}/bin/nixconf-update apply";
       };
     };
   };

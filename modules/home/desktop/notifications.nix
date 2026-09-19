@@ -41,8 +41,8 @@ _: {
           layer = "overlay";
         };
         "app-name=nixconf-update summary=\"Update Available\"" = {
-          on-button-left = "exec ${pkgs.mako}/bin/makoctl dismiss -n \"$id\"; ${config.home.profileDirectory}/bin/present-terminal 'NixOS Update' ${pkgs.nh}/bin/nh os switch /etc/nixos --ask --diff always";
-          on-touch = "exec ${pkgs.mako}/bin/makoctl dismiss -n \"$id\"; ${config.home.profileDirectory}/bin/present-terminal 'NixOS Update' ${pkgs.nh}/bin/nh os switch /etc/nixos --ask --diff always";
+          on-button-left = "exec ${pkgs.mako}/bin/makoctl dismiss -n \"$id\"; ${config.home.profileDirectory}/bin/present-terminal 'NixOS Update' ${config.services.nixconf-update.package}/bin/nixconf-update apply";
+          on-touch = "exec ${pkgs.mako}/bin/makoctl dismiss -n \"$id\"; ${config.home.profileDirectory}/bin/present-terminal 'NixOS Update' ${config.services.nixconf-update.package}/bin/nixconf-update apply";
         };
         "summary~=\"Screenshot saved\"" = {
           max-icon-size = 64;

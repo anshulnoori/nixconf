@@ -105,28 +105,36 @@ untracked files in `/etc/nixos`. Uncommitted configuration changes do not enter
 the update. Diverged histories and unknown installed revisions stop the update.
 An installed revision ending in `-dirty` uses its verified base commit for
 ancestry checks. This does not certify the exact activated configuration.
-The updater still preserves local changes and never activates a system.
+The background service preserves local changes and never activates a system.
 
-The update sequence is:
+The background sequence is:
 
 1. Fetch `master` and create the clean `build/local-update` worktree.
 2. Run `nix flake update`, `nix run .#nvfetcher`, and the internal source refresher there.
-3. Commit changed pins with `git commit -S` as `Anshul Noori <anshulnoori@gmail.com>`.
-4. Verify signatures and final commit messages, then validate the signed candidate.
-5. Run stock `nh os build` against that clean candidate.
-6. After a successful build, verify signatures and messages again, then push to `master`.
-7. Fast-forward a clean `/etc/nixos` checkout on `master` and notify you.
-8. You run stock `nh os switch` whenever you want to activate the update.
+3. Validate the candidate and run stock `nh os build` with the uncommitted pins.
+4. Retain the candidate and show **Update Available** after the build succeeds.
 
-Automatic commits use `chore(nix): update flake.lock`. The service never activates
-the system and does not wait for a later activation before publishing.
-There is no shell wrapper or user-facing updater command.
+The timer does not commit, sign, push, or request sudo. HTTPS reads use existing
+credentials without terminal prompts. SSH subprocesses cannot use the agent.
 
-The updater never force-pushes. Signing, validation, or build failures
-prevent publication. A failed push retains the built commit locally for retry.
-Successful publication removes the temporary worktree and its reserved branch.
-Dirty checkouts and experimental branches stay unchanged; the notification tells
-you to reconcile or pull before switching.
+Clicking the update icon or notification opens an interactive terminal. The
+updater verifies that the candidate still matches the completed build. It then
+signs changed pins as `Anshul Noori <anshulnoori@gmail.com>` with
+`chore(nix): update flake.lock`. It validates and builds the signed revision,
+verifies signatures and final messages, then pushes to `master`.
+Signing changes the revision metadata, so this build reuses packages from the
+background build but produces a system with the signed revision.
+
+After publication, stock `nh os switch` shows the diff and requests confirmation
+for that exact built system. The updater fast-forwards a clean `/etc/nixos`
+checkout on `master`. Dirty checkouts and experimental branches stay unchanged.
+There is no `nh` wrapper. A plain `nh os switch` still uses `/etc/nixos` and does
+not sign or publish the retained candidate.
+
+The updater never force-pushes. Signing, validation, or build failures prevent
+publication. A failed push retains the signed candidate for retry.
+Successful publication removes the worktree and its reserved branch. A failed
+or cancelled switch can retry the published system without another commit or push.
 
 CI checks repository maintenance after publication. CI success is not an
 activation prerequisite in this local-first model. Public upstream caches remain
@@ -139,10 +147,9 @@ authentication key and signing key can be different. Signature verification
 requires the matching public key in Git's allowed-signers file. Private monorepo
 fetches use HTTPS credentials. Repository pushes use SSH authentication.
 
-The timer builds without requesting sudo. A locked agent or denied signing
-request can still stop preparation. Only an explicit switch requires sudo;
-the existing password-required policy remains unchanged. No private key export
-or passwordless sudo rule is part of this workflow.
+Only the interactive handoff requests signing and push approvals. A locked
+agent does not block the background build. Only an explicit switch requires
+sudo. No private key export or passwordless sudo rule is part of this workflow.
 
 If an update stops, inspect the log and retained candidate:
 
@@ -153,9 +160,8 @@ git -C ~/.local/state/nixconf/update-worktree log -1 --show-signature
 systemctl --user start nixconf-update.service
 ```
 
-Retry the service as the login user and approve 1Password requests.
-It validates and builds the retained candidate before publication, without switching.
-When ready, run `nh os switch` to activate the configuration in `/etc/nixos`.
+Retry the service as the login user. Then click the update icon to sign,
+publish, and switch interactively. Approve 1Password requests in that terminal flow.
 If the remote advanced, reconcile the histories manually before resumption.
 Do not delete a retained worktree that contains an unpublished commit.
 If the installed revision is unknown, establish a clean committed system revision
@@ -163,12 +169,12 @@ manually before enabling automatic updates.
 
 Waybar shows available updates, local progress, failures, and stale results.
 Mako notifies you when a build is ready, or when an operation succeeds or fails.
-Clicking the indicator opens `nh os switch /etc/nixos --ask` in a terminal.
-Stock `nh` shows the diff and requests confirmation. The command does not use
-`--update`, so it does not regenerate the built inputs.
+Clicking the indicator opens the interactive handoff. Stock `nh` receives the
+built system path with `--ask --diff always`. It does not regenerate the built inputs.
 The UI does not depend on GitHub comparison or discovery APIs.
-The indicator clears when the installed base commit equals or descends from the
-published candidate. A `-dirty` suffix does not prove the activated files match.
+An uncommitted candidate stays visible until its exact built system is installed.
+After publication, the indicator also clears for an installed candidate commit
+or descendant. A `-dirty` suffix does not prove the activated files match.
 
 ### Update sources and CI
 

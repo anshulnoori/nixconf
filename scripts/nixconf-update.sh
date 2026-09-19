@@ -24,16 +24,21 @@ write_status() {
   next_status=$(mktemp "$state_dir/status.XXXXXX")
   jq -n --arg state "$1" --arg message "$2" --arg phase "$phase" \
     --arg candidate "${3:-}" \
+    --arg system "${4:-}" \
     --arg running "$(running_revision)" --argjson time "$(date +%s)" \
-    '{state:$state,message:$message,phase:$phase,candidateRevision:$candidate,runningRevision:$running,checkedAtEpoch:$time}' >"$next_status"
+    '{state:$state,message:$message,phase:$phase,candidateRevision:$candidate,candidateSystem:$system,runningRevision:$running,checkedAtEpoch:$time}' >"$next_status"
   mv "$next_status" "$status_file"
   signal_waybar
 }
 
 failed() {
-  local code=$?
+  local code=$? candidate='' system=''
   trap - ERR
-  write_status failed "${phase^} failed."
+  if [[ $phase == switching ]]; then
+    candidate=$(jq -r '.candidateRevision // ""' "$status_file")
+    system=$(jq -r '.candidateSystem // ""' "$status_file")
+  fi
+  write_status failed "${phase^} failed." "$candidate" "$system"
   notify-send --app-name=nixconf-update --expire-time=10000 'Update Failed' "${phase^} failed." || true
   exit "$code"
 }
@@ -130,13 +135,11 @@ verify_publication() {
 }
 
 finish_update() {
-  local candidate current relation path message
+  local interactive=${1:-false} candidate current relation path message tree built
   [[ -e $worktree/.git ]] || die 'No retained candidate.'
   [[ $(git -C "$worktree" symbolic-ref --short HEAD) == "$candidate_branch" ]] || die 'Unexpected candidate branch.'
-  if [[ ! -e $(git -C "$worktree" rev-parse --git-path nixconf-generated) ]]; then generate_pins; fi
-  phase=signing
-  write_status running 'Signing update'
-  # Only generated dependency pins may enter an automatic commit.
+  if [[ $interactive == false && ! -e $(git -C "$worktree" rev-parse --git-path nixconf-generated) ]]; then generate_pins; fi
+  # Only generated dependency pins may enter the candidate.
   while IFS= read -r -d '' path; do
     case "$path" in
     flake.lock | _sources/generated.nix | _sources/generated.json | packages/sf-pro-source.json | .github/workflows/cache.yml) ;;
@@ -150,13 +153,9 @@ finish_update() {
     git -C "$worktree" diff --cached --name-only -z
   )
   git -C "$worktree" add -- flake.lock _sources/generated.nix _sources/generated.json packages/sf-pro-source.json .github/workflows/cache.yml
-  if ! git -C "$worktree" diff --cached --quiet; then
-    phase=signing
-    git -C "$worktree" -c user.name='Anshul Noori' -c user.email=anshulnoori@gmail.com \
-      commit -S -m 'chore(nix): update flake.lock'
-  fi
-  [[ -z $(git -C "$worktree" status --porcelain) ]] || die 'Candidate is dirty after commit; refusing publication.'
   candidate=$(git -C "$worktree" rev-parse HEAD)
+  tree=$(git -C "$worktree" write-tree)
+  built=$(git -C "$worktree" rev-parse --git-path nixconf-built)
   fetch_master
   relation=$(revision_relation "$worktree" "$remote_revision" "$candidate")
   case "$relation" in
@@ -169,11 +168,29 @@ finish_update() {
   identical | ahead) ;;
   *) die "Refusing $relation transition from installed revision $current." ;;
   esac
-  if [[ $candidate == "$current" && $candidate == "$remote_revision" ]]; then
+  if [[ $candidate == "$current" && $candidate == "$remote_revision" && -z $(git -C "$worktree" status --porcelain) ]]; then
     git -C "$checkout" worktree remove "$worktree"
     git -C "$checkout" update-ref -d "refs/heads/$candidate_branch" "$candidate"
     write_status success 'Up to date'
     return
+  fi
+  if [[ $interactive == true ]]; then
+    phase=signing
+    if [[ ! -r $built ]] || ! jq -e --arg revision "$candidate" --arg tree "$tree" \
+      '.revision == $revision and .tree == $tree' "$built" >/dev/null; then
+      die 'Candidate has not been built, or changed since building. Run the update service first.'
+      return 1
+    fi
+    write_status running 'Signing update'
+    if ! git -C "$worktree" diff --cached --quiet; then
+      git -C "$worktree" -c user.name='Anshul Noori' -c user.email=anshulnoori@gmail.com \
+        commit -S -m 'chore(nix): update flake.lock'
+    fi
+    [[ -z $(git -C "$worktree" status --porcelain) && $(git -C "$worktree" rev-parse 'HEAD^{tree}') == "$tree" ]] ||
+      die 'Candidate changed during signing; refusing publication.'
+    candidate=$(git -C "$worktree" rev-parse HEAD)
+    # A push or switch failure can retry this exact signed candidate.
+    jq -n --arg revision "$candidate" --arg tree "$tree" '{revision:$revision,tree:$tree}' >"$built"
   fi
   verify_publication "$candidate"
   phase=validating
@@ -185,13 +202,21 @@ finish_update() {
       .#checks.x86_64-linux.treefmt .#proton-ge \
       .#checks.x86_64-linux.proton-ge-aarch64 .#checks.x86_64-linux.nixconf-update
   )
-  [[ $(git -C "$worktree" rev-parse HEAD) == "$candidate" && -z $(git -C "$worktree" status --porcelain) ]] ||
+  [[ $(git -C "$worktree" rev-parse HEAD) == "$candidate" && $(git -C "$worktree" write-tree) == "$tree" &&
+  -z $(git -C "$worktree" diff --name-only) && -z $(git -C "$worktree" ls-files --others --exclude-standard) ]] ||
     die 'Candidate changed during validation; refusing publication.'
   phase=building
   write_status running 'Building update'
   nh os build "$worktree" --hostname t1 --no-nom --diff never --out-link "$state_dir/result-system" -- --no-update-lock-file
-  [[ $(git -C "$worktree" rev-parse HEAD) == "$candidate" && -z $(git -C "$worktree" status --porcelain) ]] ||
+  [[ $(git -C "$worktree" rev-parse HEAD) == "$candidate" && $(git -C "$worktree" write-tree) == "$tree" &&
+  -z $(git -C "$worktree" diff --name-only) && -z $(git -C "$worktree" ls-files --others --exclude-standard) ]] ||
     die 'Candidate changed during build; refusing publication.'
+  if [[ $interactive == false ]]; then
+    jq -n --arg revision "$candidate" --arg tree "$tree" '{revision:$revision,tree:$tree}' >"$built"
+    write_status available 'Built. Click to switch.' '' "$(readlink -f "$state_dir/result-system")"
+    notify-send --app-name=nixconf-update --expire-time=10000 'Update Available' 'Built. Click to switch.' || true
+    return
+  fi
   phase=publishing
   write_status running 'Pushing update'
   validate_origin
@@ -203,20 +228,20 @@ finish_update() {
   verify_publication "$candidate"
   # Normal fast-forward push only; races fail safely and retain the built commit.
   git -C "$worktree" push origin "$candidate:refs/heads/$default_branch"
-  message="Committed ${candidate:0:12}. Pull before switching."
+  message="Committed ${candidate:0:12}"
   if [[ $(git -C "$checkout" symbolic-ref --quiet --short HEAD || true) == "$default_branch" &&
   -z $(git -C "$checkout" status --porcelain) ]] &&
     git -C "$checkout" merge-base --is-ancestor HEAD "$candidate"; then
     git -C "$checkout" merge --ff-only "$candidate"
-    message="Committed ${candidate:0:12}"
   fi
   git -C "$checkout" worktree remove "$worktree"
   git -C "$checkout" update-ref -d "refs/heads/$candidate_branch" "$candidate"
-  write_status available "$message" "$candidate"
-  notify-send --app-name=nixconf-update --expire-time=10000 'Update Available' "$message" || true
+  write_status available "$message" "$candidate" "$(readlink -f "$state_dir/result-system")"
+  printf '%s\n' "$message"
 }
 
 run_update() {
+  local interactive=${1:-false}
   mkdir -p "$state_dir"
   exec 9>"$lock_file"
   flock -n 9 || die 'Another update is running.'
@@ -224,8 +249,29 @@ run_update() {
   trap failed ERR
   trap 'die "Update interrupted"' TERM INT
   validate_origin
-  if [[ ! -e $worktree ]]; then prepare_update; fi
-  finish_update
+  if [[ $interactive == true && ! -e $worktree ]]; then
+    # Publication can succeed even if the subsequent switch is cancelled.
+    local candidate
+    candidate=$(jq -r '.candidateRevision // ""' "$status_file")
+    [[ $candidate =~ ^[0-9a-f]{40}$ && -e $state_dir/result-system ]] || die 'No built update. Run the update service first.'
+    case "$(revision_relation "$checkout" "$(running_revision)" "$candidate")" in
+    identical | ahead) ;;
+    *) die 'Refusing to switch an older or unrelated candidate.' ;;
+    esac
+  else
+    if [[ ! -e $worktree ]]; then prepare_update; fi
+    finish_update "$interactive"
+  fi
+  if [[ $interactive == true ]] && ! jq -e '.state == "success"' "$status_file" >/dev/null; then
+    local system
+    phase=switching
+    system=$(jq -r '.candidateSystem // ""' "$status_file")
+    [[ -n $system && -e $system && $(readlink -f "$state_dir/result-system") == "$system" ]] || die 'Built system is missing or changed.'
+    nh os switch "$system" --ask --diff always -- --no-update-lock-file
+    write_status available "Committed $(jq -r '.candidateRevision[:12]' "$status_file")" \
+      "$(jq -r '.candidateRevision' "$status_file")" "$system"
+    signal_waybar
+  fi
   trap - ERR TERM INT
 }
 
@@ -238,9 +284,9 @@ waybar_status() {
   current_revision=$(running_revision)
   candidate=$(jq -r '.candidateRevision // ""' "$status_file")
   relation=$(revision_relation "$checkout" "$candidate" "${current_revision%-dirty}")
-  jq -c --arg relation "$relation" '
+  jq -c --arg relation "$relation" --arg system "$(readlink -f /run/current-system)" '
     if .state == "failed" then {text:"󰏗",class:"failed",tooltip:.message}
-    elif .state == "available" and ($relation == "identical" or $relation == "ahead") then {text:"",class:"ready",tooltip:"Update installed"}
+    elif .state == "available" and ($relation == "identical" or $relation == "ahead" or (.candidateSystem != "" and .candidateSystem == $system)) then {text:"",class:"ready",tooltip:"Update installed"}
     elif .state == "available" then {text:"󰏗",class:"updates",tooltip:.message}
     elif .state == "running" and now - .checkedAtEpoch > 21600 then {text:"󰏗",class:"failed",tooltip:"Update stalled. See journal."}
     elif .state == "running" then
@@ -254,7 +300,16 @@ waybar_status() {
 
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
   case "${1:-scheduled}" in
-  scheduled) run_update ;;
+  scheduled)
+    # Automation must fail rather than invoke an SSH agent or ask for credentials.
+    export GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=never
+    export GIT_SSH_COMMAND='ssh -oBatchMode=yes -oIdentityAgent=none'
+    run_update
+    ;;
+  apply)
+    [[ -t 0 && -t 1 ]] || die 'Open the update in an interactive terminal.'
+    run_update true
+    ;;
   check | waybar) waybar_status ;;
   *)
     printf 'Internal update service: unsupported operation\n' >&2
