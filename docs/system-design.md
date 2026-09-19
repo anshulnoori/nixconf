@@ -79,8 +79,9 @@ the password in `/etc/shadow`.
   Amp's self-updater, independently of NixOS revisions.
 - Local automation updates dependency pins every three days, or on manual
   request. It preserves user work through an isolated Git worktree.
-- The updater signs and validates the candidate before `nh os switch`. It pushes
-  only after successful activation of that exact signed revision.
+- The updater signs, validates, and builds a candidate, then notifies the user.
+  Only an explicit `nixconf-update switch` or confirmed details prompt activates
+  it. It pushes only after successful activation of that exact signed revision.
 - CI runs repository maintenance on GitHub-hosted runners after pushes. System
   validation and builds run locally; CI does not generate updates or publish a
   personal binary cache. Renovate is disabled. Niks3 and R2 are deferred.
@@ -593,16 +594,18 @@ terminal-safe `Ctrl+Insert` and `Shift+Insert` alternatives, which Kitty handles
 without interrupting the foreground process.
 
 The local update timer starts ten minutes after boot and every three days
-thereafter. Waybar shows local progress, failure, and stale results. Mako reports
-success or failure. Clicking the module opens candidate details and a manual
-update or resume prompt in a floating terminal.
+thereafter. It builds without switching. Waybar shows available updates, local
+progress, failure, and stale results. Mako reports when a build is ready.
+Clicking the module opens candidate details and an explicit switch confirmation,
+or a build prompt if no candidate exists, in a floating terminal.
 
 The updater leaves `/etc/nixos` unchanged and retains failed candidates in its
 state directory. It compares actual Git objects with the installed revision,
 including unpublished local commits. Unknown or diverged histories stop the
 update. Signing and activation still require the existing 1Password and sudo
 authorization. Automation does not export keys or weaken sudo policy. Recovery
-uses `nixconf-update resume` in a terminal.
+uses `nixconf-update resume` in a terminal to finish building. Activation and
+publication require a separate `nixconf-update switch` command.
 
 ## Git identity
 

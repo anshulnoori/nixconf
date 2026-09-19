@@ -90,9 +90,13 @@ The update sequence is:
 2. Run `nix flake update` and `nix run .#nvfetcher` there.
 3. Commit changed pins with `git commit -S` as `Anshul Noori <anshulnoori@gmail.com>`.
 4. Verify signatures and final commit messages, then validate the signed candidate.
-5. Run `nh os switch` against that clean candidate without another dependency update.
-6. Verify that the running system reports the signed candidate revision.
-7. Inspect final commit messages again, then push the exact revision to `master`.
+5. Run `nh os build` against that clean candidate, retain it, and notify you.
+6. Wait for you to run `nixconf-update switch` or approve the switch in the details prompt.
+7. Revalidate the candidate and run `nh os switch` without updating its pins.
+8. Verify the installed revision, inspect signatures and messages again, then push it to `master`.
+
+Neither the timer nor `update` or `resume` activates or pushes a candidate.
+Repeated runs retain the pending candidate rather than replacing it.
 
 The updater never force-pushes. Signing, validation, or activation failures
 prevent publication. A failed push retains the installed commit locally.
@@ -110,11 +114,10 @@ authentication key and signing key can be different. Signature verification
 requires the matching public key in Git's allowed-signers file. Private monorepo
 fetches and repository pushes also require authentication.
 
-The existing password-required sudo policy remains unchanged. The timer checks
-noninteractive sudo before activation. A locked agent, denied signing request,
-or unavailable sudo authorization stops the run. Fully unattended activation is
-not guaranteed under this policy. No private key export or passwordless sudo
-rule is part of this workflow.
+The timer builds without requesting sudo. A locked agent or denied signing
+request can still stop preparation. Only an explicit switch requires sudo;
+the existing password-required policy remains unchanged. No private key export
+or passwordless sudo rule is part of this workflow.
 
 If an update stops, inspect the log and retained candidate:
 
@@ -125,16 +128,19 @@ git -C ~/.local/state/nixconf/update-worktree log -1 --show-signature
 nixconf-update resume
 ```
 
-Run `resume` in a terminal as the login user. Approve 1Password and sudo requests
-there. Resume validates and switches the retained candidate before publication.
+Run `resume` in a terminal as the login user and approve 1Password requests.
+Resume validates and builds the retained candidate without switching. When ready,
+run `nixconf-update switch` to activate and publish it.
 If the remote advanced, reconcile the histories manually before resumption.
 Do not delete a retained worktree that contains an unpublished installed commit.
 If the installed revision is unknown, establish a clean committed system revision
 manually before enabling automatic updates.
 
-Waybar shows local progress, failures, and stale results. Mako reports success
-or failure. Clicking the indicator opens candidate details and a manual resume
-or update prompt. The UI does not depend on GitHub comparison or discovery APIs.
+Waybar shows available updates, local progress, failures, and stale results.
+Mako notifies you when a build is ready, or when an operation succeeds or fails.
+Clicking the indicator opens candidate details and asks for explicit switch
+approval, or offers to build an update if none exists. The UI does not depend
+on GitHub comparison or discovery APIs.
 
 ### Update sources and CI
 

@@ -127,7 +127,6 @@ verify_publication() {
 
 finish_update() {
   local candidate current relation path
-  local -a elevation=()
   [[ -e $worktree/.git ]] || die 'No retained candidate. Run nixconf-update update.'
   [[ $(git -C "$worktree" symbolic-ref --short HEAD) == "$candidate_branch" ]] || die 'Unexpected candidate branch.'
   if [[ ! -e $(git -C "$worktree" rev-parse --git-path nixconf-generated) ]]; then generate_pins; fi
@@ -184,15 +183,21 @@ finish_update() {
   )
   [[ $(git -C "$worktree" rev-parse HEAD) == "$candidate" && -z $(git -C "$worktree" status --porcelain) ]] ||
     die 'Candidate changed during validation; refusing activation.'
+  phase=building
+  write_status running "Building signed candidate $candidate without activation."
+  nh os build "$worktree" --hostname t1 --no-nom --diff never --out-link "$state_dir/result-system" -- --no-update-lock-file
+  [[ $(git -C "$worktree" rev-parse HEAD) == "$candidate" && -z $(git -C "$worktree" status --porcelain) ]] ||
+    die 'Candidate changed during build; refusing activation.'
+  if [[ $1 != switch ]]; then
+    write_status available "Built ${candidate:0:12}. Run nixconf-update switch when ready to activate and publish it."
+    notify-send --app-name=nixconf-update 'Nixconf update available' "Built ${candidate:0:12}. Run nixconf-update switch when ready." || true
+    return
+  fi
   phase=switching
   write_status running "Switching to signed candidate $candidate."
-  if [[ ${scheduled:-false} == true ]]; then
-    sudo -n true || die 'Unattended sudo is unavailable. Run nixconf-update resume in a terminal.'
-    elevation=(--elevation-strategy passwordless)
-  fi
   # No --update here: build and activate the clean, already signed revision.
   nh os switch "$worktree" --hostname t1 --no-nom --diff never --out-link "$state_dir/result-system" \
-    "${elevation[@]}" -- --no-update-lock-file
+    -- --no-update-lock-file
   [[ $(running_revision) == "$candidate" ]] || die 'Installed revision does not match the signed candidate; refusing publication.'
   [[ $(git -C "$worktree" rev-parse HEAD) == "$candidate" && -z $(git -C "$worktree" status --porcelain) ]] ||
     die 'Candidate changed during activation; refusing publication.'
@@ -221,18 +226,19 @@ run_update() {
   trap failed ERR
   trap 'die "Update interrupted"' TERM INT
   validate_origin
-  if [[ $1 == update ]]; then prepare_update; fi
-  finish_update
+  if [[ $1 == update && ! -e $worktree ]]; then prepare_update; fi
+  finish_update "$1"
   trap - ERR TERM INT
 }
 
 waybar_status() {
-  if [[ ! -r $status_file ]] || ! jq -e '.state == "running" or .state == "failed" or .state == "success"' "$status_file" >/dev/null 2>&1; then
+  if [[ ! -r $status_file ]] || ! jq -e '.state == "running" or .state == "failed" or .state == "success" or .state == "available"' "$status_file" >/dev/null 2>&1; then
     printf '{"text":"","class":"unavailable","tooltip":"No local update run yet. Click to update."}\n'
     return
   fi
   jq -c '
     if .state == "failed" then {text:"󰏗 !",class:"failed",tooltip:.message}
+    elif .state == "available" then {text:"󰏗",class:"updates",tooltip:.message}
     elif .state == "running" and now - .checkedAtEpoch > 21600 then {text:"󰏗 ?",class:"unavailable",tooltip:"Local update did not finish. Inspect the journal and retained candidate."}
     elif .state == "running" then {text:"󰏗 …",class:"updates",tooltip:.message}
     elif now - .checkedAtEpoch > 345600 then {text:"󰏗 ?",class:"unavailable",tooltip:"No successful local update in four days. Click to inspect."}
@@ -248,25 +254,24 @@ show_details() {
     git -C "$worktree" --no-pager diff HEAD
     printf '\nRetained candidate: %s\n' "$worktree"
     read -r -p 'Validate, switch, and publish this candidate? [y/N] ' answer
-    if [[ $answer == [yY] ]]; then run_update resume; fi
+    if [[ $answer == [yY] ]]; then run_update switch; fi
   else
-    read -r -p 'Generate, sign, switch, and publish updates now? [y/N] ' answer
+    read -r -p 'Generate, sign, and build updates without switching? [y/N] ' answer
     if [[ $answer == [yY] ]]; then run_update update; fi
   fi
 }
 
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
   case "${1:-update}" in
-  update | resume) run_update "${1:-update}" ;;
+  update | resume | switch) run_update "${1:-update}" ;;
   scheduled)
-    scheduled=true
     run_update update
     ;;
   check | waybar) waybar_status ;;
   open) exec present-terminal 'Nixconf Updates' "$0" details ;;
   details) show_details ;;
   *)
-    printf 'Usage: nixconf-update [update|resume|scheduled|check|waybar|open|details]\n' >&2
+    printf 'Usage: nixconf-update [update|resume|switch|scheduled|check|waybar|open|details]\n' >&2
     exit 2
     ;;
   esac

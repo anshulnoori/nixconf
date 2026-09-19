@@ -33,9 +33,7 @@ _: {
 
       systemd.user.services.nixconf-update = {
         Unit = {
-          Description = "Generate, sign, switch, and publish local nixconf updates";
-          # Activation must not interrupt its own switch-before-push transaction.
-          X-SwitchMethod = "keep-old";
+          Description = "Build local nixconf updates and notify when ready";
         };
         Service = {
           Type = "oneshot";
