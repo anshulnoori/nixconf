@@ -58,19 +58,17 @@ _: {
       #custom-update.failed {
         margin-right: 17px;
       }
-      #custom-update.updates,
-      #custom-update.updates label,
-      #custom-update.unavailable,
-      #custom-update.unavailable label {
+      #custom-update.updates:not(.running),
+      #custom-update.updates:not(.running) label {
         color: @warning;
       }
       #custom-update.updates {
         min-width: 18px;
       }
       #custom-update.running {
-        background-image: linear-gradient(@warning, @warning),
-                          linear-gradient(alpha(@warning, 0.55), alpha(@warning, 0.55));
-        background-position: 1.5px 80%;
+        background-image: linear-gradient(@foreground, @foreground),
+                          linear-gradient(alpha(@foreground, 0.55), alpha(@foreground, 0.55));
+        background-position: 1.5px calc(80% + 1px);
         background-repeat: no-repeat;
         background-size: 0px 2px, 14px 2px;
       }
