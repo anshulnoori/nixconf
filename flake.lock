@@ -1100,9 +1100,9 @@
     "namespace-devbox-release": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-dW8nIqVP3QAPID+CY0ykFXbCYa/4ohzUZ/9XZR1rbRo=",
+        "narHash": "sha256-yXwQUNnpHKm8j6ExrLdejFrxFq6x/4aHAgfN2Rx5MII=",
         "type": "file",
-        "url": "https://github.com/namespacelabs/devbox/releases/download/v0.0.189/checksums.txt"
+        "url": "https://github.com/namespacelabs/devbox/releases/download/v0.0.184/checksums.txt"
       },
       "original": {
         "type": "file",
