@@ -50,8 +50,11 @@ _: {
       #network { margin-right: 13px; }
       #custom-expand-icon { margin-right: 18px; }
       #custom-screenrecording.active {
-        color: #${colors.base08};
         margin-right: 17px;
+      }
+      #custom-screenrecording.active,
+      #custom-screenrecording.active label {
+        color: #${colors.base08};
       }
       #custom-update.updates,
       #custom-update.unavailable,

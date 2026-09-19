@@ -113,7 +113,7 @@ _: {
             if [[ "$action" == "default" && -f "$output" ]]; then
               setsid uwsm app -- mpv "$output" >/dev/null 2>&1 &
             fi
-          ) >/dev/null 2>&1 &
+          ) 9>&- >/dev/null 2>&1 &
         }
 
         process_is() {
@@ -195,7 +195,7 @@ _: {
             -flags low_delay \
             -an \
             -loglevel quiet \
-            >/dev/null 2>&1 &
+            9>&- >/dev/null 2>&1 &
           webcam_pid=$!
           printf '%s\n' "$webcam_pid" > "$webcam_pid_file"
           sleep 1
@@ -249,7 +249,7 @@ _: {
             -fallback-cpu-encoding yes \
             "''${audio_args[@]}" \
             -o "$output" \
-            > "$log_file" 2>&1 &
+            9>&- > "$log_file" 2>&1 &
           recorder_pid=$!
           sleep 1
 
