@@ -1090,11 +1090,11 @@
         "rev": "e2677e8141ef55a5f2fb411588737d2ffd3e00a6",
         "revCount": 139,
         "type": "git",
-        "url": "ssh://git@github.com/anshulnoori/monorepo.git"
+        "url": "https://github.com/anshulnoori/monorepo.git"
       },
       "original": {
         "type": "git",
-        "url": "ssh://git@github.com/anshulnoori/monorepo.git"
+        "url": "https://github.com/anshulnoori/monorepo.git"
       }
     },
     "namespace-devbox-release": {

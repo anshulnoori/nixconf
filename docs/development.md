@@ -2,10 +2,12 @@
 
 ## Environment
 
-Use Lix with flakes enabled. The private application monorepo uses SSH so Git
-can authenticate through the 1Password SSH agent without a GitHub token in Nix
-configuration. Enable the SSH agent in 1Password, add the key to GitHub as an
-authentication key, unlock 1Password, and verify the connection:
+Use Lix with flakes enabled. Nix inputs use HTTPS for dependency downloads.
+Private GitHub inputs use the existing GitHub CLI credential helper.
+No token is stored in Nix configuration. Run `gh auth status` to check access.
+
+Interactive Git and updater pushes use SSH. Enable the 1Password SSH agent,
+register the authentication key with GitHub, unlock 1Password, and verify access:
 
 ```sh
 test -S "$HOME/.1password/agent.sock"
@@ -21,9 +23,27 @@ direnv allow
 nix develop
 ```
 
-Run `nh os switch` as the login user, without a leading `sudo`. `nh` elevates
-activation itself; starting it with `sudo` would hide the user's 1Password
-agent from the flake fetch.
+Run `nh os switch` as the login user, without a leading `sudo`.
+`nh` elevates activation separately.
+
+### Git transport
+
+Each URL selects its transport. There is no global HTTPS-to-SSH rewrite.
+GitHub CLI still clones over SSH. Direnv uses standard nix-direnv without
+transport overrides. Other private Git servers need their own credential helper.
+
+For each nixconf checkout, configure an SSH origin and an HTTPS read remote:
+
+```sh
+git remote set-url origin ssh://git@github.com/anshulnoori/nixconf.git
+git remote add upstream-read https://github.com/anshulnoori/nixconf.git
+```
+
+If `upstream-read` already exists, use `git remote set-url` instead of `add`.
+The updater fetches `upstream-read` and pushes `origin`.
+Normal `git fetch` and `git push` retain the SSH origin.
+Dependency downloads use the HTTPS URLs declared in `flake.nix`.
+Commit signing and pushes retain 1Password approval requirements.
 
 `.envrc` watches the flake and module roots. It optionally loads the ignored
 `.envrc.local` file for machine-local, short-lived settings. Do not store
@@ -117,7 +137,7 @@ available, but there is no personal binary cache. Niks3 and R2 are deferred.
 The updater uses the configured Git signing key and 1Password agent. The SSH
 authentication key and signing key can be different. Signature verification
 requires the matching public key in Git's allowed-signers file. Private monorepo
-fetches and repository pushes also require authentication.
+fetches use HTTPS credentials. Repository pushes use SSH authentication.
 
 The timer builds without requesting sudo. A locked agent or denied signing
 request can still stop preparation. Only an explicit switch requires sudo;

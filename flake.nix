@@ -84,7 +84,7 @@
     };
 
     monorepo = {
-      url = "git+ssh://git@github.com/anshulnoori/monorepo.git";
+      url = "git+https://github.com/anshulnoori/monorepo.git";
       inputs.namespace-devbox-release.follows = "namespace-devbox-release";
     };
 

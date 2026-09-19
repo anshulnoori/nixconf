@@ -66,19 +66,21 @@ _: {
       }
       #custom-update.updates {
         min-width: 18px;
+      }
+      #custom-update.running {
         background-image: linear-gradient(@warning, @warning),
                           linear-gradient(alpha(@warning, 0.55), alpha(@warning, 0.55));
-        background-position: left bottom;
+        background-position: 1.5px 80%;
         background-repeat: no-repeat;
-        background-size: 100% 3px, 100% 3px;
+        background-size: 0px 2px, 14px 2px;
       }
-      #custom-update.progress-0 { background-size: 0% 3px, 100% 3px; }
-      #custom-update.progress-20 { background-size: 20% 3px, 100% 3px; }
-      #custom-update.progress-40 { background-size: 40% 3px, 100% 3px; }
-      #custom-update.progress-60 { background-size: 60% 3px, 100% 3px; }
-      #custom-update.progress-80 { background-size: 80% 3px, 100% 3px; }
+      #custom-update.progress-20 { background-size: 2.8px 2px, 14px 2px; }
+      #custom-update.progress-40 { background-size: 5.6px 2px, 14px 2px; }
+      #custom-update.progress-60 { background-size: 8.4px 2px, 14px 2px; }
+      #custom-update.progress-80 { background-size: 11.2px 2px, 14px 2px; }
       #custom-update.updates label {
-        min-width: 18px;
+        min-width: 16px;
+        padding-right: 2px;
         background-color: transparent;
       }
       #custom-update.failed,

@@ -74,7 +74,7 @@ validate_origin() {
 }
 
 fetch_master() {
-  git -C "$checkout" fetch --no-tags origin "refs/heads/$default_branch"
+  git -C "$checkout" fetch --no-tags upstream-read "refs/heads/$default_branch"
   remote_revision=$(git -C "$checkout" rev-parse FETCH_HEAD)
 }
 

@@ -364,9 +364,9 @@ The `mvs` password is entered interactively, and Wi-Fi, Tailscale, and
 1Password authenticate interactively after installation. Their mutable state
 stays below LUKS and never enters the repository or Nix store.
 
-Add a runtime secrets mechanism only with the first real noninteractive
-consumer. The private application monorepo uses SSH through the interactive
-1Password agent; no GitHub token is stored in Nix configuration. Secure Boot
+The private application monorepo input uses HTTPS through the GitHub CLI
+credential helper. No GitHub token is stored in Nix configuration. Interactive
+SSH, Git signing, and pushes retain 1Password. Secure Boot
 signing keys remain below encrypted root at `/var/lib/sbctl`. The normal
 installation does not create an offline administrator-key USB. A high-entropy
 LUKS recovery key is printed on paper.
@@ -612,13 +612,16 @@ The standard Git executable replaces the remote-dependent identity wrapper.
 Commits and tags use the Anshul SSH signing key in 1Password.
 The allowed-signers file retains historical identities for signature verification, not author selection.
 
-Git rewrites GitHub HTTPS and Git-protocol remotes to SSH.
-GitHub CLI also clones over SSH. Its API requests still use HTTPS.
+Git honors the transport in each URL without a global protocol rewrite.
+GitHub CLI clones over SSH. Its API requests use HTTPS.
 The GitHub SSH host selects the Anshul public key explicitly.
 `SSH_AUTH_SOCK` and OpenSSH's `IdentityAgent` both point to the 1Password agent.
 SSH reads and writes both require authentication. The 1Password authorization policy controls prompts.
 
-The private flake input uses SSH. When `nh` runs as the login user, fetching uses this authentication context.
+The updater fetches the HTTPS `upstream-read` remote and pushes the SSH `origin`.
+Interactive Git retains `origin`. The monorepo flake input uses HTTPS with the existing GitHub CLI credential helper.
+Direnv uses standard nix-direnv. No transport wrapper or alternate Git configuration is needed.
+CI retains its read-only monorepo deploy key through a repository-specific HTTPS-to-SSH rule.
 `nh` elevates activation separately. `gh auth switch` changes GitHub API credentials, not commit authorship.
 
 Shared behavior:

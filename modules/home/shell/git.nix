@@ -49,10 +49,6 @@ _: {
             signingKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINjLNqd9uRYC2EpxIj6CoSSwe0KOZ3q0mJeMEiMH+ATE";
             useConfigOnly = true;
           };
-          url."ssh://git@github.com/".insteadOf = [
-            "https://github.com/"
-            "git://github.com/"
-          ];
         };
       };
 

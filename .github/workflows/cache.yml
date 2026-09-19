@@ -43,6 +43,10 @@ jobs:
           github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
           EOF
           chmod 0600 "$HOME/.ssh/config" "$HOME/.ssh/known_hosts"
+          # CI keeps its existing read-only deploy key for this private input.
+          git config --global \
+            url."ssh://git@github.com/anshulnoori/monorepo.git".insteadOf \
+            https://github.com/anshulnoori/monorepo.git
 
       - name: Install Lix
         uses: samueldr/lix-gha-installer-action@a0fee77b2a98bb7c5c0ed7ae6d6ad4903dbdad0d # v2026-06-15

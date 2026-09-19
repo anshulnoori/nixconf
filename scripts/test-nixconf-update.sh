@@ -13,7 +13,11 @@ printf 'anshulnoori@gmail.com %s\n' "$(cat "$scratch/test-key.pub")" >"$scratch/
 real_git=$(command -v git)
 
 git() {
+  if [[ " $* " == *' fetch '* ]]; then
+    [[ " $* " == *' fetch --no-tags upstream-read '* ]] || die 'Fetch did not use the read remote'
+  fi
   if [[ " $* " == *' push '* ]]; then
+    [[ " $* " == *' push origin '* ]] || die 'Push did not use origin'
     printf 'push\n' >>"$events"
     [[ $failure != push ]] || return 1
   fi
@@ -83,6 +87,7 @@ fixture() {
   git -C "$checkout" config user.signingKey "$scratch/test-key"
   git -C "$checkout" config commit.gpgSign true
   git -C "$checkout" remote add origin "$scratch/$name/remote"
+  git -C "$checkout" remote add upstream-read "$scratch/$name/remote"
   mkdir -p "$checkout/_sources" "$checkout/packages" "$checkout/.github/workflows"
   printf '{}\n' >"$checkout/packages/sf-pro-source.json"
   printf 'old action pins\n' >"$checkout/.github/workflows/cache.yml"
