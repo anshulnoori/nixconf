@@ -45,6 +45,7 @@ cat >"$scratch/bin/recorder" <<'EOF'
 set -euo pipefail
 output= audio=0
 printf '%q ' "$@" > "$HOME/${CAPTURE_SCREENRECORD_UNIT%.service}.args"
+printf '%s\n' "${WAYLAND_DISPLAY:-}" "${DISPLAY:-}" "${HYPRLAND_INSTANCE_SIGNATURE:-}" > "$HOME/recorder-session"
 while (($#)); do
   case $1 in
     -o) output=$2; shift 2 ;;
@@ -115,8 +116,10 @@ units+=("$target")
 
 unit="nixconf-screenrecord-test-normal-$$.service"
 units+=("$unit")
-PICKER_RESULT='10,20 640x480' run_capture "$unit" "$target" no-audio
+PICKER_RESULT='10,20 640x480' WAYLAND_DISPLAY=caller-wayland DISPLAY=:987 HYPRLAND_INSTANCE_SIGNATURE=caller-hyprland run_capture "$unit" "$target" no-audio
 run_capture "$unit" "$target" active
+printf 'caller-wayland\n:987\ncaller-hyprland\n' >"$scratch/expected-session"
+diff -u "$scratch/expected-session" "$HOME/recorder-session"
 if run_capture "$unit" "$target" no-audio; then
   printf 'FAIL: duplicate start succeeded\n' >&2
   exit 1

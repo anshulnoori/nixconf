@@ -245,6 +245,9 @@ _: {
               --property=Type=exec \
               --setenv="HOME=$HOME" \
               --setenv="XDG_RUNTIME_DIR=$runtime_dir" \
+              --setenv="WAYLAND_DISPLAY=''${WAYLAND_DISPLAY:-}" \
+              --setenv="DISPLAY=''${DISPLAY:-}" \
+              --setenv="HYPRLAND_INSTANCE_SIGNATURE=''${HYPRLAND_INSTANCE_SIGNATURE:-}" \
               --setenv="CAPTURE_SCREENRECORD_NOTIFIER=$notifier" \
               "$0" __notify "$output" >/dev/null
           else
@@ -269,6 +272,9 @@ _: {
           environment=(
             --setenv="HOME=$HOME"
             --setenv="XDG_RUNTIME_DIR=$runtime_dir"
+            --setenv="WAYLAND_DISPLAY=''${WAYLAND_DISPLAY:-}"
+            --setenv="DISPLAY=''${DISPLAY:-}"
+            --setenv="HYPRLAND_INSTANCE_SIGNATURE=''${HYPRLAND_INSTANCE_SIGNATURE:-}"
             --setenv="CAPTURE_SCREENRECORD_UNIT=$unit"
             --setenv="CAPTURE_SCREENRECORD_SESSION_TARGET=$session_target"
           )

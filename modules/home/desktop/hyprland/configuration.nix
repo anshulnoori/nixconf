@@ -51,6 +51,7 @@ _: {
           };
           input = {
             kb_layout = "us";
+            kb_options = "fkeys:basic_13-24";
             follow_mouse = 1;
             natural_scroll = true;
           };

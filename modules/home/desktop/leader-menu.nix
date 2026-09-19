@@ -16,7 +16,7 @@ _: {
         in {
           inherit key;
           desc = "${description} workspace ${toString workspace}";
-          cmd = "hyprctl dispatch ${dispatch} ${toString workspace}";
+          cmd = "hyprctl dispatch 'hl.dsp.${dispatch}({ workspace = ${toString workspace} })'";
         }
       )
       10;
@@ -74,7 +74,7 @@ _: {
             {
               key = "w";
               desc = "Close window";
-              cmd = "hyprctl dispatch killactive";
+              cmd = "hyprctl dispatch 'hl.dsp.window.close()'";
             }
             {
               key = "l";
@@ -96,30 +96,30 @@ _: {
             {
               key = "Left";
               desc = "Focus left";
-              cmd = "hyprctl dispatch movefocus l";
+              cmd = "hyprctl dispatch 'hl.dsp.focus({ direction = \"left\" })'";
             }
             {
               key = "Right";
               desc = "Focus right";
-              cmd = "hyprctl dispatch movefocus r";
+              cmd = "hyprctl dispatch 'hl.dsp.focus({ direction = \"right\" })'";
             }
             {
               key = "Up";
               desc = "Focus up";
-              cmd = "hyprctl dispatch movefocus u";
+              cmd = "hyprctl dispatch 'hl.dsp.focus({ direction = \"up\" })'";
             }
             {
               key = "Down";
               desc = "Focus down";
-              cmd = "hyprctl dispatch movefocus d";
+              cmd = "hyprctl dispatch 'hl.dsp.focus({ direction = \"down\" })'";
             }
             {
               key = "s";
               desc = "Send window to workspace";
-              submenu = workspaces "movetoworkspace" "Move to";
+              submenu = workspaces "window.move" "Move to";
             }
           ]
-          ++ workspaces "workspace" "Open";
+          ++ workspaces "focus" "Open";
       };
     };
   };

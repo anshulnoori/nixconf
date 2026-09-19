@@ -12,9 +12,25 @@ _: {
     end
 
     hl.bind("F13", hl.dsp.exec_cmd("wlr-which-key"))
+    hl.bind("SUPER + RETURN", hl.dsp.exec_cmd("wlr-which-key --initial-keys Return"))
+    hl.bind("SUPER + SPACE", hl.dsp.exec_cmd("wlr-which-key --initial-keys space"))
+    hl.bind("SUPER + ALT + SPACE", hl.dsp.exec_cmd("wlr-which-key --initial-keys Alt+space"))
+    hl.bind("SUPER + Q", hl.dsp.exec_cmd("wlr-which-key --initial-keys w"))
+    hl.bind("SUPER + L", hl.dsp.exec_cmd("wlr-which-key --initial-keys l"))
     hl.bind("SUPER + C", send_shortcut_once("CTRL", "Insert"), { description = "Universal copy" })
     hl.bind("SUPER + V", send_shortcut_once("SHIFT", "Insert"), { description = "Universal paste" })
     hl.bind("SUPER + X", send_shortcut_once("CTRL", "X"), { description = "Universal cut" })
+
+    hl.bind("SUPER + left", hl.dsp.exec_cmd("wlr-which-key --initial-keys Left"))
+    hl.bind("SUPER + right", hl.dsp.exec_cmd("wlr-which-key --initial-keys Right"))
+    hl.bind("SUPER + up", hl.dsp.exec_cmd("wlr-which-key --initial-keys Up"))
+    hl.bind("SUPER + down", hl.dsp.exec_cmd("wlr-which-key --initial-keys Down"))
+
+    for i = 1, 10 do
+      local key = i % 10
+      hl.bind("SUPER + " .. key, hl.dsp.exec_cmd("wlr-which-key --initial-keys " .. key))
+      hl.bind("SUPER + SHIFT + " .. key, hl.dsp.exec_cmd("wlr-which-key --initial-keys 's " .. key .. "'"))
+    end
 
     hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), { mouse = true })
     hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { mouse = true })
