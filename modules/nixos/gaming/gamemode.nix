@@ -1,3 +1,6 @@
 _: {
-  flake.modules.nixos.gaming.programs.gamemode.enable = true;
+  flake.modules.nixos.gaming = {config, ...}: {
+    programs.gamemode.enable = true;
+    programs.steam.extraPackages = [config.programs.gamemode.package];
+  };
 }
