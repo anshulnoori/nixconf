@@ -33,8 +33,8 @@ write_status() {
 failed() {
   local code=$?
   trap - ERR
-  write_status failed "Update stopped during $phase. Inspect journalctl --user -u nixconf-update, then retry the service."
-  notify-send --app-name=nixconf-update 'Nixconf update stopped' "Phase: $phase. Check the service journal; signing may need 1Password approval." || true
+  write_status failed "${phase^} failed."
+  notify-send --app-name=nixconf-update --expire-time=10000 'Update Failed' "${phase^} failed." || true
   exit "$code"
 }
 
@@ -105,7 +105,7 @@ prepare_update() {
 
 generate_pins() {
   phase=generating
-  write_status running 'Updating flake, Proton GE, SF Pro, and Actions pins in the isolated worktree.'
+  write_status running 'Refreshing sources'
   (
     cd "$worktree"
     nix flake update
@@ -135,7 +135,7 @@ finish_update() {
   [[ $(git -C "$worktree" symbolic-ref --short HEAD) == "$candidate_branch" ]] || die 'Unexpected candidate branch.'
   if [[ ! -e $(git -C "$worktree" rev-parse --git-path nixconf-generated) ]]; then generate_pins; fi
   phase=signing
-  write_status running 'Signing the local update candidate; 1Password approval may be required.'
+  write_status running 'Signing update'
   # Only generated dependency pins may enter an automatic commit.
   while IFS= read -r -d '' path; do
     case "$path" in
@@ -172,12 +172,12 @@ finish_update() {
   if [[ $candidate == "$current" && $candidate == "$remote_revision" ]]; then
     git -C "$checkout" worktree remove "$worktree"
     git -C "$checkout" update-ref -d "refs/heads/$candidate_branch" "$candidate"
-    write_status success 'No dependency changes; installed revision is current.'
+    write_status success 'Up to date'
     return
   fi
   verify_publication "$candidate"
   phase=validating
-  write_status running 'Checking the signed local update candidate.'
+  write_status running 'Checking update'
   (
     cd "$worktree"
     nix flake check --all-systems --no-build --no-update-lock-file -L
@@ -188,12 +188,12 @@ finish_update() {
   [[ $(git -C "$worktree" rev-parse HEAD) == "$candidate" && -z $(git -C "$worktree" status --porcelain) ]] ||
     die 'Candidate changed during validation; refusing publication.'
   phase=building
-  write_status running "Building signed candidate $candidate without activation."
+  write_status running 'Building update'
   nh os build "$worktree" --hostname t1 --no-nom --diff never --out-link "$state_dir/result-system" -- --no-update-lock-file
   [[ $(git -C "$worktree" rev-parse HEAD) == "$candidate" && -z $(git -C "$worktree" status --porcelain) ]] ||
     die 'Candidate changed during build; refusing publication.'
   phase=publishing
-  write_status running "Signed revision $candidate built successfully; publishing it."
+  write_status running 'Pushing update'
   validate_origin
   fetch_master
   case "$(revision_relation "$worktree" "$remote_revision" "$candidate")" in
@@ -203,12 +203,12 @@ finish_update() {
   verify_publication "$candidate"
   # Normal fast-forward push only; races fail safely and retain the built commit.
   git -C "$worktree" push origin "$candidate:refs/heads/$default_branch"
-  message="Committed ${candidate:0:12}: $(git -C "$worktree" log -1 --format=%s). Built and pushed. Reconcile or pull /etc/nixos before switching."
+  message="Committed ${candidate:0:12}. Pull before switching."
   if [[ $(git -C "$checkout" symbolic-ref --quiet --short HEAD || true) == "$default_branch" &&
   -z $(git -C "$checkout" status --porcelain) ]] &&
     git -C "$checkout" merge-base --is-ancestor HEAD "$candidate"; then
     git -C "$checkout" merge --ff-only "$candidate"
-    message="Committed ${candidate:0:12}: $(git -C "$worktree" log -1 --format=%s). Built and pushed. Click to review and switch."
+    message="Committed ${candidate:0:12}"
   fi
   git -C "$checkout" worktree remove "$worktree"
   git -C "$checkout" update-ref -d "refs/heads/$candidate_branch" "$candidate"
@@ -232,22 +232,22 @@ run_update() {
 waybar_status() {
   local current_revision candidate relation=unknown
   if [[ ! -r $status_file ]] || ! jq -e '.state == "running" or .state == "failed" or .state == "success" or .state == "available"' "$status_file" >/dev/null 2>&1; then
-    printf '{"text":"","class":"unavailable","tooltip":"No local update run yet. Click to update."}\n'
+    printf '{"text":"","class":"unavailable","tooltip":"No update check yet"}\n'
     return
   fi
   current_revision=$(running_revision)
   candidate=$(jq -r '.candidateRevision // ""' "$status_file")
   relation=$(revision_relation "$checkout" "$candidate" "${current_revision%-dirty}")
   jq -c --arg relation "$relation" '
-    if .state == "failed" then {text:"󰏗 !",class:"failed",tooltip:.message}
-    elif .state == "available" and ($relation == "identical" or $relation == "ahead") then {text:"",class:"ready",tooltip:"Built update is installed or superseded."}
+    if .state == "failed" then {text:"󰏗",class:"failed",tooltip:.message}
+    elif .state == "available" and ($relation == "identical" or $relation == "ahead") then {text:"",class:"ready",tooltip:"Update installed"}
     elif .state == "available" then {text:"󰏗",class:"updates",tooltip:.message}
-    elif .state == "running" and now - .checkedAtEpoch > 21600 then {text:"󰏗 ?",class:"unavailable",tooltip:"Local update did not finish. Inspect the journal and retained candidate."}
+    elif .state == "running" and now - .checkedAtEpoch > 21600 then {text:"󰏗",class:"failed",tooltip:"Update stalled. See journal."}
     elif .state == "running" then
       ({generating:0, signing:1, validating:2, building:3, publishing:4}[.phase] // 0) as $completed |
       {text:"󰏗",class:["updates","running","progress-" + ($completed * 20 | tostring)],
-       tooltip:(.message + "\n" + ($completed | tostring) + "/5 stages complete (not elapsed time).")}
-    elif now - .checkedAtEpoch > 345600 then {text:"󰏗 ?",class:"unavailable",tooltip:"No successful local update in four days. Click to inspect."}
+       tooltip:(.message + " · " + ($completed | tostring) + "/5 stages complete")}
+    elif now - .checkedAtEpoch > 345600 then {text:"󰏗",class:"unavailable",tooltip:"No update check in four days"}
     else {text:"",class:"ready",tooltip:.message} end
   ' "$status_file"
 }

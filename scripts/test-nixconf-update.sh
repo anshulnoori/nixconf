@@ -141,13 +141,13 @@ run_case success
 jq -e '.state == "available"' "$status_file" >/dev/null
 grep -Fx -- '--expire-time=10000' "$scratch/notification"
 grep -Fx 'Update Available' "$scratch/notification"
-grep -E '^Committed [0-9a-f]{12}: chore\(nix\): update flake.lock\. Built and pushed\. Reconcile or pull /etc/nixos before switching\.$' "$scratch/notification"
+grep -E '^Committed [0-9a-f]{12}\. Pull before switching\.$' "$scratch/notification"
 [[ $(git -C "$checkout" status --porcelain) == "$before" ]]
 [[ $(git -C "$checkout" show :user-work) == 'staged work' ]]
 [[ $(cat "$checkout/user-work") == 'dirty work' && $(cat "$checkout/untracked") == 'untracked work' ]]
 [[ $(tail -2 "$events") == $'build\npush' ]]
 [[ ! -e $worktree ]]
-jq -e '.message | contains("Reconcile or pull")' "$status_file" >/dev/null
+jq -e '.message | contains("Pull before switching")' "$status_file" >/dev/null
 echo 'PASS: signed candidate builds before push without activation; dirty checkout survives'
 
 fixture clean-checkout
@@ -157,7 +157,7 @@ run_case success
 [[ $(git -C "$checkout" log -1 --format=%s) == 'chore(nix): update flake.lock' ]]
 [[ $(cat "$installed") == "$original" ]]
 git -C "$checkout" verify-commit HEAD
-grep -E '^Committed [0-9a-f]{12}: chore\(nix\): update flake.lock\. Built and pushed\. Click to review and switch\.$' "$scratch/notification"
+grep -E '^Committed [0-9a-f]{12}$' "$scratch/notification"
 git -C "$checkout" rev-parse HEAD >"$installed"
 waybar_status | jq -e '.class == "ready" and .text == ""' >/dev/null
 echo 'PASS: clean master fast-forwards to the built signed commit without switching'
@@ -175,6 +175,8 @@ for failure_case in signing validation build attribution remote-race local-sourc
   [[ -e $worktree/.git ]]
   if grep -qx push "$events"; then die "Pushed after $failure"; fi
   jq -e '.state == "failed"' "$status_file" >/dev/null
+  grep -Fx 'Update Failed' "$scratch/notification"
+  if [[ $failure == signing ]]; then grep -Fx 'Signing failed.' "$scratch/notification"; fi
   if [[ $failure == signing || $failure == validation || $failure == attribution || $failure == build ]]; then
     if grep -qx switch "$events"; then die "Switched after $failure"; fi
   fi
@@ -279,15 +281,22 @@ waybar_status | jq -e '.class == "updates"' >/dev/null
 echo 'PASS: indicator clears for installed candidate or descendant, not unrelated or missing metadata'
 
 write_status failed 'Approval needed'
-waybar_status | jq -e '.class == "failed" and .text != "" and .tooltip == "Approval needed"' >/dev/null
+waybar_status | jq -e '.class == "failed" and .text == "󰏗" and .tooltip == "Approval needed"' >/dev/null
 for stage in generating:0 signing:20 validating:40 building:60 publishing:80; do
   phase=${stage%:*}
   write_status running 'Preparing update'
   waybar_status | jq -e --arg progress "progress-${stage#*:}" \
     '.class == ["updates", "running", $progress] and .text == "󰏗"' >/dev/null
 done
+write_status running 'Building update'
+jq '.checkedAtEpoch = 0' "$status_file" >"$scratch/stale-status"
+mv "$scratch/stale-status" "$status_file"
+waybar_status | jq -e '.class == "failed" and .text == "󰏗"' >/dev/null
 write_status success 'Published'
 waybar_status | jq -e '.class == "ready" and .text == ""' >/dev/null
+jq '.checkedAtEpoch = 0' "$status_file" >"$scratch/stale-status"
+mv "$scratch/stale-status" "$status_file"
+waybar_status | jq -e '.class == "unavailable" and .text == "󰏗"' >/dev/null
 write_status available 'Built; switch when ready'
 waybar_status | jq -e '.class == "updates" and .text != "" and .tooltip == "Built; switch when ready"' >/dev/null
 printf '{"main":{"relation":"identical"},"count":0}\n' >"$status_file"
