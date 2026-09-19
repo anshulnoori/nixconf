@@ -9,7 +9,7 @@ _: {
       name = "nixconf-screenrecording-indicator";
       text = ''
         if ${captureScreenrecord} active; then
-          printf '{"text":"󰻂","tooltip":"Stop screen recording","class":"active"}\n'
+          printf '{"text":"","tooltip":"Stop screen recording","class":"active"}\n'
         else
           printf '{"text":""}\n'
         fi
