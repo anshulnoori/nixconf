@@ -36,6 +36,12 @@ _: {
     };
 
     config = lib.mkIf config.services.nixconf-update.enable {
+      home.activation.startUpdateTimer = lib.hm.dag.entryAfter ["reloadSystemd"] ''
+        if [[ -S "''${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/systemd/private" ]]; then
+          run ${pkgs.systemd}/bin/systemctl --user start nixconf-update.timer
+        fi
+      '';
+
       systemd.user.services.nixconf-update = {
         Unit = {
           Description = "Build local nixconf updates and notify when ready";

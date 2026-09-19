@@ -169,13 +169,9 @@ Storage policy:
   active direnv roots;
 - explicit hibernation only when systemd-logind reports it as available.
 
-Maintenance is automatic: run `fstrim` weekly, Btrfs scrub monthly, and Btrfs
-device-stat plus NVMe health checks daily. Keep journald's default rotation.
-Install `smartmontools` and `nvme-cli`, and monitor NVMe critical warnings,
-available spare, percentage used, unsafe shutdowns, media and data-integrity
-errors, temperature, error logs, self-tests, and firmware version. A newly
-detected issue or low-free-space condition sends one Mako notification and
-leaves a persistent Waybar warning until it is acknowledged or resolved.
+Maintenance runs `fstrim` weekly and Btrfs scrub monthly. Keep journald's default
+rotation and retain `smartmontools` and `nvme-cli` for manual diagnosis.
+There is no custom daily storage-health checker or desktop warning indicator.
 Firmware checks never install an update automatically.
 
 Keep Btrfs `autodefrag` disabled: it is not general maintenance and can reduce

@@ -31,14 +31,6 @@ _: {
         signal = 10;
         on-click = "${config.services.nixconf-update.package}/bin/nixconf-update open";
       };
-      "custom/storage-health" = {
-        exec = "nixconf-storage-health waybar";
-        return-type = "json";
-        interval = 60;
-        signal = 9;
-        on-click = "nixconf-storage-health open";
-        on-click-right = "nixconf-storage-health acknowledge";
-      };
     };
   };
 }

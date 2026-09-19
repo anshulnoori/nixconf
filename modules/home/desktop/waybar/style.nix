@@ -68,11 +68,6 @@ _: {
       #custom-update.failed label {
         color: #${colors.base08};
       }
-      #custom-storage-health.warning {
-        color: #${colors.base08};
-        margin-right: 17px;
-      }
-
       menu {
         padding: 4px;
         border: 1px solid #${colors.base03};

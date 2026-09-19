@@ -4,14 +4,10 @@ _: {
       matchConfig.Name = "enp11s0";
       networkConfig = {
         DHCP = "yes";
-        DNS = [
-          "1.1.1.1#cloudflare-dns.com"
-          "1.0.0.1#cloudflare-dns.com"
-        ];
-        DNSDefaultRoute = true;
         IPv6AcceptRA = true;
       };
       dhcpV4Config.UseDNS = false;
+      dhcpV6Config.UseDNS = false;
       ipv6AcceptRAConfig.UseDNS = false;
       linkConfig.RequiredForOnline = "routable";
     };
@@ -20,14 +16,10 @@ _: {
       matchConfig.Name = "wlp12s0";
       networkConfig = {
         DHCP = "yes";
-        DNS = [
-          "1.1.1.1#cloudflare-dns.com"
-          "1.0.0.1#cloudflare-dns.com"
-        ];
-        DNSDefaultRoute = true;
         IPv6AcceptRA = true;
       };
       dhcpV4Config.UseDNS = false;
+      dhcpV6Config.UseDNS = false;
       ipv6AcceptRAConfig.UseDNS = false;
       linkConfig.RequiredForOnline = "no";
     };

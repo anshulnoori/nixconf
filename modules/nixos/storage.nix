@@ -1,6 +1,8 @@
 {inputs, ...}: {
-  flake.modules.nixos.base = {
+  flake.modules.nixos.base = {pkgs, ...}: {
     imports = [inputs.disko.nixosModules.disko];
+
+    environment.systemPackages = [pkgs.nvme-cli pkgs.smartmontools];
 
     boot = {
       kernelParams = ["zswap.enabled=0"];

@@ -27,7 +27,6 @@ _: {
         modules-right = [
           "custom/screenrecording"
           "custom/update"
-          "custom/storage-health"
           "group/tray-expander"
           "tray#notion-calendar"
           "bluetooth"

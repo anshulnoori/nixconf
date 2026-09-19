@@ -54,6 +54,9 @@
         base04 # PlaceholderText
       ]);
   in {
+    # Walker owns the launcher; do not generate a theme for unused Rofi.
+    stylix.targets.rofi.enable = false;
+
     # Kvantum styles widgets, but Qt Quick also needs a Qt platform palette.
     qt.qt6ctSettings.Appearance.color_scheme_path = toString (pkgs.writeText "stylix-qt6ct.conf" ''
       [ColorScheme]
