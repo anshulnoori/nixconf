@@ -1,13 +1,5 @@
 _: {
-  flake.modules.homeManager.desktop = {pkgs, ...}: let
-    clock = pkgs.writeShellScript "waybar-clock" ''
-      while true; do
-        LC_TIME=C ${pkgs.coreutils}/bin/date '+%a %b %-d %-I:%M%P'
-        seconds="$(${pkgs.coreutils}/bin/date '+%S')"
-        ${pkgs.coreutils}/bin/sleep "$((60 - 10#$seconds))"
-      done
-    '';
-  in {
+  flake.modules.homeManager.desktop = _: {
     programs.waybar = {
       enable = true;
       systemd = {
@@ -23,7 +15,7 @@ _: {
           "custom/menu"
           "hyprland/workspaces"
         ];
-        modules-center = ["custom/clock"];
+        modules-center = ["clock"];
         modules-right = [
           "custom/screenrecording"
           "custom/update"
@@ -38,7 +30,7 @@ _: {
         "custom/menu" = {
           format = "";
           on-click = "nixconf-menu";
-          tooltip-format = "Control Menu\n\nSuper + Alt + Space";
+          tooltip-format = "Control Menu\n\nTap Super, then Alt+Space";
         };
         "hyprland/workspaces" = {
           on-click = "activate";
@@ -65,8 +57,9 @@ _: {
             "5" = [];
           };
         };
-        "custom/clock" = {
-          exec = "${clock}";
+        clock = {
+          format = "{:%a %b %e %I:%M%p}";
+          interval = 60;
           tooltip = false;
         };
         "group/tray-expander" = {

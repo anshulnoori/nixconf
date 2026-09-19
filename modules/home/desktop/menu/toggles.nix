@@ -1,5 +1,6 @@
 _: {
   flake.modules.homeManager.desktop = {
+    lib,
     osConfig,
     pkgs,
     ...
@@ -10,7 +11,7 @@ _: {
         coreutils
         libnotify
         mako
-        osConfig.programs.hyprland.package
+        ripgrep
         systemd
       ];
       text = ''
@@ -20,25 +21,20 @@ _: {
 
         case "''${1:-}" in
           nightlight)
-            if systemctl --user is-active --quiet nixconf-nightlight.service; then
-              systemctl --user stop nixconf-nightlight.service
-              notify "Nightlight disabled"
+            if systemctl --user is-active --quiet hyprsunset.service; then
+              if systemctl --user stop hyprsunset.service; then
+                notify "Nightlight disabled"
+              else
+                notify "Nightlight unavailable" "Could not stop Hyprsunset"
+                exit 1
+              fi
             else
-              systemd-run --user --quiet --collect \
-                --unit=nixconf-nightlight \
-                ${pkgs.hyprsunset}/bin/hyprsunset
-
-              for _ in {1..20}; do
-                if hyprctl hyprsunset temperature 4000 >/dev/null 2>&1; then
-                  notify "Nightlight enabled" "4000 K"
-                  exit 0
-                fi
-                sleep 0.1
-              done
-
-              systemctl --user stop nixconf-nightlight.service
-              notify "Nightlight unavailable" "Hyprsunset did not become ready"
-              exit 1
+              if systemctl --user start hyprsunset.service; then
+                notify "Nightlight enabled" "4000 K"
+              else
+                notify "Nightlight unavailable" "Could not start Hyprsunset"
+                exit 1
+              fi
             fi
             ;;
           caffeine)
@@ -57,7 +53,7 @@ _: {
             fi
             ;;
           notifications)
-            if makoctl mode | grep -q do-not-disturb; then
+            if makoctl mode | rg --quiet '^do-not-disturb$'; then
               makoctl mode -r do-not-disturb
               notify "Notifications resumed"
             else
@@ -83,5 +79,26 @@ _: {
     };
   in {
     home.packages = [toggles];
+
+    services.hyprsunset = {
+      enable = true;
+      extraArgs = ["--temperature" "4000"];
+    };
+
+    systemd.user.services.hyprsunset = {
+      Install.WantedBy = lib.mkForce [];
+      Service = {
+        Restart = lib.mkForce "no";
+        ExecStartPost = pkgs.writeShellScript "hyprsunset-ready" ''
+          for _ in {1..20}; do
+            if ${osConfig.programs.hyprland.package}/bin/hyprctl hyprsunset temperature >/dev/null 2>&1; then
+              exit 0
+            fi
+            ${pkgs.coreutils}/bin/sleep 0.1
+          done
+          exit 1
+        '';
+      };
+    };
   };
 }

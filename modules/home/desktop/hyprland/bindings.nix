@@ -11,26 +11,10 @@ _: {
       end
     end
 
-    hl.bind("SUPER + RETURN", hl.dsp.exec_cmd("kitty"))
-    hl.bind("SUPER + SPACE", hl.dsp.exec_cmd("walker"))
-    hl.bind("SUPER + ALT + SPACE", hl.dsp.exec_cmd("nixconf-menu"))
     hl.bind("F13", hl.dsp.exec_cmd("wlr-which-key"))
-    hl.bind("SUPER + Q", hl.dsp.window.close())
-    hl.bind("SUPER + L", hl.dsp.exec_cmd("hyprlock"))
     hl.bind("SUPER + C", send_shortcut_once("CTRL", "Insert"), { description = "Universal copy" })
     hl.bind("SUPER + V", send_shortcut_once("SHIFT", "Insert"), { description = "Universal paste" })
     hl.bind("SUPER + X", send_shortcut_once("CTRL", "X"), { description = "Universal cut" })
-
-    hl.bind("SUPER + left", hl.dsp.focus({ direction = "left" }))
-    hl.bind("SUPER + right", hl.dsp.focus({ direction = "right" }))
-    hl.bind("SUPER + up", hl.dsp.focus({ direction = "up" }))
-    hl.bind("SUPER + down", hl.dsp.focus({ direction = "down" }))
-
-    for i = 1, 10 do
-      local key = i % 10
-      hl.bind("SUPER + " .. key, hl.dsp.focus({ workspace = i }))
-      hl.bind("SUPER + SHIFT + " .. key, hl.dsp.window.move({ workspace = i }))
-    end
 
     hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), { mouse = true })
     hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { mouse = true })

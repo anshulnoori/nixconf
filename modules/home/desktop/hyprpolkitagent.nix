@@ -14,14 +14,14 @@ _: {
       reduce_motion = true
     '';
 
-    wayland.windowManager.hyprland.extraConfig = ''
-      hl.window_rule({
-        match = { title = "^Hyprland Polkit Agent$" },
-        float = true,
-        rounding = 0,
-        no_anim = true,
-        move = { "(monitor_w-window_w-20)", "60" },
-      })
-    '';
+    wayland.windowManager.hyprland.settings.window_rule = [
+      {
+        match.title = "^Hyprland Polkit Agent$";
+        float = true;
+        rounding = 0;
+        no_anim = true;
+        move = ["(monitor_w-window_w-20)" "60"];
+      }
+    ];
   };
 }

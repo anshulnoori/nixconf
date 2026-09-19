@@ -6,7 +6,10 @@
   users.users.mvs = {
     isNormalUser = true;
     description = "Mervs";
-    extraGroups = ["wheel"];
+    extraGroups = [
+      "gamemode"
+      "wheel"
+    ];
     shell = pkgs.zsh;
   };
 

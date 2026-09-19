@@ -153,12 +153,12 @@ _: {
   in {
     home.packages = [control];
 
-    wayland.windowManager.hyprland.extraConfig = ''
-      hl.window_rule({
-        match = { class = "org.nixconf.screensaver" },
-        fullscreen = true,
-        float = true,
-      })
-    '';
+    wayland.windowManager.hyprland.settings.window_rule = [
+      {
+        match.class = "org.nixconf.screensaver";
+        fullscreen = true;
+        float = true;
+      }
+    ];
   };
 }

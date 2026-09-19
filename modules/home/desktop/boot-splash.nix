@@ -193,13 +193,14 @@ _: {
   in {
     home.packages = [launcher];
 
+    wayland.windowManager.hyprland.settings.layer_rule = [
+      {
+        match.namespace = "nixconf-boot-splash";
+        no_anim = true;
+        animation = "none";
+      }
+    ];
     wayland.windowManager.hyprland.extraConfig = ''
-      hl.layer_rule({
-        match = { namespace = "nixconf-boot-splash" },
-        no_anim = true,
-        animation = "none",
-      })
-
       hl.on("hyprland.start", function()
         hl.exec_cmd("${lib.getExe launcher}")
       end)

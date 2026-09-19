@@ -11,13 +11,9 @@ _: {
       sessionVariables.HYPRCURSOR_SIZE = "24";
     };
 
-    wayland.windowManager.hyprland.extraConfig = ''
-      hl.config({
-        cursor = {
-          hide_on_key_press = true,
-          warp_on_change_workspace = 1,
-        },
-      })
-    '';
+    wayland.windowManager.hyprland.settings.config.cursor = {
+      hide_on_key_press = true;
+      warp_on_change_workspace = 1;
+    };
   };
 }

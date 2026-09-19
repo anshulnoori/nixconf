@@ -5,6 +5,7 @@ _: {
     ...
   }: let
     colors = config.lib.stylix.colors;
+    toml = pkgs.formats.toml {};
     swayosdStyle = pkgs.writeText "swayosd-gruvbox.css" ''
       window {
         border-radius: 0;
@@ -29,10 +30,11 @@ _: {
       stylePath = swayosdStyle;
     };
 
-    xdg.configFile."swayosd/config.toml".text = ''
-      [server]
-      show_percentage = true
-      max_volume = 100
-    '';
+    xdg.configFile."swayosd/config.toml".source = toml.generate "swayosd-config.toml" {
+      server = {
+        show_percentage = true;
+        max_volume = 100;
+      };
+    };
   };
 }

@@ -35,7 +35,8 @@ _: {
 
       #cpu,
       #pulseaudio,
-      #custom-menu {
+      #custom-menu,
+      #clock {
         min-width: 12px;
         margin: 0 7.5px;
       }

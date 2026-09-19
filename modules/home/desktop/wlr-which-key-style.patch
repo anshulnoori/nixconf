@@ -1,0 +1,491 @@
+--- a/src/config.rs
++++ b/src/config.rs
+@@ -23,6 +23,13 @@
+     pub background: Color,
+     #[default(Color::from_rgba_hex(0xfbf1c7ff))]
+     pub color: Color,
++    pub key_color: Option<Color>,
++    pub desc_color: Option<Color>,
++    pub group_color: Option<Color>,
++    pub separator_color: Option<Color>,
++    pub show_breadcrumbs: bool,
++    pub breadcrumb_root: String,
++    pub row_height: Option<f64>,
+     #[default(Color::from_rgba_hex(0x8ec07cff))]
+     pub border: Color,
+
+--- a/src/config/compat.rs
++++ b/src/config/compat.rs
+@@ -72,11 +72,13 @@
+                         cmd,
+                         desc,
+                         keep_open,
++                        desc_color: None,
+                     },
+                     Entry::Recursive { submenu, desc } => super::Entry::Recursive {
+                         key: key.into(),
+                         submenu: map_entries(submenu),
+                         desc,
++                        desc_color: None,
+                     },
+                 })
+                 .collect()
+@@ -85,6 +87,13 @@
+         Self {
+             background: value.background,
+             color: value.color,
++            key_color: None,
++            desc_color: None,
++            group_color: None,
++            separator_color: None,
++            show_breadcrumbs: false,
++            breadcrumb_root: String::new(),
++            row_height: None,
+             border: value.border,
+             anchor: value.anchor,
+             margin_top: value.margin_top,
+@@ -104,3 +113,16 @@
+         }
+     }
+ }
++
++#[cfg(test)]
++mod tests {
++    #[test]
++    fn legacy_config_preserves_default_styling() {
++        let old: super::Config = serde_yaml::from_str("menu:\n  x:\n    desc: Test\n    cmd: 'true'\n").unwrap();
++        let config: crate::config::Config = old.into();
++        assert!(!config.show_breadcrumbs);
++        assert!(config.key_color.is_none() && config.desc_color.is_none());
++        assert!(config.group_color.is_none() && config.separator_color.is_none());
++        assert_eq!(config.menu.len(), 1);
++    }
++}
+--- a/src/config/entry.rs
++++ b/src/config/entry.rs
+@@ -2,6 +2,7 @@
+ use serde::Deserialize;
+
+ use crate::key::Key;
++use crate::color::Color;
+
+ #[derive(Deserialize)]
+ #[serde(try_from = "RawEntry")]
+@@ -11,11 +12,13 @@
+         cmd: String,
+         desc: String,
+         keep_open: bool,
++        desc_color: Option<Color>,
+     },
+     Recursive {
+         key: Key,
+         submenu: Vec<Self>,
+         desc: String,
++        desc_color: Option<Color>,
+     },
+ }
+
+@@ -27,6 +30,7 @@
+     cmd: Option<String>,
+     keep_open: Option<bool>,
+     submenu: Option<Vec<Entry>>,
++    desc_color: Option<Color>,
+ }
+
+ impl TryFrom<RawEntry> for Entry {
+@@ -44,6 +48,7 @@
+                 key: value.key,
+                 submenu,
+                 desc: value.desc,
++                desc_color: value.desc_color,
+             })
+         } else {
+             Ok(Self::Cmd {
+@@ -53,6 +58,7 @@
+                     .context("either or 'submenu' or 'cmd' is required")?,
+                 desc: value.desc,
+                 keep_open: value.keep_open.unwrap_or(false),
++                desc_color: value.desc_color,
+             })
+         }
+     }
+--- a/src/menu.rs
++++ b/src/menu.rs
+@@ -14,12 +14,14 @@
+     pages: Vec<MenuPage>,
+     cur_page: usize,
+     separator: ComputedText,
++    footer: Option<[ComputedText; 4]>,
+ }
+
+ struct MenuPage {
+     item_height: f64,
+     columns: Vec<MenuColumn>,
+     parent: Option<usize>,
++    breadcrumb: Option<ComputedText>,
+ }
+
+ struct MenuColumn {
+@@ -33,6 +35,7 @@
+     key_comp: ComputedText,
+     val_comp: ComputedText,
+     key: Key,
++    desc_color: Option<Color>,
+ }
+
+ #[derive(Clone)]
+@@ -52,9 +55,11 @@
+             pages: Vec::new(),
+             cur_page: 0,
+             separator: ComputedText::new(&config.separator, &context, &config.font.0),
++            footer: config.show_breadcrumbs.then(|| ["󱊷", " close  ", "󰁮", " back"]
++                .map(|text| ComputedText::new(text, &context, &config.font.0))),
+         };
+
+-        this.push_page(&context, &config.menu, config, None)?;
++        this.push_page(&context, &config.menu, config, None, &config.breadcrumb_root)?;
+
+         Ok(this)
+     }
+@@ -65,6 +70,7 @@
+         entries: &[config::Entry],
+         config: &Config,
+         parent: Option<usize>,
++        trail: &str,
+     ) -> Result<usize> {
+         if entries.is_empty() {
+             bail!("Empty menu pages are not allowed");
+@@ -76,6 +82,8 @@
+             item_height: self.separator.height,
+             columns: Vec::new(),
+             parent,
++            breadcrumb: (config.show_breadcrumbs && !trail.is_empty())
++                .then(|| ComputedText::new(trail, context, &config.font.0)),
+         });
+
+         for (entry_i, entry) in entries.iter().enumerate() {
+@@ -85,6 +93,7 @@
+                     cmd,
+                     desc,
+                     keep_open,
++                    desc_color,
+                 } => MenuItem {
+                     action: Action::Exec {
+                         cmd: cmd.into(),
+@@ -93,18 +102,27 @@
+                     key_comp: ComputedText::new(key.to_string(), context, &config.font.0),
+                     val_comp: ComputedText::new(desc, context, &config.font.0),
+                     key: key.clone(),
++                    desc_color: *desc_color,
+                 },
+                 config::Entry::Recursive {
+                     key,
+                     submenu: entries,
+                     desc,
++                    desc_color,
+                 } => {
+-                    let new_page = self.push_page(context, entries, config, Some(cur_page))?;
++                    let label = if desc.is_empty() { key.to_string() } else { desc.clone() };
++                    let next_trail = if trail.is_empty() {
++                        label
++                    } else {
++                        format!("{trail} » {label}")
++                    };
++                    let new_page = self.push_page(context, entries, config, Some(cur_page), &next_trail)?;
+                     MenuItem {
+                         action: Action::Submenu(new_page),
+                         key_comp: ComputedText::new(key.to_string(), context, &config.font.0),
+                         val_comp: ComputedText::new(format!("+{desc}"), context, &config.font.0),
+                         key: key.clone(),
++                        desc_color: *desc_color,
+                     }
+                 }
+             };
+@@ -132,19 +150,28 @@
+             }
+         }
+
++        if let Some(height) = config.row_height {
++            self.pages[cur_page].item_height = height;
++        }
+         Ok(cur_page)
+     }
+
+     pub fn width(&self, config: &Config) -> f64 {
+         let page = &self.pages[self.cur_page];
+-        page.columns
++        let columns_width = page.columns
+             .iter()
+             .map(|col| col.key_col_width + col.val_col_width + self.separator.width)
+             .sum::<f64>()
+-            + (page.columns.len() - 1) as f64 * config.column_padding()
++            + (page.columns.len() - 1) as f64 * config.column_padding();
++        columns_width.max(page.breadcrumb.as_ref().map_or(0.0, |text| text.width + 8.0))
++            .max(self.footer.as_ref().map_or(0.0, |parts| parts.iter().map(|text| text.width).sum()))
+             + (config.padding() + config.border_width) * 2.0
+     }
+
++    pub fn border_top(&self) -> f64 {
++        self.pages[self.cur_page].breadcrumb.as_ref().map_or(0.0, |text| (text.height * 0.5).floor())
++    }
++
+     pub fn height(&self, config: &Config) -> f64 {
+         let page = &self.pages[self.cur_page];
+         page.columns
+@@ -152,13 +179,26 @@
+             .map(|col| page.item_height * col.items.len() as f64)
+             .max_by(f64::total_cmp)
+             .unwrap()
++            + self.border_top()
++            + self.footer.as_ref().map_or(0.0, |_| page.item_height)
+             + (config.padding() + config.border_width) * 2.0
+     }
+
+     pub fn render(&self, config: &config::Config, cairo_ctx: &cairo::Context) -> Result<()> {
+         let mut dx = config.padding() + config.border_width;
+-        let dy = config.padding() + config.border_width;
++        let dy = config.padding() + config.border_width + self.border_top();
+         let page = &self.pages[self.cur_page];
++        if let Some(breadcrumb) = &page.breadcrumb {
++            config.background.apply(cairo_ctx);
++            cairo_ctx.rectangle(dx - 4.0, 0.0, breadcrumb.width + 8.0, breadcrumb.height);
++            cairo_ctx.fill()?;
++            breadcrumb.render(cairo_ctx, text::RenderOptions {
++                x: dx,
++                y: 0.0,
++                fg_color: config.key_color.unwrap_or(config.color),
++                height: breadcrumb.height,
++            })?;
++        }
+         for col in &page.columns {
+             self.render_column(config, cairo_ctx, dx, dy, page, col)?;
+             dx += col.key_col_width
+@@ -166,6 +206,19 @@
+                 + self.separator.width
+                 + config.column_padding();
+         }
++        if let Some(parts) = &self.footer {
++            let width: f64 = parts.iter().map(|text| text.width).sum();
++            let mut x = ((self.width(config) - width) * 0.5).floor();
++            for (i, text) in parts.iter().enumerate() {
++                text.render(cairo_ctx, text::RenderOptions {
++                    x,
++                    y: self.height(config) - config.padding() - config.border_width - page.item_height,
++                    fg_color: if i % 2 == 0 { config.key_color } else { config.separator_color }.unwrap_or(config.color),
++                    height: page.item_height,
++                })?;
++                x += text.width;
++            }
++        }
+         Ok(())
+     }
+
+@@ -184,7 +237,7 @@
+                 text::RenderOptions {
+                     x: dx + column.key_col_width - comp.key_comp.width,
+                     y: dy + page.item_height * (i as f64),
+-                    fg_color: config.color,
++                    fg_color: config.key_color.unwrap_or(config.color),
+                     height: page.item_height,
+                 },
+             )?;
+@@ -193,7 +246,7 @@
+                 text::RenderOptions {
+                     x: dx + column.key_col_width,
+                     y: dy + page.item_height * (i as f64),
+-                    fg_color: config.color,
++                    fg_color: config.separator_color.unwrap_or(config.color),
+                     height: page.item_height,
+                 },
+             )?;
+@@ -202,7 +255,10 @@
+                 text::RenderOptions {
+                     x: dx + column.key_col_width + self.separator.width,
+                     y: dy + page.item_height * (i as f64),
+-                    fg_color: config.color,
++                    fg_color: comp.desc_color.or(match comp.action {
++                        Action::Submenu(_) => config.group_color,
++                        _ => config.desc_color,
++                    }).unwrap_or(config.color),
+                     height: page.item_height,
+                 },
+             )?;
+@@ -246,6 +302,9 @@
+                 if let Some(parent) = page.parent {
+                     return Some(Action::Submenu(parent));
+                 }
++                if self.footer.is_some() {
++                    return Some(Action::Quit);
++                }
+             }
+             _ => (),
+         }
+@@ -273,3 +332,133 @@
+         Ok(last_action.map(|x| x.1))
+     }
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    const MENU: &str = r#"
++menu:
++  - key: w
++    desc: Windows & <tools>
++    submenu:
++      - key: r
++        desc: Resize
++        submenu:
++          - key: h
++            desc: Shrink
++            cmd: "true"
++  - key: a
++    desc: Apps
++    submenu:
++      - key: t
++        desc: Terminal
++        cmd: "true"
++"#;
++
++    #[test]
++    fn breadcrumb_tracks_initial_keys_parent_and_siblings() {
++        let config: Config = serde_yaml::from_str(&format!("show_breadcrumbs: true\n{MENU}")).unwrap();
++        let mut menu = Menu::new(&config).unwrap();
++        assert!(menu.pages[0].breadcrumb.is_none());
++        menu.navigate_to_key_sequence("w r").unwrap();
++        let page = &menu.pages[menu.cur_page];
++        let header = page.breadcrumb.as_ref().unwrap();
++        assert_eq!(header.layout.text(), "Windows & <tools> » Resize");
++        assert!(menu.width(&config) >= header.width + 2.0 * (config.padding() + config.border_width));
++        assert!(menu.height(&config) >= header.height + config.padding() + page.item_height);
++        let Action::Submenu(parent) = menu.get_action(ModifierState::default(), xkb::Keysym::BackSpace).unwrap() else { panic!("missing parent") };
++        menu.set_page(parent);
++        assert_eq!(menu.pages[menu.cur_page].breadcrumb.as_ref().unwrap().layout.text(), "Windows & <tools>");
++        menu.set_page(0);
++        menu.navigate_to_key_sequence("a").unwrap();
++        assert_eq!(menu.pages[menu.cur_page].breadcrumb.as_ref().unwrap().layout.text(), "Apps");
++    }
++
++    #[test]
++    fn old_configuration_has_no_headers_or_color_overrides() {
++        let config: Config = serde_yaml::from_str(MENU).unwrap();
++        assert!(!config.show_breadcrumbs);
++        assert!(config.key_color.is_none() && config.desc_color.is_none());
++        assert!(config.group_color.is_none() && config.separator_color.is_none());
++        let menu = Menu::new(&config).unwrap();
++        assert!(menu.pages.iter().all(|page| page.breadcrumb.is_none()));
++    }
++
++    #[test]
++    fn root_label_and_fixed_rows_persist_in_submenus() {
++        let config: Config = serde_yaml::from_str(&format!("show_breadcrumbs: true\nbreadcrumb_root: Desktop\nrow_height: 16\n{MENU}")).unwrap();
++        let mut menu = Menu::new(&config).unwrap();
++        assert_eq!(menu.pages[0].breadcrumb.as_ref().unwrap().layout.text(), "Desktop");
++        menu.navigate_to_key_sequence("w r").unwrap();
++        assert_eq!(menu.pages[menu.cur_page].breadcrumb.as_ref().unwrap().layout.text(), "Desktop » Windows & <tools> » Resize");
++        assert!(menu.pages.iter().all(|page| page.item_height == 16.0));
++    }
++
++    #[test]
++    fn border_title_and_footer_have_separate_rows_and_navigation() {
++        let config: Config = serde_yaml::from_str(&format!("show_breadcrumbs: true\nbreadcrumb_root: Desktop\nrow_height: 16\npadding: 8\nborder_width: 2\n{MENU}")).unwrap();
++        let mut menu = Menu::new(&config).unwrap();
++        let title = menu.pages[0].breadcrumb.as_ref().unwrap();
++        assert_eq!(menu.border_top(), (title.height / 2.0).floor());
++        assert_eq!(menu.height(&config), 32.0 + menu.border_top() + 16.0 + 20.0);
++        let footer = menu.footer.as_ref().unwrap();
++        assert_eq!(footer.iter().map(|part| part.layout.text().to_string()).collect::<String>(), "󱊷 close  󰁮 back");
++        assert!(menu.width(&config) >= footer.iter().map(|part| part.width).sum::<f64>() + 20.0);
++        assert!(matches!(menu.get_action(ModifierState::default(), xkb::Keysym::BackSpace), Some(Action::Quit)));
++        menu.navigate_to_key_sequence("w").unwrap();
++        assert!(matches!(menu.get_action(ModifierState::default(), xkb::Keysym::BackSpace), Some(Action::Submenu(0))));
++        assert!(matches!(menu.get_action(ModifierState::default(), xkb::Keysym::Escape), Some(Action::Quit)));
++    }
++
++    fn render_pixels(config: &Config) -> Vec<u8> {
++        let menu = Menu::new(config).unwrap();
++        let mut surface = cairo::ImageSurface::create(
++            cairo::Format::ARgb32, menu.width(config).ceil() as i32, menu.height(config).ceil() as i32,
++        ).unwrap();
++        {
++            let context = cairo::Context::new(&surface).unwrap();
++            menu.render(config, &context).unwrap();
++        }
++        surface.data().unwrap().to_vec()
++    }
++
++    #[test]
++    fn render_uses_each_color_role_and_global_fallback() {
++        let fixture = r##"
++font: "DejaVu Sans Mono Bold 24"
++key_color: "#ff0000"
++desc_color: "#00ff00"
++group_color: "#0000ff"
++separator_color: "#ffff00"
++menu:
++  - {key: x, desc: Execute, cmd: "true"}
++  - {key: t, desc: Terminal, cmd: "true", desc_color: "#ff00ff"}
++  - key: a
++    desc: Accented group
++    desc_color: "#00ffff"
++    submenu:
++      - {key: n, desc: Nested, cmd: "true"}
++  - key: s
++    desc: Submenu
++    submenu:
++      - {key: y, desc: Nested, cmd: "true"}
++"##;
++        let mut config: Config = serde_yaml::from_str(fixture).unwrap();
++        let bytes = render_pixels(&config);
++        let pixels: Vec<u32> = bytes.chunks_exact(4).map(|p| u32::from_ne_bytes(p.try_into().unwrap())).collect();
++        for color in [0xffff0000, 0xff00ff00, 0xff0000ff, 0xffffff00, 0xffff00ff, 0xff00ffff] {
++            assert!(pixels.contains(&color), "missing rendered color {color:x}");
++        }
++        config.key_color = None;
++        config.desc_color = None;
++        config.group_color = None;
++        config.separator_color = None;
++        let fallback = render_pixels(&config);
++        config.key_color = Some(config.color);
++        config.desc_color = Some(config.color);
++        config.group_color = Some(config.color);
++        config.separator_color = Some(config.color);
++        assert_eq!(fallback, render_pixels(&config));
++    }
++}
+--- a/src/text.rs
++++ b/src/text.rs
+@@ -22,7 +22,7 @@
+     pub fn new(text: impl AsRef<str>, context: &pango::Context, font: &FontDescription) -> Self {
+         let layout = pango::Layout::new(context);
+         layout.set_font_description(Some(font));
+-        layout.set_markup(text.as_ref());
++        layout.set_text(text.as_ref());
+
+         let (width, height) = layout.pixel_size();
+
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -269,10 +269,11 @@
+         cairo_ctx.new_sub_path();
+         let half_border = self.config.border_width * 0.5;
+         let r = self.config.corner_r;
+-        cairo_ctx.arc(r + half_border, r + half_border, r, PI, 3.0 * FRAC_PI_2);
++        let top = self.menu.border_top();
++        cairo_ctx.arc(r + half_border, top + r + half_border, r, PI, 3.0 * FRAC_PI_2);
+         cairo_ctx.arc(
+             width_f - r - half_border,
+-            r + half_border,
++            top + r + half_border,
+             r,
+             3.0 * FRAC_PI_2,
+             TAU,
+@@ -335,6 +336,7 @@
+                 self.height = self.menu.height(&self.config) as u32;
+                 self.layer_surface.set_size(conn, self.width, self.height);
+                 self.wl_surface.commit(conn);
++                self.draw(conn);
+             }
+         }
+     }

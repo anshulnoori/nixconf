@@ -1,5 +1,7 @@
 _: {
-  flake.modules.homeManager.desktop = {pkgs, ...}: {
+  flake.modules.homeManager.desktop = {pkgs, ...}: let
+    toml = pkgs.formats.toml {};
+  in {
     home.packages = [pkgs.wl-clipboard];
 
     services.elephant = {
@@ -16,17 +18,17 @@ _: {
     };
 
     xdg.configFile = {
-      "elephant/calc.toml".text = ''
-        async = false
-      '';
-      "elephant/desktopapplications.toml".text = ''
-        show_actions = false
-        only_search_title = true
-        history = false
-      '';
-      "elephant/symbols.toml".text = ''
-        command = "wl-copy"
-      '';
+      "elephant/calc.toml".source = toml.generate "elephant-calc.toml" {
+        async = false;
+      };
+      "elephant/desktopapplications.toml".source = toml.generate "elephant-desktopapplications.toml" {
+        show_actions = false;
+        only_search_title = true;
+        history = false;
+      };
+      "elephant/symbols.toml".source = toml.generate "elephant-symbols.toml" {
+        command = "wl-copy";
+      };
     };
   };
 }

@@ -64,15 +64,21 @@ _: {
           if [[ "$action" == "default" ]]; then
             satty \
               --filename "$file" \
-              --output-filename "$file" \
-              --actions-on-enter save-to-clipboard \
-              --save-after-copy \
-              --copy-command 'wl-copy --type image/png'
+              --output-filename "$file"
           fi
         ) >/dev/null 2>&1 &
       '';
     };
   in {
     home.packages = [captureScreenshot];
+
+    programs.satty = {
+      enable = true;
+      settings.general = {
+        actions-on-enter = ["save-to-clipboard"];
+        save-after-copy = true;
+        copy-command = "wl-copy --type image/png";
+      };
+    };
   };
 }

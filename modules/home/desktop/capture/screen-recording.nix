@@ -13,39 +13,34 @@ _: {
         config.nixconf.desktop.capture.regionPicker
         coreutils
         ffmpeg
-        gnugrep
         osConfig.programs.gpu-screen-recorder.package
         libnotify
         config.programs.mpv.finalPackage
         procps
-        util-linux
+        ripgrep
+        systemd
         uwsm
         v4l-utils
       ];
       text = ''
+        unit="''${CAPTURE_SCREENRECORD_UNIT:-nixconf-screenrecord.service}"
+        session_target="''${CAPTURE_SCREENRECORD_SESSION_TARGET:-graphical-session.target}"
         runtime_dir="''${XDG_RUNTIME_DIR:-/tmp}"
-        pid_file="$runtime_dir/nixconf-screenrecord.pid"
-        recording_file="$runtime_dir/nixconf-screenrecord.file"
-        webcam_pid_file="$runtime_dir/nixconf-screenrecord-webcam.pid"
         log_file="$runtime_dir/nixconf-screenrecord.log"
-        lock_file="$runtime_dir/nixconf-screenrecord.lock"
-
-        lock_mutation() {
-          exec 9> "$lock_file"
-          flock 9
-        }
-
-        lock_query() {
-          exec 9> "$lock_file"
-          flock --nonblock 9
-        }
+        recorder="''${CAPTURE_SCREENRECORD_RECORDER:-gpu-screen-recorder}"
+        picker="''${CAPTURE_SCREENRECORD_PICKER:-capture-region-pick}"
+        notifier="''${CAPTURE_SCREENRECORD_NOTIFIER:-notify-send}"
 
         notify() {
-          notify-send --app-name=nixconf-capture "$1" "''${2:-}"
+          "$notifier" --app-name=nixconf-capture "$1" "''${2:-}"
         }
 
         refresh_waybar() {
           pkill -RTMIN+8 -x waybar 2>/dev/null || true
+        }
+
+        recording_active() {
+          systemctl --user --quiet is-active "$unit"
         }
 
         finalize_recording() {
@@ -62,7 +57,7 @@ _: {
             -read_intervals '%+0.2' \
             -show_entries packet=flags \
             -of csv=p=0 \
-            "$output" 2>/dev/null | grep -q D; then
+            "$output" 2>/dev/null | rg --quiet D; then
             video_codec=(-c:v libx264 -preset veryfast -crf 20)
           fi
 
@@ -72,7 +67,7 @@ _: {
             -select_streams a \
             -show_entries stream=codec_type \
             -of csv=p=0 \
-            "$output" 2>/dev/null | grep -q audio; then
+            "$output" 2>/dev/null | rg --quiet audio; then
             args+=(-af "volume=enable='lt(t,0.4)':volume=0,afade=t=in:st=0.4:d=0.05")
           fi
 
@@ -81,12 +76,15 @@ _: {
             mv "$processed" "$output"
           else
             rm -f "$processed"
+            return 1
           fi
         }
 
         notify_recording_saved() {
           local output="$1"
           local thumbnail=
+          local action
+          local notify_args
 
           if [[ -f "$output" ]]; then
             thumbnail="$(mktemp "$runtime_dir/nixconf-screenrecording-XXXXXX.png")"
@@ -96,61 +94,23 @@ _: {
             fi
           fi
 
-          (
-            notify_args=(
-              --app-name=nixconf-capture
-              --expire-time=10000
-              --action=default=Open
-            )
-            [[ -z "$thumbnail" ]] || notify_args+=(--icon="$thumbnail")
+          notify_args=(
+            --app-name=nixconf-capture
+            --expire-time=10000
+            --action=default=Open
+          )
+          [[ -z "$thumbnail" ]] || notify_args+=(--icon="$thumbnail")
+          action="$("$notifier" "''${notify_args[@]}" "Screen recording saved" "Click to open • $output" || true)"
+          rm -f "$thumbnail"
 
-            action="$(notify-send \
-              "''${notify_args[@]}" \
-              "Screen recording saved" \
-              "Click to open • $output" || true)"
-            rm -f "$thumbnail"
-
-            if [[ "$action" == "default" && -f "$output" ]]; then
-              setsid uwsm app -- mpv "$output" >/dev/null 2>&1 &
-            fi
-          ) 9>&- >/dev/null 2>&1 &
-        }
-
-        process_is() {
-          local pid="$1"
-          local expected="$2"
-          local executable
-
-          [[ "$pid" =~ ^[0-9]+$ ]] || return 1
-          executable="$(readlink -f "/proc/$pid/exe" 2>/dev/null)" || return 1
-          [[ "''${executable##*/}" == "$expected" ]]
-        }
-
-        stop_webcam() {
-          if [[ -r "$webcam_pid_file" ]]; then
-            read -r webcam_pid < "$webcam_pid_file"
-            if process_is "$webcam_pid" ffplay; then
-              kill "$webcam_pid" 2>/dev/null || true
-            fi
+          if [[ "$action" == "default" && -f "$output" ]]; then
+            uwsm app -- mpv "$output" >/dev/null 2>&1 &
           fi
-          rm -f "$webcam_pid_file"
-        }
-
-        recording_active() {
-          if [[ -r "$pid_file" ]]; then
-            read -r recorder_pid < "$pid_file"
-            if process_is "$recorder_pid" gpu-screen-recorder; then
-              return 0
-            fi
-          fi
-
-          rm -f "$pid_file" "$recording_file"
-          stop_webcam
-          return 1
         }
 
         select_capture_target() {
-          target="$(capture-region-pick smart --match-monitor)" || return 1
+          local target
+          target="$("$picker" smart --match-monitor)" || return 1
           if [[ "$target" == monitor:* ]]; then
             printf '%s\n' "$target"
             return 0
@@ -165,14 +125,14 @@ _: {
         }
 
         start_webcam() {
-          webcam_device=
+          local candidate device_name webcam_device=
           shopt -s nullglob
           for candidate in /dev/video*; do
-            device_name="$(cat "/sys/class/video4linux/''${candidate##*/}/name" 2>/dev/null || true)"
-            if grep -Eqi 'OBS Cam|loopback' <<< "$device_name"; then
+            device_name="$(< "/sys/class/video4linux/''${candidate##*/}/name")" || true
+            if rg --ignore-case --quiet 'OBS Cam|loopback' <<< "$device_name"; then
               continue
             fi
-            if v4l2-ctl --all --device "$candidate" 2>/dev/null | grep -q 'Video Capture'; then
+            if v4l2-ctl --all --device "$candidate" 2>/dev/null | rg --quiet 'Video Capture'; then
               webcam_device="$candidate"
               break
             fi
@@ -184,7 +144,7 @@ _: {
             return 1
           fi
 
-          setsid ffplay \
+          ffplay \
             -f v4l2 \
             -framerate 30 \
             -i "$webcam_device" \
@@ -195,31 +155,42 @@ _: {
             -flags low_delay \
             -an \
             -loglevel quiet \
-            9>&- >/dev/null 2>&1 &
+            >/dev/null 2>&1 &
           webcam_pid=$!
-          printf '%s\n' "$webcam_pid" > "$webcam_pid_file"
           sleep 1
-
+          if (( stopping )); then
+            kill "$webcam_pid" 2>/dev/null || true
+            wait "$webcam_pid" 2>/dev/null || true
+            return 1
+          fi
           if ! kill -0 "$webcam_pid" 2>/dev/null; then
-            stop_webcam
+            wait "$webcam_pid" || true
             notify "Webcam unavailable" "$webcam_device could not be opened"
             return 1
           fi
         }
 
-        start_recording() {
-          mode="$1"
-          if recording_active; then
-            notify "Screen recording already active"
-            exit 1
-          fi
+        run_recording_unit() {
+          local mode="$1" target="$2" output="$3"
+          local recorder_pid webcam_pid status stopping
+          local capture_args audio_args
+          recorder_pid=
+          webcam_pid=
+          status=0
+          stopping=0
 
-          target="$(select_capture_target)" || exit 0
+          stop_children() {
+            stopping=1
+            [[ -z "''${recorder_pid:-}" ]] || kill -INT "$recorder_pid" 2>/dev/null || true
+            [[ -z "$webcam_pid" ]] || kill "$webcam_pid" 2>/dev/null || true
+          }
+          trap stop_children INT TERM
+
           capture_args=()
           case "$target" in
             monitor:*) capture_args=(-w "''${target#monitor:}") ;;
             region:*) capture_args=(-w region -region "''${target#region:}") ;;
-            *) exit 1 ;;
+            *) return 1 ;;
           esac
 
           audio_args=()
@@ -229,19 +200,13 @@ _: {
             microphone) audio_args=(-a 'default_output|default_input' -ac aac) ;;
             webcam)
               audio_args=(-a 'default_output|default_input' -ac aac)
-              start_webcam || exit 1
-              ;;
-            *)
-              printf 'Usage: capture-screenrecord <no-audio|desktop-audio|microphone|webcam|stop|active|inactive>\n' >&2
-              exit 2
+              start_webcam || return 1
               ;;
           esac
 
-          output_dir="$HOME/Videos"
-          mkdir -p "$output_dir"
-          output="$output_dir/screenrecording-$(date +'%Y-%m-%d_%H-%M-%S').mp4"
+          (( stopping == 0 )) || return 0
 
-          setsid gpu-screen-recorder \
+          env --default-signal=INT "$recorder" \
             "''${capture_args[@]}" \
             -k auto \
             -f 60 \
@@ -249,66 +214,100 @@ _: {
             -fallback-cpu-encoding yes \
             "''${audio_args[@]}" \
             -o "$output" \
-            9>&- > "$log_file" 2>&1 &
+            > "$log_file" 2>&1 &
           recorder_pid=$!
           sleep 1
+          if (( stopping == 0 )) && kill -0 "$recorder_pid" 2>/dev/null; then
+            systemd-notify --ready
+          fi
+          while true; do
+            if wait "$recorder_pid"; then
+              status=0
+              break
+            else
+              status=$?
+            fi
+            kill -0 "$recorder_pid" 2>/dev/null || break
+          done
+          trap - INT TERM
 
-          if ! kill -0 "$recorder_pid" 2>/dev/null; then
-            wait "$recorder_pid" || true
-            stop_webcam
+          [[ -z "$webcam_pid" ]] || {
+            kill "$webcam_pid" 2>/dev/null || true
+            wait "$webcam_pid" 2>/dev/null || true
+          }
+          refresh_waybar
+
+          if (( status == 0 )) && [[ -s "$output" ]] &&
+            ffprobe -v error -select_streams v:0 -show_entries stream=codec_type -of csv=p=0 "$output" | rg --quiet '^video$' &&
+            finalize_recording "$output"; then
+            systemd-run --user --quiet --collect \
+              --unit="''${unit%.service}-saved-$(date +%s%N).service" \
+              --property=Type=exec \
+              --setenv="HOME=$HOME" \
+              --setenv="XDG_RUNTIME_DIR=$runtime_dir" \
+              --setenv="CAPTURE_SCREENRECORD_NOTIFIER=$notifier" \
+              "$0" __notify "$output" >/dev/null
+          else
             notify "Screen recording failed" "See $log_file"
-            exit 1
+            status=1
+          fi
+          return "$status"
+        }
+
+        start_recording() {
+          local mode="$1" target output
+          local -a environment
+
+          if recording_active; then
+            notify "Screen recording already active"
+            return 1
+          fi
+          target="$(select_capture_target)" || return 0
+          output="$HOME/Videos/screenrecording-$(date +'%Y-%m-%d_%H-%M-%S').mp4"
+          mkdir -p "''${output%/*}"
+
+          environment=(
+            --setenv="HOME=$HOME"
+            --setenv="XDG_RUNTIME_DIR=$runtime_dir"
+            --setenv="CAPTURE_SCREENRECORD_UNIT=$unit"
+            --setenv="CAPTURE_SCREENRECORD_SESSION_TARGET=$session_target"
+          )
+          [[ -z "''${CAPTURE_SCREENRECORD_RECORDER:-}" ]] || environment+=(--setenv="CAPTURE_SCREENRECORD_RECORDER=$recorder")
+          [[ -z "''${CAPTURE_SCREENRECORD_NOTIFIER:-}" ]] || environment+=(--setenv="CAPTURE_SCREENRECORD_NOTIFIER=$notifier")
+
+          if ! systemd-run --user --quiet --collect --unit="$unit" \
+            --property=Type=notify \
+            --property=NotifyAccess=all \
+            --property=TimeoutStartSec=10 \
+            --property=KillMode=mixed \
+            --property=KillSignal=SIGINT \
+            --property=TimeoutStopSec=35 \
+            --property="After=$session_target" \
+            --property="BindsTo=$session_target" \
+            --property="PartOf=$session_target" \
+            "''${environment[@]}" \
+            "$0" __run "$mode" "$target" "$output"; then
+            notify "Screen recording failed" "Could not start $unit"
+            return 1
           fi
 
-          printf '%s\n' "$recorder_pid" > "$pid_file"
-          printf '%s\n' "$output" > "$recording_file"
           refresh_waybar
           notify "Screen recording started" "Select Stop Screen Recording when finished"
         }
 
-        stop_recording() {
-          if ! recording_active; then
-            notify "No screen recording is active"
-            exit 1
-          fi
-
-          read -r recorder_pid < "$pid_file"
-          output=
-          [[ ! -r "$recording_file" ]] || read -r output < "$recording_file"
-          kill -INT "$recorder_pid"
-
-          for _ in {1..300}; do
-            process_is "$recorder_pid" gpu-screen-recorder || break
-            sleep 0.1
-          done
-
-          if process_is "$recorder_pid" gpu-screen-recorder; then
-            notify "Screen recording is still finalizing" "$output"
-            return 0
-          fi
-
-          stop_webcam
-          rm -f "$pid_file" "$recording_file"
-          refresh_waybar
-          finalize_recording "$output"
-          notify_recording_saved "$output"
-        }
-
         case "''${1:-}" in
-          active)
-            lock_query && recording_active
-            ;;
-          inactive)
-            lock_query && ! recording_active
-            ;;
+          active) recording_active ;;
+          inactive) ! recording_active ;;
           stop)
-            lock_mutation
-            stop_recording
+            if ! recording_active; then
+              notify "No screen recording is active"
+              exit 1
+            fi
+            systemctl --user stop "$unit"
             ;;
-          no-audio | desktop-audio | microphone | webcam)
-            lock_mutation
-            start_recording "$1"
-            ;;
+          no-audio | desktop-audio | microphone | webcam) start_recording "$1" ;;
+          __run) shift; run_recording_unit "$@" ;;
+          __notify) shift; notify_recording_saved "$1" ;;
           *)
             printf 'Usage: capture-screenrecord <no-audio|desktop-audio|microphone|webcam|stop|active|inactive>\n' >&2
             exit 2

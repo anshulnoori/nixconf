@@ -41,13 +41,13 @@ _: {
   in {
     home.packages = [presentTerminal];
 
-    wayland.windowManager.hyprland.extraConfig = ''
-      hl.window_rule({
-        match = { class = "TUI.float" },
-        float = true,
-        center = 1,
-        size = { 875, 600 },
-      })
-    '';
+    wayland.windowManager.hyprland.settings.window_rule = [
+      {
+        match.class = "TUI.float";
+        float = true;
+        center = 1;
+        size = [875 600];
+      }
+    ];
   };
 }
