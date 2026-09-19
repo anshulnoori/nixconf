@@ -203,17 +203,17 @@ finish_update() {
   verify_publication "$candidate"
   # Normal fast-forward push only; races fail safely and retain the built commit.
   git -C "$worktree" push origin "$candidate:refs/heads/$default_branch"
-  message="Built and published ${candidate:0:12}. Local checkout unchanged; reconcile or pull before nh os switch."
+  message="Committed ${candidate:0:12}: $(git -C "$worktree" log -1 --format=%s). Built and pushed. Reconcile or pull /etc/nixos before switching."
   if [[ $(git -C "$checkout" symbolic-ref --quiet --short HEAD || true) == "$default_branch" &&
   -z $(git -C "$checkout" status --porcelain) ]] &&
     git -C "$checkout" merge-base --is-ancestor HEAD "$candidate"; then
     git -C "$checkout" merge --ff-only "$candidate"
-    message="Built and published ${candidate:0:12}. Ready for nh os switch."
+    message="Committed ${candidate:0:12}: $(git -C "$worktree" log -1 --format=%s). Built and pushed. Click to review and switch."
   fi
   git -C "$checkout" worktree remove "$worktree"
   git -C "$checkout" update-ref -d "refs/heads/$candidate_branch" "$candidate"
   write_status available "$message" "$candidate"
-  notify-send --app-name=nixconf-update 'Nixconf update available' "$message" || true
+  notify-send --app-name=nixconf-update --expire-time=10000 'Update Available' "$message" || true
 }
 
 run_update() {
@@ -243,7 +243,10 @@ waybar_status() {
     elif .state == "available" and ($relation == "identical" or $relation == "ahead") then {text:"",class:"ready",tooltip:"Built update is installed or superseded."}
     elif .state == "available" then {text:"󰏗",class:"updates",tooltip:.message}
     elif .state == "running" and now - .checkedAtEpoch > 21600 then {text:"󰏗 ?",class:"unavailable",tooltip:"Local update did not finish. Inspect the journal and retained candidate."}
-    elif .state == "running" then {text:"󰏗 …",class:"updates",tooltip:.message}
+    elif .state == "running" then
+      ({generating:0, signing:1, validating:2, building:3, publishing:4}[.phase] // 0) as $completed |
+      {text:"󰏗",class:["updates","running","progress-" + ($completed * 20 | tostring)],
+       tooltip:(.message + "\n" + ($completed | tostring) + "/5 stages complete (not elapsed time).")}
     elif now - .checkedAtEpoch > 345600 then {text:"󰏗 ?",class:"unavailable",tooltip:"No successful local update in four days. Click to inspect."}
     else {text:"",class:"ready",tooltip:.message} end
   ' "$status_file"

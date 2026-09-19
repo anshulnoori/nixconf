@@ -64,6 +64,23 @@ _: {
       #custom-update.unavailable label {
         color: @warning;
       }
+      #custom-update.updates {
+        min-width: 18px;
+        background-image: linear-gradient(@warning, @warning),
+                          linear-gradient(alpha(@warning, 0.55), alpha(@warning, 0.55));
+        background-position: left bottom;
+        background-repeat: no-repeat;
+        background-size: 100% 3px, 100% 3px;
+      }
+      #custom-update.progress-0 { background-size: 0% 3px, 100% 3px; }
+      #custom-update.progress-20 { background-size: 20% 3px, 100% 3px; }
+      #custom-update.progress-40 { background-size: 40% 3px, 100% 3px; }
+      #custom-update.progress-60 { background-size: 60% 3px, 100% 3px; }
+      #custom-update.progress-80 { background-size: 80% 3px, 100% 3px; }
+      #custom-update.updates label {
+        min-width: 18px;
+        background-color: transparent;
+      }
       #custom-update.failed,
       #custom-update.failed label {
         color: #${colors.base08};
