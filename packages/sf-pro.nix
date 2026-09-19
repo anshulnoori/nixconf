@@ -2,22 +2,22 @@
   lib,
   stdenvNoCC,
   fetchurl,
-  p7zip,
+  _7zz,
   libarchive,
 }:
 stdenvNoCC.mkDerivation {
   pname = "sf-pro";
-  version = "2026-07-30";
+  version = "27.0.1789118100";
   src = fetchurl {
     url = "https://devimages-cdn.apple.com/design/resources/download/SF-Pro.dmg";
-    hash = "sha256-qQlPDem3idc1RO5Q/FKgiE1Kn3/PYt5Sl04yBPOnSmI=";
+    hash = "sha256-loqzuLH5LC2K9h6waA9cIiTE541ZuYa/AEUCp/wBKRg=";
   };
-  # Build-only tools: ouch does not support Apple's DMG installer.
-  nativeBuildInputs = [p7zip libarchive];
+  # Current Apple DMGs use APFS, which the older p7zip cannot unpack.
+  nativeBuildInputs = [_7zz libarchive];
   unpackPhase = ''
     runHook preUnpack
-    7z e "$src" 'SFProFonts/SF Pro Fonts.pkg'
-    bsdtar -xOf 'SF Pro Fonts.pkg' SFProFonts.pkg/Payload | bsdtar -xf -
+    7zz e "$src" SFProFonts.pkg
+    bsdtar -xOf SFProFonts.pkg SFProFontsPackage.pkg/Payload | bsdtar -xf -
     runHook postUnpack
   '';
   dontConfigure = true;
