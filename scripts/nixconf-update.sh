@@ -47,6 +47,8 @@ die() {
 # 'ahead' means the target advances the running revision, never the reverse.
 revision_relation() {
   local repository=$1 base=$2 target=$3
+  # Dirty metadata identifies a base commit, not the exact activated configuration.
+  base=${base%-dirty}
   if [[ ! $base =~ ^[0-9a-f]{40}$ || ! $target =~ ^[0-9a-f]{40}$ ]] ||
     ! git -C "$repository" cat-file -e "$base^{commit}" 2>/dev/null ||
     ! git -C "$repository" cat-file -e "$target^{commit}" 2>/dev/null; then
@@ -103,11 +105,12 @@ prepare_update() {
 
 generate_pins() {
   phase=generating
-  write_status running 'Updating flake pins and Proton GE sources in the isolated worktree.'
+  write_status running 'Updating flake, Proton GE, SF Pro, and Actions pins in the isolated worktree.'
   (
     cd "$worktree"
     nix flake update
     nix run .#nvfetcher
+    nix run .#refresh-local-sources
   )
   touch "$(git -C "$worktree" rev-parse --git-path nixconf-generated)"
 }
@@ -136,7 +139,7 @@ finish_update() {
   # Only generated dependency pins may enter an automatic commit.
   while IFS= read -r -d '' path; do
     case "$path" in
-    flake.lock | _sources/generated.nix | _sources/generated.json) ;;
+    flake.lock | _sources/generated.nix | _sources/generated.json | packages/sf-pro-source.json | .github/workflows/cache.yml) ;;
     *)
       die "Unexpected candidate change: $path"
       return 1
@@ -146,7 +149,7 @@ finish_update() {
     git -C "$worktree" ls-files --modified --others --exclude-standard -z
     git -C "$worktree" diff --cached --name-only -z
   )
-  git -C "$worktree" add -- flake.lock _sources/generated.nix _sources/generated.json
+  git -C "$worktree" add -- flake.lock _sources/generated.nix _sources/generated.json packages/sf-pro-source.json .github/workflows/cache.yml
   if ! git -C "$worktree" diff --cached --quiet; then
     phase=signing
     git -C "$worktree" -c user.name='Anshul Noori' -c user.email=anshulnoori@gmail.com \
@@ -227,13 +230,17 @@ run_update() {
 }
 
 waybar_status() {
+  local current_revision candidate relation=unknown
   if [[ ! -r $status_file ]] || ! jq -e '.state == "running" or .state == "failed" or .state == "success" or .state == "available"' "$status_file" >/dev/null 2>&1; then
     printf '{"text":"","class":"unavailable","tooltip":"No local update run yet. Click to update."}\n'
     return
   fi
-  jq -c --arg installed "$(running_revision)" '
+  current_revision=$(running_revision)
+  candidate=$(jq -r '.candidateRevision // ""' "$status_file")
+  relation=$(revision_relation "$checkout" "$candidate" "${current_revision%-dirty}")
+  jq -c --arg relation "$relation" '
     if .state == "failed" then {text:"󰏗 !",class:"failed",tooltip:.message}
-    elif .state == "available" and .candidateRevision == $installed then {text:"",class:"ready",tooltip:"Built update is installed."}
+    elif .state == "available" and ($relation == "identical" or $relation == "ahead") then {text:"",class:"ready",tooltip:"Built update is installed or superseded."}
     elif .state == "available" then {text:"󰏗",class:"updates",tooltip:.message}
     elif .state == "running" and now - .checkedAtEpoch > 21600 then {text:"󰏗 ?",class:"unavailable",tooltip:"Local update did not finish. Inspect the journal and retained candidate."}
     elif .state == "running" then {text:"󰏗 …",class:"updates",tooltip:.message}
@@ -242,22 +249,10 @@ waybar_status() {
   ' "$status_file"
 }
 
-show_details() {
-  if [[ -r $status_file ]]; then jq -r '.message, ("Phase: " + .phase)' "$status_file"; fi
-  if [[ -e $worktree/.git ]]; then
-    git -C "$worktree" --no-pager log -1 --show-signature
-    git -C "$worktree" --no-pager diff HEAD
-    printf '\nRetained candidate: %s\n' "$worktree"
-  fi
-  printf '\nActivate manually with nh os switch.\nLogs: journalctl --user -u nixconf-update\nRetry: systemctl --user start nixconf-update.service\n'
-}
-
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
   case "${1:-scheduled}" in
   scheduled) run_update ;;
   check | waybar) waybar_status ;;
-  open) exec present-terminal 'Nixconf Updates' "$0" details ;;
-  details) show_details ;;
   *)
     printf 'Internal update service: unsupported operation\n' >&2
     exit 2

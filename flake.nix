@@ -78,7 +78,15 @@
 
     nix-cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/release";
 
-    monorepo.url = "git+ssh://git@github.com/anshulnoori/monorepo.git";
+    namespace-devbox-release = {
+      url = "file+https://github.com/namespacelabs/devbox/releases/latest/download/checksums.txt";
+      flake = false;
+    };
+
+    monorepo = {
+      url = "git+ssh://git@github.com/anshulnoori/monorepo.git";
+      inputs.namespace-devbox-release.follows = "namespace-devbox-release";
+    };
 
     # Intentional rice snapshot. Do not advance with routine dependency updates.
     omarchy-rice = {

@@ -1,7 +1,7 @@
-_: {
+{inputs, ...}: {
   flake.modules.homeManager.base = {pkgs, ...}: {
     home.packages = [
-      (pkgs.callPackage ../../../packages/namespace-devbox.nix {})
+      inputs.monorepo.packages.${pkgs.stdenv.hostPlatform.system}.namespace-devbox
     ];
   };
 }

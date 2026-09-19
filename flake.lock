@@ -1070,6 +1070,9 @@
         "git-hooks-nix": "git-hooks-nix_2",
         "import-tree": "import-tree_2",
         "kubenix": "kubenix",
+        "namespace-devbox-release": [
+          "namespace-devbox-release"
+        ],
         "nixos-anywhere": "nixos-anywhere",
         "nixpkgs": "nixpkgs_2",
         "snowydeer": "snowydeer",
@@ -1081,17 +1084,29 @@
         "zigimg": "zigimg"
       },
       "locked": {
-        "lastModified": 1788731065,
-        "narHash": "sha256-NAcxU7bBsbW/gOxYM+YRBKxeE62DRFeKCMi1JqJ7u24=",
+        "lastModified": 1789783568,
+        "narHash": "sha256-y8Iv2xLclewZkU4R0Jd6INQGham/emYp1aGVRL7BcPQ=",
         "ref": "refs/heads/main",
-        "rev": "25fe3115982d14b53d91a4d3f1359eccc66f2411",
-        "revCount": 137,
+        "rev": "e2677e8141ef55a5f2fb411588737d2ffd3e00a6",
+        "revCount": 139,
         "type": "git",
         "url": "ssh://git@github.com/anshulnoori/monorepo.git"
       },
       "original": {
         "type": "git",
         "url": "ssh://git@github.com/anshulnoori/monorepo.git"
+      }
+    },
+    "namespace-devbox-release": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-dW8nIqVP3QAPID+CY0ykFXbCYa/4ohzUZ/9XZR1rbRo=",
+        "type": "file",
+        "url": "https://github.com/namespacelabs/devbox/releases/download/v0.0.189/checksums.txt"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://github.com/namespacelabs/devbox/releases/latest/download/checksums.txt"
       }
     },
     "neovim-nightly-overlay": {
@@ -1101,11 +1116,11 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1789689752,
-        "narHash": "sha256-C9jTsEbz8TRt55VSBi1oYZUVBG2fWNjoFgdzOrHfkyo=",
+        "lastModified": 1789776152,
+        "narHash": "sha256-sTcm5qHU7NJN+o7z+bK6UIC4s7RCg7sWof/nF0gY6ds=",
         "owner": "nix-community",
         "repo": "neovim-nightly-overlay",
-        "rev": "5de634a5ee1019170c2b5bcc54d1472eb08649b7",
+        "rev": "2b2023e394f1d3f6508d2d7be73bb6d57d937077",
         "type": "github"
       },
       "original": {
@@ -1117,11 +1132,11 @@
     "neovim-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1789678605,
-        "narHash": "sha256-l/kst9MbJ3ioCn+RiF+7Wa/dUrEmn38sD1r5DhVGWW8=",
+        "lastModified": 1789770780,
+        "narHash": "sha256-5cqGa/CKxJ0WWvSMVrj4BVQNXPFizbIl7rDwAof8Fxc=",
         "owner": "neovim",
         "repo": "neovim",
-        "rev": "6ad6dcd5d4ca2cbe28de8ea5ffe77cfee40a7004",
+        "rev": "e884c01befe74252249c4bed2f2922e474400ad6",
         "type": "github"
       },
       "original": {
@@ -1357,11 +1372,11 @@
     },
     "nixpkgs_3": {
       "locked": {
-        "lastModified": 1789370336,
-        "narHash": "sha256-6RSEDHIWQtesQKWSu5qRai8L2h4KgCgMEfJHstW99G4=",
+        "lastModified": 1789632929,
+        "narHash": "sha256-RjR8AyvGlWuw16XRj7C1YDEw4E27ciuyPeB2nDMzgTU=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "c7def046b9a883d46974757852106483d741586f",
+        "rev": "a32edd7654519351e48e80372a928df336394670",
         "type": "github"
       },
       "original": {
@@ -1500,6 +1515,7 @@
         "lix": "lix",
         "lix-module": "lix-module",
         "monorepo": "monorepo",
+        "namespace-devbox-release": "namespace-devbox-release",
         "neovim-nightly-overlay": "neovim-nightly-overlay",
         "nix-cachyos-kernel": "nix-cachyos-kernel",
         "nix-flatpak": "nix-flatpak",

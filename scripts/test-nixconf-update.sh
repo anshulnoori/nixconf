@@ -32,6 +32,13 @@ nix() {
     printf 'generate\n' >>"$events"
     [[ $failure != generation ]] || return 1
     ;;
+  'run .#refresh-local-sources')
+    [[ $failure != local-sources ]] || return 1
+    if [[ $failure != unchanged ]]; then
+      printf '{"version":"new"}\n' >packages/sf-pro-source.json
+      printf 'new action pins\n' >.github/workflows/cache.yml
+    fi
+    ;;
   *)
     printf 'validate\n' >>"$events"
     [[ $failure != validation ]] || return 1
@@ -76,7 +83,9 @@ fixture() {
   git -C "$checkout" config user.signingKey "$scratch/test-key"
   git -C "$checkout" config commit.gpgSign true
   git -C "$checkout" remote add origin "$scratch/$name/remote"
-  mkdir "$checkout/_sources"
+  mkdir -p "$checkout/_sources" "$checkout/packages" "$checkout/.github/workflows"
+  printf '{}\n' >"$checkout/packages/sf-pro-source.json"
+  printf 'old action pins\n' >"$checkout/.github/workflows/cache.yml"
   printf 'old lock\n' >"$checkout/flake.lock"
   printf '{}\n' >"$checkout/_sources/generated.json"
   printf '{}\n' >"$checkout/_sources/generated.nix"
@@ -145,7 +154,7 @@ git -C "$checkout" rev-parse HEAD >"$installed"
 waybar_status | jq -e '.class == "ready" and .text == ""' >/dev/null
 echo 'PASS: clean master fast-forwards to the built signed commit without switching'
 
-for failure_case in signing validation build attribution remote-race; do
+for failure_case in signing validation build attribution remote-race local-sources; do
   fixture "$failure_case"
   failure=$failure_case
   if [[ $failure == signing ]]; then git -C "$checkout" config user.signingKey "$scratch/missing-key"; fi
@@ -194,10 +203,16 @@ git -C "$checkout" commit -q --allow-empty -m 'test: newer local commit'
 newer=$(git -C "$checkout" rev-parse HEAD)
 [[ $(revision_relation "$checkout" "$base" "$newer") == ahead ]]
 [[ $(revision_relation "$checkout" "$newer" "$base") == behind ]]
+[[ $(revision_relation "$checkout" "$base-dirty" "$newer") == ahead ]]
+[[ $(revision_relation "$checkout" "$base-dirty" "$base") == identical ]]
+[[ $(revision_relation "$checkout" "$newer-dirty" "$base") == behind ]]
+[[ $(revision_relation "$checkout" "$base-dirty-dirty" "$newer") == unknown ]]
+[[ $(revision_relation "$checkout" aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-dirty "$newer") == unknown ]]
 git -C "$checkout" switch -q -c sibling "$base"
 git -C "$checkout" commit -q --allow-empty -m 'test: sibling commit'
 sibling=$(git -C "$checkout" rev-parse HEAD)
 [[ $(revision_relation "$checkout" "$newer" "$sibling") == diverged ]]
+[[ $(revision_relation "$checkout" "$newer-dirty" "$sibling") == diverged ]]
 [[ $(revision_relation "$checkout" aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa "$newer") == unknown ]]
 printf '%s\n' "$sibling" >"$installed"
 run_case failure
@@ -206,6 +221,14 @@ printf '%s\n' aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa >"$installed"
 run_case failure
 [[ ! -e $worktree ]]
 echo 'PASS: local ancestry handles ahead, behind, diverged, and absent installed commits without substituting HEAD'
+
+fixture dirty-installed
+printf '%s-dirty\n' "$(cat "$installed")" >"$installed"
+printf 'user lock changes\n' >"$checkout/flake.lock"
+run_case success
+[[ $(cat "$checkout/flake.lock") == 'user lock changes' ]]
+[[ $(cat "$installed") == *-dirty ]]
+echo 'PASS: dirty installed base permits build-only updates and preserves user lock changes'
 
 fixture downgrade
 base=$(cat "$installed")
@@ -227,6 +250,25 @@ failure=none
 run_case failure resume
 if grep -qx switch "$events"; then die 'Switched with unexpected staged files'; fi
 echo 'PASS: resume does not automatically commit unrelated staged edits'
+
+fixture indicator-ancestry
+base=$(cat "$installed")
+git -C "$checkout" commit -q --allow-empty -m 'test: available candidate'
+candidate=$(git -C "$checkout" rev-parse HEAD)
+write_status available 'Ready to activate' "$candidate"
+waybar_status | jq -e '.class == "updates"' >/dev/null
+printf '%s-dirty\n' "$candidate" >"$installed"
+waybar_status | jq -e '.class == "ready" and .text == ""' >/dev/null
+git -C "$checkout" commit -q --allow-empty -m 'test: later installed revision'
+git -C "$checkout" rev-parse HEAD >"$installed"
+waybar_status | jq -e '.class == "ready" and .text == ""' >/dev/null
+git -C "$checkout" switch -q -c unrelated "$base"
+git -C "$checkout" commit -q --allow-empty -m 'test: unrelated installed revision'
+git -C "$checkout" rev-parse HEAD >"$installed"
+waybar_status | jq -e '.class == "updates"' >/dev/null
+write_status available 'Old status without candidate'
+waybar_status | jq -e '.class == "updates"' >/dev/null
+echo 'PASS: indicator clears for installed candidate or descendant, not unrelated or missing metadata'
 
 write_status failed 'Approval needed'
 waybar_status | jq -e '.class == "failed" and .text != "" and .tooltip == "Approval needed"' >/dev/null

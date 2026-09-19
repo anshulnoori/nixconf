@@ -592,7 +592,9 @@ without interrupting the foreground process.
 The local update timer starts ten minutes after boot and every three days
 thereafter. It builds without switching. Waybar shows available updates, local
 progress, failure, and stale results. Mako reports when a build is ready.
-Clicking the module opens read-only update details in a floating terminal.
+Clicking the module opens `nh os switch --ask` through `present-terminal`,
+showing the native package diff and confirmation prompt before activation.
+It does not update inputs again.
 
 The updater fast-forwards clean `master` checkouts after publication, but leaves
 dirty checkouts and experimental branches unchanged. It retains failed candidates

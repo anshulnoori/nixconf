@@ -83,11 +83,14 @@ The updater creates an isolated worktree under
 from local `master` and remote `master`. It preserves staged, unstaged, and
 untracked files in `/etc/nixos`. Uncommitted configuration changes do not enter
 the update. Diverged histories and unknown installed revisions stop the update.
+An installed revision ending in `-dirty` uses its verified base commit for
+ancestry checks. This does not certify the exact activated configuration.
+The updater still preserves local changes and never activates a system.
 
 The update sequence is:
 
 1. Fetch `master` and create the clean `build/local-update` worktree.
-2. Run `nix flake update` and `nix run .#nvfetcher` there.
+2. Run `nix flake update`, `nix run .#nvfetcher`, and the internal source refresher there.
 3. Commit changed pins with `git commit -S` as `Anshul Noori <anshulnoori@gmail.com>`.
 4. Verify signatures and final commit messages, then validate the signed candidate.
 5. Run stock `nh os build` against that clean candidate.
@@ -140,8 +143,12 @@ manually before enabling automatic updates.
 
 Waybar shows available updates, local progress, failures, and stale results.
 Mako notifies you when a build is ready, or when an operation succeeds or fails.
-Clicking the indicator opens read-only details and recovery instructions.
+Clicking the indicator opens `nh os switch /etc/nixos --ask` in a terminal.
+Stock `nh` shows the diff and requests confirmation. The command does not use
+`--update`, so it does not regenerate the built inputs.
 The UI does not depend on GitHub comparison or discovery APIs.
+The indicator clears when the installed base commit equals or descends from the
+published candidate. A `-dirty` suffix does not prove the activated files match.
 
 ### Update sources and CI
 
@@ -149,6 +156,28 @@ Explicit compatibility pins in `flake.nix` remain unchanged. Proton GE uses
 `nvfetcher.toml` and generated files under `_sources/`. The ARM check packages
 ARM binaries without executing them. Amp keeps its separate self-updater:
 Nix pins its bootstrap, not the mutable executable under `~/.amp/bin`.
+
+The internal source refresher downloads SF Pro from Apple's official HTTPS URL.
+It validates the installer layout, package identifier, version, and font formats
+before recording the DMG hash in `packages/sf-pro-source.json`. Unexpected formats
+or version decreases stop generation for manual review. It never executes the installer.
+Its Nix package supplies modern 7-Zip, libarchive, libxml2, curl, jq, and OpenSSL.
+
+The same refresher resolves the latest stable releases of `actions/checkout` and
+`samueldr/lix-gha-installer-action` through GitHub's API. Workflow references remain
+full commit SHA pins with release comments. Moved existing tags, older releases,
+and malformed responses stop generation. API failures also stop the update;
+an optional `GH_TOKEN` can raise the public API rate limit.
+Only the SF Pro JSON and the maintenance workflow join the existing generated
+pin whitelist. All changes enter the same signed, checked, locally built candidate.
+
+Devbox follows the root `namespace-devbox-release` checksum-manifest input.
+After `nix flake update`, the refresher obtains the hash-verified manifest through
+Nix and compares it with the versioned release manifest. It changes only that
+input's locked URL to the immutable release URL. The original latest URL and
+locked hash remain unchanged, so later updates still discover new releases.
+Both Linux archive entries must declare the same version. Missing or mismatched
+metadata stops generation without changing the pin files.
 
 Renovate is disabled entirely. Its minimal `renovate.json` prevents an installed
 Renovate App from onboarding this repository again; no Renovate tooling remains.
@@ -162,6 +191,7 @@ write permission. Native GitHub job results replace the old `nixconf/build`
 status; CI no longer claims to validate a system build.
 
 Run `bash scripts/test-nixconf-update.sh` for isolated Git and SSH-signature tests.
+Run `bash scripts/test-refresh-local-sources.sh` for offline source-validation tests.
 These tests stub builds, activation, and notifications. Their pushes target only
 disposable local repositories, never GitHub.
 

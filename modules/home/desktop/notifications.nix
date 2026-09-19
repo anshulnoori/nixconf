@@ -1,5 +1,9 @@
 _: {
-  flake.modules.homeManager.desktop = {config, ...}: let
+  flake.modules.homeManager.desktop = {
+    config,
+    pkgs,
+    ...
+  }: let
     colors = config.lib.stylix.colors;
   in {
     stylix.targets.mako.enable = false;
@@ -35,6 +39,10 @@ _: {
         "app-name=nixconf-update" = {
           default-timeout = 0;
           layer = "overlay";
+        };
+        "app-name=nixconf-update summary=\"Nixconf update available\"" = {
+          on-button-left = "exec ${config.home.profileDirectory}/bin/present-terminal 'NixOS Update' ${pkgs.nh}/bin/nh os switch /etc/nixos --ask --diff always";
+          on-touch = "exec ${config.home.profileDirectory}/bin/present-terminal 'NixOS Update' ${pkgs.nh}/bin/nh os switch /etc/nixos --ask --diff always";
         };
         "summary~=\"Screenshot saved\"" = {
           max-icon-size = 64;

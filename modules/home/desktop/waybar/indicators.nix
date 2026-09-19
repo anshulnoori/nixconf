@@ -27,9 +27,9 @@ _: {
       "custom/update" = {
         exec = "${config.services.nixconf-update.package}/bin/nixconf-update waybar";
         return-type = "json";
-        interval = 300;
+        interval = 5;
         signal = 10;
-        on-click = "${config.services.nixconf-update.package}/bin/nixconf-update open";
+        on-click = "${config.home.profileDirectory}/bin/present-terminal 'NixOS Update' ${pkgs.nh}/bin/nh os switch /etc/nixos --ask --diff always";
       };
     };
   };
