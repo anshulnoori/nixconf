@@ -81,8 +81,9 @@ the password in `/etc/shadow`.
   request. It preserves user work through an isolated Git worktree.
 - The updater signs and validates the candidate before `nh os switch`. It pushes
   only after successful activation of that exact signed revision.
-- CI validates pushed revisions without generating updates or publishing a
-  personal binary cache. Niks3 and R2 are deferred.
+- CI runs repository maintenance on GitHub-hosted runners after pushes. System
+  validation and builds run locally; CI does not generate updates or publish a
+  personal binary cache. Renovate is disabled. Niks3 and R2 are deferred.
 - Garbage collection and generation limits must prevent nightly builds from
   growing the store without bound.
 - The desktop provides the revision-aware Waybar and Mako update notification

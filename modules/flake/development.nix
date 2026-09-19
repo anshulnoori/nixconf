@@ -46,7 +46,6 @@
               pkgs.marksman
               pkgs.nixd
               pkgs.pre-commit
-              pkgs.renovate
               pkgs.taplo
               pkgs.vscode-langservers-extracted
               pkgs.yaml-language-server

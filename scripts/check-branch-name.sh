@@ -14,8 +14,7 @@ if [[ -z $branch ]]; then
 fi
 
 conventional='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|flake|host|module)/[a-z0-9]+(-[a-z0-9]+)*$'
-renovate='^renovate/[a-z0-9]([a-z0-9._/-]*[a-z0-9])?$'
-if [[ $branch == master || $branch =~ $conventional || $branch =~ $renovate ]]; then
+if [[ $branch == master || $branch =~ $conventional ]]; then
   exit 0
 fi
 
@@ -23,6 +22,5 @@ printf '%s\n' \
   "Invalid branch name: $branch" \
   'Use <type>/<lowercase-kebab-description>, for example feat/add-desktop-host.' \
   'Allowed types: feat, fix, docs, style, refactor, perf, test, build, ci,' \
-  'chore, revert, flake, host, and module. The master and renovate/* branches' \
-  'are also allowed.' >&2
+  'chore, revert, flake, host, and module. The master branch is also allowed.' >&2
 exit 1

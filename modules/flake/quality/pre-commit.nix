@@ -45,14 +45,6 @@
         always_run = true;
         stages = ["pre-commit"];
       };
-      renovate-config = {
-        enable = true;
-        name = "Renovate config";
-        package = pkgs.renovate;
-        entry = "${lib.getExe' pkgs.renovate "renovate-config-validator"} --strict";
-        files = "^renovate\\.json$";
-        stages = ["pre-commit"];
-      };
       shellcheck = {
         enable = true;
         files = "^(\\.agents/(setup|resume)|scripts/.*\\.sh)$";

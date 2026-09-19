@@ -20,13 +20,13 @@ _: {
           feat/add-desktop-host \
           flake/update-nixpkgs \
           host/add-t1 \
-          module/add-audio \
-          renovate/nix-flake-inputs; do
+          module/add-audio; do
           check-branch-name "$branch"
         done
 
         for branch in \
           main \
+          renovate/nix-flake-inputs \
           feature/add-host \
           feat/Add-host \
           feat/add_host \

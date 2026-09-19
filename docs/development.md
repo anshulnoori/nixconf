@@ -43,20 +43,20 @@ nix flake check -L
 
 `nix fmt` runs Alejandra for Nix, Prettier for Markdown, JSON, and YAML, and
 shfmt for shell scripts. Flake checks cover formatting, Statix, deadnix,
-ShellCheck, Renovate configuration, Git conventions, Gitleaks, Minuet's secret
+ShellCheck, Git conventions, Gitleaks, Minuet's secret
 transport, and the Notion Calendar integration.
 
 The pre-push hook validates the branch and evaluates the flake without building
-the host. On each push to `master`, `renovate/**`, or `updates/**`, GitHub Actions
-repeats evaluation and builds the full `t1` closure. The workflow reports
-`nixconf/build` on the exact committed revision. It never updates pins, commits,
-pushes, or uploads build results to a personal binary cache.
-It requires a read-only monorepo deploy key in `MONOREPO_SSH_KEY`.
+the host. On pushes, GitHub Actions runs repository maintenance on standard
+`ubuntu-24.04` runners: formatting, lint/security checks, Git-convention tests,
+and updater tests. It does not evaluate systems or build `t1`, Proton, or desktop
+packages. Updates, system validation, and activation run locally before clients
+push. CI never updates pins, commits, pushes, or publishes a binary cache.
 
 ## Git conventions
 
 The repository is trunk-based. `master` is the default branch. Short-lived
-branches use `type/lowercase-kebab-description`; `renovate/*` is also allowed.
+experimental branches use `type/lowercase-kebab-description`.
 The local updater reserves `build/local-update` for its isolated worktree.
 
 Allowed conventional commit types are:
@@ -99,7 +99,7 @@ prevent publication. A failed push retains the installed commit locally.
 Successful publication removes the temporary worktree and its reserved branch.
 The original checkout stays unchanged, even after success.
 
-CI validates the pushed revision after activation. CI success is not an
+CI checks repository maintenance after activation. CI success is not an
 activation prerequisite in this local-first model. Public upstream caches remain
 available, but there is no personal binary cache. Niks3 and R2 are deferred.
 
@@ -143,14 +143,16 @@ Explicit compatibility pins in `flake.nix` remain unchanged. Proton GE uses
 ARM binaries without executing them. Amp keeps its separate self-updater:
 Nix pins its bootstrap, not the mutable executable under `~/.amp/bin`.
 
-Renovate's Nix manager remains disabled. Its optional non-Nix proposals are not
-part of the local updater and never activate automatically.
+Renovate is disabled entirely. Its minimal `renovate.json` prevents an installed
+Renovate App from onboarding this repository again; no Renovate tooling remains.
 
-The validation-only workflow uses `nh os build`. Fork pull requests do not
-receive private credentials or run this job. The workflow needs
-`MONOREPO_SSH_KEY`, but no Cachix secret. The variable `NIX_BUILD_RUNNER_LABELS`
-selects existing runner labels as a JSON array. Its default is `["ubuntu-24.04"]`.
-The runner must support x86_64 Linux and the Lix installer.
+The maintenance workflow runs on pushes and manual dispatch, without a schedule.
+New pushes cancel older maintenance runs on the same ref. It uses GitHub-hosted
+runners, not Namespace. Fork pull requests do not run this job or receive private
+credentials. The workflow still needs the read-only `MONOREPO_SSH_KEY` because
+the flake imports the private monorepo, but it needs no Cachix secret or status
+write permission. Native GitHub job results replace the old `nixconf/build`
+status; CI no longer claims to validate a system build.
 
 Run `bash scripts/test-nixconf-update.sh` for isolated Git and SSH-signature tests.
 These tests stub builds, activation, and notifications. Their pushes target only
