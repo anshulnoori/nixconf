@@ -24,7 +24,7 @@ _: {
     programs.wlr-which-key = {
       enable = true;
       package = pkgs.wlr-which-key.overrideAttrs (old: {
-        patches = (old.patches or []) ++ [./wlr-which-key-style.patch];
+        patches = (old.patches or []) ++ [./wlr-which-key-style.patch ./wlr-which-key-single-instance.patch];
         preCheck =
           (old.preCheck or "")
           + ''
