@@ -1,0 +1,85 @@
+--- a/src/eis_server.rs
++++ b/src/eis_server.rs
+@@ -71,6 +71,7 @@
+     sequence: u32,
+     instant: Instant,
+     region: Option<DeviceRegion>,
++    scroll_remainder: [i64; 2],
+ }
+ 
+ impl ContextState {
+@@ -88,8 +89,16 @@
+             sequence: 0,
+             instant: Instant::now(),
+             region,
++            scroll_remainder: [0; 2],
+         }
+     }
++
++    fn scroll_steps(&mut self, axis: usize, v120: i32) -> i32 {
++        let total = self.scroll_remainder[axis] + i64::from(v120);
++        self.scroll_remainder[axis] = total % 120;
++        (total / 120) as i32
++    }
++
+     fn handle_input_request(&mut self, request: InputRequest) {
+         let current_time = Instant::now();
+         let time_stamp = (current_time - self.instant).as_millis() as u64;
+@@ -448,21 +457,23 @@
+                         });
+                     }
+                     EisRequest::ScrollDiscrete(e) => {
+-                        if e.discrete_dx != 0 {
++                        let dx = context_state.scroll_steps(0, e.discrete_dx);
++                        let dy = context_state.scroll_steps(1, e.discrete_dy);
++                        if dx != 0 {
+                             let _ = sender.send(InputEvent {
+                                 session_handle: session_handle.to_string(),
+                                 request: InputRequest::PointerAxisDiscrete {
+                                     axis: 1, // Horizontal
+-                                    steps: e.discrete_dx,
++                                    steps: dx,
+                                 },
+                             });
+                         }
+-                        if e.discrete_dy != 0 {
++                        if dy != 0 {
+                             let _ = sender.send(InputEvent {
+                                 session_handle: session_handle.to_string(),
+                                 request: InputRequest::PointerAxisDiscrete {
+                                     axis: 0, // Vertical
+-                                    steps: e.discrete_dy,
++                                    steps: dy,
+                                 },
+                             });
+                         }
+@@ -614,6 +625,29 @@
+     use std::os::unix::net::UnixStream;
+ 
+     #[test]
++    fn discrete_scroll_converts_v120_to_steps() {
++        let mut state = ContextState::new(None);
++        assert_eq!(state.scroll_steps(0, 120), 1);
++        assert_eq!(state.scroll_steps(1, -240), -2);
++        assert_eq!(state.scroll_steps(0, 0), 0);
++    }
++
++    #[test]
++    fn discrete_scroll_preserves_signed_fractional_steps_per_axis() {
++        let mut state = ContextState::new(None);
++        assert_eq!(state.scroll_steps(0, 119), 0);
++        assert_eq!(state.scroll_steps(1, -119), 0);
++        assert_eq!(state.scroll_steps(0, 1), 1);
++        assert_eq!(state.scroll_steps(1, -1), -1);
++        assert_eq!(state.scroll_steps(0, 90), 0);
++        assert_eq!(state.scroll_steps(0, -30), 0);
++        assert_eq!(state.scroll_steps(0, 60), 1);
++        assert_eq!(state.scroll_steps(1, -300), -2);
++        assert_eq!(state.scroll_steps(1, -60), -1);
++        assert_eq!(ContextState::new(None).scroll_steps(0, 1), 0);
++    }
++
++    #[test]
+     fn absolute_devices_advertise_regions_before_done() {
+         let directory = tempfile::tempdir().unwrap();
+         let path = directory.path().join("eis");

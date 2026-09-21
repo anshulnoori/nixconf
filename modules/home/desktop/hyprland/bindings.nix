@@ -12,6 +12,13 @@ _: {
     end
 
     hl.bind("F13", hl.dsp.exec_cmd("wlr-which-key"))
+    local remote_super = {
+      release = true,
+      non_consuming = true,
+      device = { inclusive = true, list = { "hl-virtual-keyboard-xdg-desktop-portal-luminous" } },
+    }
+    hl.bind("SUPER + SUPER_L", hl.dsp.exec_cmd("wlr-which-key"), remote_super)
+    hl.bind("SUPER + SUPER_R", hl.dsp.exec_cmd("wlr-which-key"), remote_super)
     hl.bind("SUPER + RETURN", hl.dsp.exec_cmd("wlr-which-key --initial-keys Return"))
     hl.bind("SUPER + SPACE", hl.dsp.exec_cmd("wlr-which-key --initial-keys space"))
     hl.bind("SUPER + ALT + SPACE", hl.dsp.exec_cmd("wlr-which-key --initial-keys Alt+space"))

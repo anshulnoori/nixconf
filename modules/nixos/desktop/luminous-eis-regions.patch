@@ -1,0 +1,267 @@
+--- a/src/eis_server.rs
++++ b/src/eis_server.rs
+@@ -44,6 +44,19 @@
+     EIS_SERVER.1.clone()
+ }
+ 
++#[derive(Debug, Clone, Copy)]
++pub struct DeviceRegion {
++    pub width: u32,
++    pub height: u32,
++    pub scale: f32,
++}
++
++impl DeviceRegion {
++    fn advertise(self, device: &reis::request::Device) {
++        device.device().region(0, 0, self.width, self.height, self.scale);
++    }
++}
++
+ #[derive(Debug)]
+ struct ContextState {
+     seat: Option<reis::request::Seat>,
+@@ -57,10 +70,11 @@
+     connection: Option<Connection>,
+     sequence: u32,
+     instant: Instant,
++    region: Option<DeviceRegion>,
+ }
+ 
+ impl ContextState {
+-    fn new() -> Self {
++    fn new(region: Option<DeviceRegion>) -> Self {
+         Self {
+             seat: None,
+             device_keyboard: None,
+@@ -73,6 +87,7 @@
+             connection: None,
+             sequence: 0,
+             instant: Instant::now(),
++            region,
+         }
+     }
+     fn handle_input_request(&mut self, request: InputRequest) {
+@@ -216,7 +231,11 @@
+                     self.device_touch = Some(add_device(
+                         "touch",
+                         BitFlags::from_flag(DeviceCapability::Touch),
+-                        |_| {},
++                        |device| {
++                            if let Some(region) = self.region {
++                                region.advertise(device);
++                            }
++                        },
+                         &request.seat,
+                     ));
+                 }
+@@ -229,7 +248,11 @@
+                         DeviceCapability::PointerAbsolute
+                             | DeviceCapability::Button
+                             | DeviceCapability::Scroll,
+-                        |_| {},
++                        |device| {
++                            if let Some(region) = self.region {
++                                region.advertise(device);
++                            }
++                        },
+                         &request.seat,
+                     ));
+                 }
+@@ -319,6 +342,7 @@
+         &mut self,
+         context: eis::Context,
+         session_handle: String,
++        region: Option<DeviceRegion>,
+     ) -> io::Result<calloop::PostAction> {
+         tracing::info!(
+             "New connection for session {}: {:?}",
+@@ -327,7 +351,7 @@
+         );
+ 
+         let source = EisRequestSource::new(context, Id::unique().0);
+-        let context_state = ContextState::new();
++        let context_state = ContextState::new(region);
+         let session_handle_clone = session_handle.clone();
+         self.sessions.insert(session_handle, context_state);
+         self.handle
+@@ -496,7 +520,7 @@
+ 
+ #[allow(clippy::enum_variant_names)]
+ pub enum EisServerMsg {
+-    NewListener(eis::Listener, String),
++    NewListener(eis::Listener, String, Option<DeviceRegion>),
+     RemoveListener(String),
+     StopContext(String),
+     ActiveContext(String),
+@@ -521,7 +545,7 @@
+         let _ = handle.insert_source(msg_channel, |event, _, state| {
+             if let calloop::channel::Event::Msg(msg) = event {
+                 match msg {
+-                    EisServerMsg::NewListener(listener, session_handle) => {
++                    EisServerMsg::NewListener(listener, session_handle, region) => {
+                         let listener_source = EisListenerSource::new(listener);
+                         let session_handle_2 = session_handle.clone();
+                         let token = state
+@@ -529,7 +553,7 @@
+                             .insert_source(
+                                 listener_source,
+                                 move |context, (), state: &mut State| {
+-                                    state.handle_new_connection(context, session_handle.clone())
++                                    state.handle_new_connection(context, session_handle.clone(), region)
+                                 },
+                             )
+                             .unwrap();
+@@ -582,3 +606,54 @@
+ 
+     (tx, input_rx)
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use reis::{ei, event::EiEvent};
++    use std::os::unix::net::UnixStream;
++
++    #[test]
++    fn absolute_devices_advertise_regions_before_done() {
++        let directory = tempfile::tempdir().unwrap();
++        let path = directory.path().join("eis");
++        let listener = eis::Listener::bind(&path).unwrap();
++        let (sender, _) = start();
++        sender
++            .send(EisServerMsg::NewListener(
++                listener,
++                "region-test".into(),
++                Some(DeviceRegion { width: 1536, height: 864, scale: 1.25 }),
++            ))
++            .unwrap();
++        let context = ei::Context::new(UnixStream::connect(path).unwrap()).unwrap();
++        let (_, events) = context
++            .handshake_blocking("region-test", ei::handshake::ContextType::Sender)
++            .unwrap();
++        let mut devices = 0;
++        for event in events {
++            match event.unwrap() {
++                EiEvent::SeatAdded(event) => {
++                    event.seat.bind_capabilities(
++                        reis::event::DeviceCapability::PointerAbsolute
++                            | reis::event::DeviceCapability::Touch,
++                    );
++                    context.flush().unwrap();
++                }
++                EiEvent::DeviceAdded(event) => {
++                    assert_eq!(event.device.regions().len(), 1);
++                    let region = &event.device.regions()[0];
++                    assert_eq!((region.x, region.y), (0, 0));
++                    assert_eq!((region.width, region.height), (1536, 864));
++                    assert_eq!(region.scale, 1.25);
++                    devices += 1;
++                    if devices == 2 {
++                        return;
++                    }
++                }
++                _ => {}
++            }
++        }
++        panic!("EIS connection ended before both absolute devices appeared");
++    }
++}
+--- a/src/remotedesktop.rs
++++ b/src/remotedesktop.rs
+@@ -35,7 +35,7 @@
+ use crate::settings::WHITE_LIST_MAINTAINER;
+ use crate::utils::get_selection_from_socket;
+ 
+-use crate::eis_server::{EIS_SERVER, EisServerMsg};
++use crate::eis_server::{DeviceRegion, EIS_SERVER, EisServerMsg};
+ 
+ use crate::utils::{InputEvent, InputRequest};
+ 
+@@ -154,6 +154,7 @@
+     pub cast_thread: Option<ScreencastThread>,
+     pub remote_control: RemoteControl,
+     pub restore_data: Option<RestoreData>,
++    pub region: DeviceRegion,
+ }
+ 
+ impl RemoteSessionData {
+@@ -162,12 +163,14 @@
+         cast_thread: Option<ScreencastThread>,
+         remote_control: RemoteControl,
+         restore_data: impl Into<Option<RestoreData>>,
++        region: DeviceRegion,
+     ) -> Self {
+         Self {
+             session_handle,
+             cast_thread,
+             remote_control,
+             restore_data: restore_data.into(),
++            region,
+         }
+     }
+ }
+@@ -446,6 +449,17 @@
+         } else {
+             get_monitor_info_from_socket(&connection)?
+         };
++        let output = connection
++            .get_all_outputs()
++            .iter()
++            .find(|output| output.name == output_name)
++            .ok_or_else(|| zbus::fdo::Error::Failed("Selected output disappeared".into()))?;
++        let size = output.logical_region.inner.size;
++        let region = DeviceRegion {
++            width: size.width as u32,
++            height: size.height as u32,
++            scale: output.physical_size.height as f32 / size.height as f32,
++        };
+         if screen_share_enabled {
+             let show_cursor = current_session.cursor_mode.show_cursor();
+ 
+@@ -483,6 +497,7 @@
+             cast_thread,
+             remote_control,
+             restore_data.clone(),
++            region,
+         ))
+         .await;
+         let clipboard_enabled = clipboard_requested
+@@ -630,12 +645,19 @@
+     }
+ 
+     #[zbus(name = "ConnectToEIS")]
+-    fn connect_to_eis(
++    async fn connect_to_eis(
+         &mut self,
+         session_handle: ObjectPath<'_>,
+         _app_id: String,
+         _options: HashMap<String, Value<'_>>,
+     ) -> zbus::fdo::Result<Fd<'_>> {
++        let region = REMOTE_SESSIONS
++            .lock()
++            .await
++            .iter()
++            .find(|session| session.session_handle == session_handle.as_str())
++            .ok_or_else(|| zbus::fdo::Error::Failed("Remote desktop session has not started".into()))?
++            .region;
+         let listener = eis::Listener::bind_auto()
+             .map_err(|e| zbus::Error::Failure(format!("Failed to create EIS listener: {}", e)))?;
+ 
+@@ -651,6 +673,7 @@
+             .send(EisServerMsg::NewListener(
+                 listener,
+                 session_handle.to_string(),
++                Some(region),
+             ))
+             .unwrap();
+ 
+--- a/src/input_capture.rs
++++ b/src/input_capture.rs
+@@ -538,6 +538,7 @@
+             .send(EisServerMsg::NewListener(
+                 listener,
+                 session_handle.to_string(),
++                None,
+             ))
+             .unwrap();
+ 
