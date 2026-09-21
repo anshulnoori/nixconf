@@ -108,6 +108,11 @@ _: {
                   cmd = "steam";
                 }
                 {
+                  key = "y";
+                  desc = "Synergy";
+                  cmd = "synergy-dragon-gui";
+                }
+                {
                   key = "d";
                   desc = "Discord";
                   cmd = "DiscordCanary";

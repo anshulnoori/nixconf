@@ -1,8 +1,18 @@
 _: {
-  flake.modules.homeManager.desktop = {pkgs, ...}: let
+  flake.modules.homeManager.desktop = {
+    config,
+    osConfig,
+    pkgs,
+    ...
+  }: let
     toml = pkgs.formats.toml {};
   in {
     home.packages = [pkgs.wl-clipboard];
+
+    systemd.user.services.elephant.Unit.X-Restart-Triggers = [
+      config.home.path
+      osConfig.system.path
+    ];
 
     services.elephant = {
       enable = true;
