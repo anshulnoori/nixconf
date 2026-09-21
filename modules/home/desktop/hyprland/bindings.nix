@@ -17,6 +17,9 @@ _: {
     hl.bind("SUPER + ALT + SPACE", hl.dsp.exec_cmd("wlr-which-key --initial-keys Alt+space"))
     hl.bind("SUPER + Q", hl.dsp.exec_cmd("wlr-which-key --initial-keys w"))
     hl.bind("SUPER + L", hl.dsp.exec_cmd("wlr-which-key --initial-keys l"))
+    hl.bind("SUPER + J", hl.dsp.exec_cmd("wlr-which-key --initial-keys j"))
+    hl.bind("SUPER + K", hl.dsp.exec_cmd("wlr-which-key --initial-keys k"))
+    hl.bind("SUPER + I", hl.dsp.exec_cmd("wlr-which-key --initial-keys i"))
     hl.bind("SUPER + C", send_shortcut_once("CTRL", "Insert"), { description = "Universal copy" })
     hl.bind("SUPER + V", send_shortcut_once("SHIFT", "Insert"), { description = "Universal paste" })
     hl.bind("SUPER + X", send_shortcut_once("CTRL", "X"), { description = "Universal cut" })
@@ -26,10 +29,11 @@ _: {
     hl.bind("SUPER + up", hl.dsp.exec_cmd("wlr-which-key --initial-keys Up"))
     hl.bind("SUPER + down", hl.dsp.exec_cmd("wlr-which-key --initial-keys Down"))
 
+    local shifted_numbers = { "exclam", "at", "numbersign", "dollar", "percent", "asciicircum", "ampersand", "asterisk", "parenleft", "parenright" }
     for i = 1, 10 do
       local key = i % 10
       hl.bind("SUPER + " .. key, hl.dsp.exec_cmd("wlr-which-key --initial-keys " .. key))
-      hl.bind("SUPER + SHIFT + " .. key, hl.dsp.exec_cmd("wlr-which-key --initial-keys 's " .. key .. "'"))
+      hl.bind("SUPER + SHIFT + " .. key, hl.dsp.exec_cmd("wlr-which-key --initial-keys " .. shifted_numbers[i]))
     end
 
     hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), { mouse = true })

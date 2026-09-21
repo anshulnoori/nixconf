@@ -1,0 +1,161 @@
+--- a/src/config/entry.rs
++++ b/src/config/entry.rs
+@@ -13,6 +13,7 @@
+         desc: String,
+         keep_open: bool,
+         desc_color: Option<Color>,
++        display_group: Option<String>,
+     },
+     Recursive {
+         key: Key,
+@@ -31,6 +32,7 @@
+     keep_open: Option<bool>,
+     submenu: Option<Vec<Entry>>,
+     desc_color: Option<Color>,
++    display_group: Option<String>,
+ }
+ 
+ impl TryFrom<RawEntry> for Entry {
+@@ -38,6 +40,9 @@
+ 
+     fn try_from(value: RawEntry) -> Result<Self, Self::Error> {
+         if let Some(submenu) = value.submenu {
++            if value.display_group.is_some() {
++                bail!("display_group is only supported for commands");
++            }
+             if value.cmd.is_some() {
+                 bail!("cannot have both 'submenu' and 'cmd'");
+             }
+@@ -59,6 +64,7 @@
+                 desc: value.desc,
+                 keep_open: value.keep_open.unwrap_or(false),
+                 desc_color: value.desc_color,
++                display_group: value.display_group,
+             })
+         }
+     }
+--- a/src/config/compat.rs
++++ b/src/config/compat.rs
+@@ -73,6 +73,7 @@
+                         desc,
+                         keep_open,
+                         desc_color: None,
++                        display_group: None,
+                     },
+                     Entry::Recursive { submenu, desc } => super::Entry::Recursive {
+                         key: key.into(),
+--- a/src/menu.rs
++++ b/src/menu.rs
+@@ -1,4 +1,5 @@
+ use std::str::FromStr;
++use std::collections::HashSet;
+ 
+ use anyhow::{Error, Result, bail};
+ use pangocairo::{cairo, pango};
+@@ -20,6 +21,7 @@
+ struct MenuPage {
+     item_height: f64,
+     columns: Vec<MenuColumn>,
++    bindings: Vec<(Key, Action)>,
+     parent: Option<usize>,
+     breadcrumb: Option<ComputedText>,
+ }
+@@ -81,12 +83,15 @@
+         self.pages.push(MenuPage {
+             item_height: self.separator.height,
+             columns: Vec::new(),
++            bindings: Vec::new(),
+             parent,
+             breadcrumb: (config.show_breadcrumbs && !trail.is_empty())
+                 .then(|| ComputedText::new(trail, context, &config.font.0)),
+         });
+ 
+-        for (entry_i, entry) in entries.iter().enumerate() {
++        let mut groups = HashSet::new();
++        let mut visible_index = 0;
++        for entry in entries {
+             let item = match entry {
+                 config::Entry::Cmd {
+                     key,
+@@ -94,6 +99,7 @@
+                     desc,
+                     keep_open,
+                     desc_color,
++                    display_group: _,
+                 } => MenuItem {
+                     action: Action::Exec {
+                         cmd: cmd.into(),
+@@ -127,6 +133,15 @@
+                 }
+             };
+ 
++            self.pages[cur_page].bindings.push((item.key.clone(), item.action.clone()));
++            let mut item = item;
++            if let config::Entry::Cmd { display_group: Some(group), .. } = entry {
++                if !groups.insert(group) {
++                    continue;
++                }
++                item.key_comp = ComputedText::new(group, context, &config.font.0);
++            }
++
+             let height = f64::max(item.key_comp.height, item.val_comp.height);
+             if height > self.pages[cur_page].item_height {
+                 self.pages[cur_page].item_height = height;
+@@ -134,7 +149,8 @@
+ 
+             let col_i = config
+                 .rows_per_column
+-                .map_or(0, |rows_per_column| entry_i / rows_per_column);
++                .map_or(0, |rows_per_column| visible_index / rows_per_column);
++            visible_index += 1;
+ 
+             if col_i == self.pages[cur_page].columns.len() {
+                 self.pages[cur_page].columns.push(MenuColumn {
+@@ -282,11 +298,8 @@
+     pub fn get_action(&self, modifiers: ModifierState, sym: xkb::Keysym) -> Option<Action> {
+         let page = &self.pages[self.cur_page];
+ 
+-        let action = page.columns.iter().find_map(|col| {
+-            col.items
+-                .iter()
+-                .find_map(|i| i.key.matches(sym, modifiers).then(|| i.action.clone()))
+-        });
++        let action = page.bindings.iter()
++            .find_map(|(key, action)| key.matches(sym, modifiers).then(|| action.clone()));
+         if action.is_some() {
+             return action;
+         }
+@@ -337,6 +350,33 @@
+ mod tests {
+     use super::*;
+ 
++    #[test]
++    fn display_groups_preserve_every_action_and_visible_column_order() {
++        let config: Config = serde_yaml::from_str(r#"
++rows_per_column: 2
++menu:
++  - {key: "1", desc: Switch workspace, cmd: one, display_group: "1…9, 0"}
++  - {key: "7", desc: Switch workspace, cmd: seven, display_group: "1…9, 0"}
++  - {key: "0", desc: Switch workspace, cmd: ten, display_group: "1…9, 0"}
++  - {key: exclam, desc: Move window, cmd: move-one, display_group: "Shift+1…9, 0"}
++  - {key: parenright, desc: Move window, cmd: move-ten, display_group: "Shift+1…9, 0"}
++  - key: j
++    desc: Apps
++    submenu:
++      - {key: "1", desc: Nested, cmd: nested, display_group: "1…9, 0"}
++"#).unwrap();
++        let mut menu = Menu::new(&config).unwrap();
++        assert_eq!(menu.pages[0].columns.len(), 2);
++        assert_eq!(menu.pages[0].columns[0].items.len(), 2);
++        assert_eq!(menu.pages[0].columns[1].items.len(), 1);
++        assert_eq!(menu.pages[0].columns[0].items[0].key_comp.layout.text(), "1…9, 0");
++        for (key, expected) in [("1", "one"), ("7", "seven"), ("0", "ten"), ("exclam", "move-one"), ("parenright", "move-ten"), ("j 1", "nested")] {
++            menu.set_page(0);
++            let Some(Action::Exec { cmd, .. }) = menu.navigate_to_key_sequence(key).unwrap() else { panic!("missing action for {key}") };
++            assert_eq!(cmd, expected);
++        }
++    }
++
+     const MENU: &str = r#"
+ menu:
+   - key: w

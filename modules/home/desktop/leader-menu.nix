@@ -10,12 +10,18 @@ _: {
         index: let
           workspace = index + 1;
           key =
-            if workspace == 10
+            if dispatch == "window.move"
+            then builtins.elemAt ["exclam" "at" "numbersign" "dollar" "percent" "asciicircum" "ampersand" "asterisk" "parenleft" "parenright"] index
+            else if workspace == 10
             then "0"
             else toString workspace;
         in {
           inherit key;
-          desc = "${description} workspace ${toString workspace}";
+          desc = description;
+          display_group =
+            if dispatch == "window.move"
+            then "Shift+0…9"
+            else "0…9";
           cmd = "hyprctl dispatch 'hl.dsp.${dispatch}({ workspace = ${toString workspace} })'";
         }
       )
@@ -24,7 +30,7 @@ _: {
     programs.wlr-which-key = {
       enable = true;
       package = pkgs.wlr-which-key.overrideAttrs (old: {
-        patches = (old.patches or []) ++ [./wlr-which-key-style.patch ./wlr-which-key-single-instance.patch];
+        patches = (old.patches or []) ++ [./wlr-which-key-style.patch ./wlr-which-key-single-instance.patch ./wlr-which-key-groups.patch];
         preCheck =
           (old.preCheck or "")
           + ''
@@ -83,15 +89,66 @@ _: {
               cmd = "hyprlock";
             }
             {
-              key = "m";
-              desc = "Exit desktop";
-              desc_color = "#${colors.base08}";
-              cmd = "uwsm stop";
+              key = "j";
+              desc = "Apps";
+              submenu = [
+                {
+                  key = "b";
+                  desc = "Brave";
+                  cmd = "brave-origin";
+                }
+                {
+                  key = "m";
+                  desc = "Spotify";
+                  cmd = "spotify";
+                }
+                {
+                  key = "s";
+                  desc = "Steam";
+                  cmd = "steam";
+                }
+                {
+                  key = "d";
+                  desc = "Discord";
+                  cmd = "DiscordCanary";
+                }
+                {
+                  key = "f";
+                  desc = "Files";
+                  cmd = "kitty yazi";
+                }
+                {
+                  key = "e";
+                  desc = "Neovim";
+                  cmd = "kitty nvim";
+                }
+                {
+                  key = "p";
+                  desc = "1Password";
+                  cmd = "1password";
+                }
+              ];
             }
             {
-              key = "p";
-              desc = "Screenshot";
-              cmd = "capture-screenshot";
+              key = "k";
+              desc = "Capture";
+              submenu = [
+                {
+                  key = "s";
+                  desc = "Screenshot";
+                  cmd = "capture-screenshot";
+                }
+                {
+                  key = "r";
+                  desc = "Toggle recording";
+                  cmd = "if capture-screenrecord active; then capture-screenrecord stop; else walker --width 295 --minheight 1 --maxheight 630 --placeholder 'Record…' --provider menus:nixconf-trigger-capture-screenrecording; fi";
+                }
+              ];
+            }
+            {
+              key = "i";
+              desc = "Toggle keep-awake";
+              cmd = "nixconf-toggle caffeine";
             }
             {
               key = "Left";
@@ -113,13 +170,9 @@ _: {
               desc = "Focus down";
               cmd = "hyprctl dispatch 'hl.dsp.focus({ direction = \"down\" })'";
             }
-            {
-              key = "s";
-              desc = "Send window to workspace";
-              submenu = workspaces "window.move" "Move to";
-            }
           ]
-          ++ workspaces "focus" "Open";
+          ++ workspaces "focus" "Switch workspace"
+          ++ workspaces "window.move" "Move window to workspace";
       };
     };
   };
