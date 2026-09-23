@@ -14,6 +14,21 @@ _: {
         float = true;
         center = 1;
       }
+      {
+        match.modal = true;
+        stay_focused = true;
+      }
+      {
+        match.class = "^hyprpolkitagent$";
+        stay_focused = true;
+      }
+      {
+        match = {
+          class = "^1password$";
+          float = true;
+        };
+        stay_focused = true;
+      }
     ];
     layer_rule = [
       {

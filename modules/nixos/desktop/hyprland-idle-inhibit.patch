@@ -1,0 +1,12 @@
+--- a/src/protocols/IdleNotify.cpp
++++ b/src/protocols/IdleNotify.cpp
+@@ -116,6 +116,9 @@
+ }
+ 
+ void CIdleNotifyProtocol::setInhibit(bool inhibited) {
++    if (isInhibited == inhibited)
++        return;
++
+     isInhibited = inhibited;
+     for (auto const& n : m_notifications) {
+         if (n->inhibitorsAreObeyed())
