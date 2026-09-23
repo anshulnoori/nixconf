@@ -37,7 +37,7 @@ must return to the user rather than being resolved silently.
 | Idle management      | hypridle                                             | Lock and display power; no automatic suspend                    |
 | Authentication agent | hyprpolkitagent                                      | Graphical Polkit prompts                                        |
 | Screenshots          | grim + slurp + Satty                                 | Region capture, clipboard copy, annotation, and export          |
-| Screen recording     | gpu-screen-recorder                                  | Region, monitor, audio, microphone, and webcam-overlay capture  |
+| Screen recording     | gpu-screen-recorder                                  | Region and monitor capture with desktop and microphone audio    |
 | Screensaver          | terminaltexteffects in Kitty                         | Fullscreen animated pattern before the lock deadline            |
 | OSD                  | SwayOSD                                              | Volume and brightness feedback                                  |
 | Clipboard            | Elephant + wl-clipboard                              | Searchable history through Walker and direct clipboard commands |

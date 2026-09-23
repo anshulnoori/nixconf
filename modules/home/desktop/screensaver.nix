@@ -6,17 +6,39 @@ _: {
     ...
   }: let
     colors = config.lib.stylix.colors;
+    artwork = pkgs.writeText "nixos-screensaver.txt" ''
+                ▗▄▄▄       ▗▄▄▄▄    ▄▄▄▖
+                ▜███▙       ▜███▙  ▟███▛
+                 ▜███▙       ▜███▙▟███▛
+                  ▜███▙       ▜██████▛
+           ▟█████████████████▙ ▜████▛     ▟▙
+          ▟███████████████████▙ ▜███▙    ▟██▙
+                 ▄▄▄▄▖           ▜███▙  ▟███▛
+                ▟███▛             ▜██▛ ▟███▛
+               ▟███▛               ▜▛ ▟███▛
+      ▟███████████▛                  ▟██████████▙
+      ▜██████████▛                  ▟███████████▛
+            ▟███▛ ▟▙               ▟███▛
+           ▟███▛ ▟██▙             ▟███▛
+          ▟███▛  ▜███▙           ▝▀▀▀▀
+          ▜██▛    ▜███▙ ▜██████████████████▛
+           ▜▛     ▟████▙ ▜████████████████▛
+                 ▟██████▙         ▜███▙
+                ▟███▛▜███▙         ▜███▙
+               ▟███▛  ▜███▙         ▜███▙
+               ▝▀▀▀    ▀▀▀▀▘         ▀▀▀▘
+    '';
     runner = pkgs.writeShellApplication {
       name = "nixconf-screensaver-run";
       runtimeInputs = with pkgs; [
         coreutils
         jq
         osConfig.programs.hyprland.package
+        systemd
         terminaltexteffects
       ];
       text = ''
         effect_pid=
-        input_file="''${XDG_RUNTIME_DIR:-/tmp}/nixconf-screensaver-$$.txt"
 
         screensaver_in_focus() {
           hyprctl activewindow -j | jq -e '.class == "org.nixconf.screensaver"' >/dev/null 2>&1
@@ -27,16 +49,12 @@ _: {
         }
 
         exit_screensaver() {
-          [[ -z "$effect_pid" ]] || kill "$effect_pid" 2>/dev/null || true
-          rm -f "$input_file"
-          hyprctl keyword cursor:invisible false >/dev/null 2>&1 || true
-          pkill -f org.nixconf.screensaver 2>/dev/null || true
+          systemctl --user --no-block stop nixconf-screensaver.service
           exit 0
         }
 
-        trap exit_screensaver INT TERM HUP QUIT
+        trap 'exit 0' INT TERM HUP QUIT
         printf '\033]11;#${colors.base00}\007'
-        hyprctl keyword cursor:invisible true >/dev/null 2>&1 || true
 
         for _ in {1..30}; do
           screensaver_present && break
@@ -46,8 +64,7 @@ _: {
         sleep 0.4
 
         while true; do
-          printf '\n%s\n%s\n' "$(date '+%A, %B %-d')" "$(date '+%-I:%M %p')" > "$input_file"
-          tte -i "$input_file" \
+          tte -i ${artwork} \
             --frame-rate 120 \
             --canvas-width 0 \
             --canvas-height 0 \
@@ -55,7 +72,6 @@ _: {
             --anchor-canvas c \
             --anchor-text c \
             --random-effect \
-            --exclude-effects print \
             --no-eol \
             --no-restore-cursor &
           effect_pid=$!
@@ -71,32 +87,51 @@ _: {
         done
       '';
     };
+    session = pkgs.writeShellApplication {
+      name = "nixconf-screensaver-session";
+      runtimeInputs = with pkgs; [coreutils jq kitty osConfig.programs.hyprland.package walker];
+      text = ''
+        walker -q >/dev/null 2>&1 || true
+        focused="$(hyprctl monitors -j | jq -r '.[] | select(.focused).name')"
+        mapfile -t monitors < <(hyprctl monitors -j | jq -r '.[].name')
+        (( ''${#monitors[@]} > 0 )) || exit 1
+        hyprctl eval 'hl.config({ cursor = { invisible = true } })' >/dev/null
+        windows=()
+        for monitor in "''${monitors[@]}"; do
+          hyprctl dispatch "hl.dsp.focus({ monitor = \"$monitor\" })" >/dev/null
+          kitty --class org.nixconf.screensaver \
+            --override font_size=18 \
+            --override window_padding_width=0 \
+            ${runner}/bin/nixconf-screensaver-run &
+          windows+=("$!")
+          for _ in {1..30}; do
+            if hyprctl clients -j | jq -e \
+              --argjson id "$(hyprctl monitors -j | jq --arg name "$monitor" '.[] | select(.name == $name).id')" \
+              'any(.[]; .class == "org.nixconf.screensaver" and .monitor == $id)' >/dev/null; then
+              break
+            fi
+            sleep 0.1
+          done
+        done
+        [[ -z "$focused" ]] || hyprctl dispatch "hl.dsp.focus({ monitor = \"$focused\" })" >/dev/null
+        wait -n "''${windows[@]}"
+      '';
+    };
     control = pkgs.writeShellApplication {
       name = "nixconf-screensaver";
       runtimeInputs = with pkgs; [
         coreutils
-        jq
-        kitty
         libnotify
-        osConfig.programs.hyprland.package
-        procps
-        util-linux
-        uwsm
-        walker
+        systemd
       ];
       text = ''
         state_dir="''${XDG_STATE_HOME:-$HOME/.local/state}/nixconf"
-        runtime_dir="''${XDG_RUNTIME_DIR:-/tmp}"
         disabled_file="$state_dir/screensaver-disabled"
-        lock_file="$runtime_dir/nixconf-screensaver.lock"
 
         mkdir -p "$state_dir"
-        exec 9> "$lock_file"
-        flock 9
 
         stop_screensaver() {
-          pkill -f '[n]ixconf-screensaver-run' 2>/dev/null || true
-          hyprctl keyword cursor:invisible false >/dev/null 2>&1 || true
+          systemctl --user stop nixconf-screensaver.service
         }
 
         case "''${1:-start}" in
@@ -118,30 +153,7 @@ _: {
               exit 0
             fi
 
-            pgrep -f '[n]ixconf-screensaver-run' >/dev/null && exit 0
-            walker -q >/dev/null 2>&1 || true
-
-            focused="$(hyprctl monitors -j | jq -r '.[] | select(.focused).name')"
-            mapfile -t monitors < <(hyprctl monitors -j | jq -r '.[].name')
-            for monitor in "''${monitors[@]}"; do
-              hyprctl dispatch focusmonitor "$monitor" >/dev/null
-              setsid uwsm app -- kitty \
-                --class org.nixconf.screensaver \
-                --override font_size=18 \
-                --override window_padding_width=0 \
-                ${runner}/bin/nixconf-screensaver-run \
-                >/dev/null 2>&1 &
-            done
-
-            [[ -z "$focused" ]] || hyprctl dispatch focusmonitor "$focused" >/dev/null
-
-            for _ in {1..20}; do
-              pgrep -f '[n]ixconf-screensaver-run' >/dev/null && exit 0
-              sleep 0.1
-            done
-
-            notify-send --app-name=nixconf-menu "Screensaver unavailable" "No screensaver window started"
-            exit 1
+            systemctl --user start nixconf-screensaver.service
             ;;
           *)
             printf 'Usage: nixconf-screensaver [start|force|stop|toggle]\n' >&2
@@ -152,6 +164,21 @@ _: {
     };
   in {
     home.packages = [control];
+
+    systemd.user.services.nixconf-screensaver = {
+      Unit = {
+        Description = "Desktop screensaver";
+        After = ["graphical-session.target"];
+        BindsTo = ["graphical-session.target"];
+        PartOf = ["graphical-session.target"];
+      };
+      Service = {
+        Type = "exec";
+        ExecStart = "${session}/bin/nixconf-screensaver-session";
+        ExecStopPost = "-${osConfig.programs.hyprland.package}/bin/hyprctl eval 'hl.config({ cursor = { invisible = false } })'";
+        TimeoutStopSec = 5;
+      };
+    };
 
     wayland.windowManager.hyprland.settings.window_rule = [
       {

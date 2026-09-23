@@ -1,11 +1,27 @@
 _: {
-  flake.modules.homeManager.desktop = {config, ...}: let
+  flake.modules.homeManager.desktop = {
+    config,
+    lib,
+    pkgs,
+    ...
+  }: let
     colors = config.lib.stylix.colors;
+    lockCommand = "systemctl --user start hyprlock.service";
   in {
     stylix.targets.hyprlock.enable = false;
 
     programs.hyprlock = {
       enable = true;
+      package = pkgs.hyprlock.overrideAttrs (previous: {
+        patches =
+          (previous.patches or [])
+          ++ [
+            (pkgs.fetchurl {
+              url = "https://github.com/hyprwm/hyprlock/commit/1f337a4713e981e75ad4912cbbb5c3dccb7b6717.patch";
+              hash = "sha256-iFd3l062DOSpfbg7A3EvweVf0k7kOQvUWttSNCJV2OM=";
+            })
+          ];
+      });
       settings = {
         general = {
           hide_cursor = true;
@@ -36,7 +52,6 @@ _: {
             outer_color = "rgb(${colors.base05})";
             outline_thickness = 4;
             font_family = "JetBrainsMono Nerd Font";
-            font_size = 16;
             font_color = "rgb(${colors.base05})";
             placeholder_text = "Enter Password";
             check_color = "rgb(${colors.base0D})";
@@ -50,14 +65,32 @@ _: {
       };
     };
 
+    wayland.windowManager.hyprland.settings.config.misc.allow_session_lock_restore = true;
+
+    systemd.user.services.hyprlock = {
+      Unit = {
+        Description = "Session lockscreen";
+        After = ["graphical-session.target"];
+        BindsTo = ["graphical-session.target"];
+        PartOf = ["graphical-session.target"];
+        StartLimitIntervalSec = 0;
+      };
+      Service = {
+        ExecStart = lib.getExe config.programs.hyprlock.package;
+        Restart = "on-failure";
+        RestartSec = 2;
+        TimeoutStopSec = 10;
+      };
+    };
+
     services.hypridle = {
       enable = true;
       settings = {
         general = {
           after_sleep_cmd = "hyprctl dispatch dpms on";
-          before_sleep_cmd = "pidof hyprlock || hyprlock";
+          before_sleep_cmd = lockCommand;
           ignore_dbus_inhibit = false;
-          lock_cmd = "pidof hyprlock || hyprlock";
+          lock_cmd = lockCommand;
         };
         listener = [
           {
@@ -67,7 +100,7 @@ _: {
           }
           {
             timeout = 600;
-            on-timeout = "nixconf-screensaver stop; pidof hyprlock || hyprlock";
+            on-timeout = "nixconf-screensaver stop; ${lockCommand}";
           }
           {
             timeout = 1200;

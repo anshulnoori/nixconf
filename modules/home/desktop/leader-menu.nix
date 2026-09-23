@@ -86,7 +86,7 @@ _: {
               key = "l";
               desc = "Lock";
               desc_color = "#${colors.base0A}";
-              cmd = "hyprlock";
+              cmd = "systemctl --user start hyprlock.service";
             }
             {
               key = "j";

@@ -140,7 +140,7 @@ update_summary() {
 }
 
 finish_update() {
-  local interactive=${1:-false} candidate current relation path message tree built
+  local interactive=${1:-false} candidate current relation path message tree built base
   [[ -e $worktree/.git ]] || die 'No retained candidate.'
   [[ $(git -C "$worktree" symbolic-ref --short HEAD) == "$candidate_branch" ]] || die 'Unexpected candidate branch.'
   if [[ $interactive == false && ! -e $(git -C "$worktree" rev-parse --git-path nixconf-generated) ]]; then generate_pins; fi
@@ -161,7 +161,25 @@ finish_update() {
   candidate=$(git -C "$worktree" rev-parse HEAD)
   tree=$(git -C "$worktree" write-tree)
   built=$(git -C "$worktree" rev-parse --git-path nixconf-built)
+  phase=checking
   fetch_master
+  base=$(git -C "$checkout" rev-parse "refs/heads/$default_branch")
+  case "$(revision_relation "$checkout" "$base" "$remote_revision")" in
+  ahead) base=$remote_revision ;;
+  identical | behind) ;;
+  *) die 'Local master and remote master diverged; reconcile them manually.' ;;
+  esac
+  if [[ $(revision_relation "$worktree" "$candidate" "$base") == ahead ]]; then
+    case "$(revision_relation "$checkout" "$(running_revision)" "$base")" in
+    identical | ahead) ;;
+    *) die 'Refusing to refresh onto an older or unrelated revision.' ;;
+    esac
+    git -C "$worktree" reset --hard "$base"
+    rm -f "$built" "$(git -C "$worktree" rev-parse --git-path nixconf-generated)"
+    generate_pins
+    finish_update false
+    return
+  fi
   relation=$(revision_relation "$worktree" "$remote_revision" "$candidate")
   case "$relation" in
   identical | ahead) ;;
@@ -267,6 +285,11 @@ run_update() {
   else
     if [[ ! -e $worktree ]]; then prepare_update; fi
     finish_update "$interactive"
+  fi
+  if [[ $interactive == true ]] && jq -e '.state == "available" and .candidateRevision == ""' "$status_file" >/dev/null; then
+    printf '%s\n' 'Update refreshed and built. Apply again to sign and switch.'
+    trap - ERR TERM INT
+    return
   fi
   if [[ $interactive == true ]] && ! jq -e '.state == "success"' "$status_file" >/dev/null; then
     local system

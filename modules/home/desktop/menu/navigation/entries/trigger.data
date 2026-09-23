@@ -76,12 +76,6 @@
               keywords = ["mic"];
               action = "capture-screenrecord microphone";
             }
-            {
-              id = "webcam";
-              text = "Desktop, Microphone, and Webcam";
-              keywords = ["camera"];
-              action = "capture-screenrecord webcam";
-            }
           ];
         }
         {

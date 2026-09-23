@@ -143,12 +143,12 @@ desktop plus microphone, and webcam variants. It shows a red clickable Waybar
 indicator, stops gracefully, post-processes startup/audio artifacts, then shows
 an actionable thumbnail notification.
 
-Current behavior includes all four menu variants, transform-aware region and
+Current behavior includes no-audio, desktop-audio, and microphone modes, transform-aware region and
 monitor selection, the NixOS capability wrapper required for direct KMS
 capture, CPU encoder fallback, serialized start/stop state, startup cleanup, a
 click-to-stop bar indicator, and an actionable completion thumbnail. Remaining
-possible parity work is portal capture for HDR or secondary-GPU displays,
-webcam placement relative to a selected region, and explicit webcam selection.
+possible parity work is portal capture for HDR or secondary-GPU displays.
+Webcam previews are deliberately excluded.
 
 ### 6. Screensaver, lock, and sleep
 
@@ -267,7 +267,7 @@ deliberate replacement for Omarchy's Arch package/install/update structure.
   replace direct region/monitor capture unless that hardware requires it.
 - Webcam-within-region placement from
   [`ada53b0`](https://github.com/omacom/omarchy/commit/ada53b090ed705a4353c9db19b970bddd0eb6aa3)
-  matters only if the webcam overlay workflow is used.
+  is excluded with the webcam preview workflow.
 - Waybar restart fixes are already better handled by the current systemd user
   unit; do not copy process-killing shell scripts.
 - Do not hard-code `BAT0`; Omarchy reverted that attempted crash workaround.

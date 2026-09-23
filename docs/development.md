@@ -162,7 +162,10 @@ systemctl --user start nixconf-update.service
 
 Retry the service as the login user. Then click the update icon to sign,
 publish, and switch interactively. Approve 1Password requests in that terminal flow.
-If the remote advanced, reconcile the histories manually before resumption.
+When local or remote `master` advances, the updater replaces stale generated pins
+and rebuilds from the newer commit. It does not archive or replay the old pins.
+An interactive refresh stops at **Update Available**. Click again to sign and switch.
+Unpublished candidate commits, unrelated edits, and diverged histories still require manual resolution.
 Do not delete a retained worktree that contains an unpublished commit.
 If the installed revision is unknown, establish a clean committed system revision
 manually before enabling automatic updates.

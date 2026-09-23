@@ -10,7 +10,7 @@
     {
       id = "lock";
       text = "Lock";
-      action = "hyprlock";
+      action = "systemctl --user start hyprlock.service";
     }
     {
       id = "suspend";

@@ -284,9 +284,60 @@ run_case success
 git -C "$checkout" commit -q --allow-empty -m 'test: subsequently installed revision'
 git -C "$checkout" rev-parse HEAD >"$installed"
 : >"$events"
+run_case success true
+[[ $(git -C "$worktree" rev-parse HEAD) == "$(cat "$installed")" ]]
+[[ $(cat "$events") == $'generate\nvalidate\nvalidate\nbuild' ]]
+jq -e '.state == "available" and .candidateRevision == ""' "$status_file" >/dev/null
+echo 'PASS: newer local master refreshes and builds without signing or switching'
+
+fixture stale-remote
+run_case success
+git -C "$checkout" commit -q --allow-empty -m 'test: remote advances'
+newer=$(git -C "$checkout" rev-parse HEAD)
+"$real_git" -C "$checkout" push -q origin HEAD:master
+git -C "$checkout" reset -q --hard "$(cat "$installed")"
+: >"$events"
+run_case success
+[[ $(git -C "$worktree" rev-parse HEAD) == "$newer" ]]
+if rg -q '^(commit|push|switch)$' "$events"; then die 'Refresh requested interactive action'; fi
+run_case success true
+[[ ! -e $worktree ]]
+echo 'PASS: stale remote candidate rebuilds and can then be applied'
+
+fixture stale-unexpected
+run_case success
+printf 'keep this\n' >"$worktree/user-work"
+git -C "$checkout" commit -q --allow-empty -m 'test: newer master'
+original=$(git -C "$worktree" rev-parse HEAD)
+run_case failure
+[[ $(git -C "$worktree" rev-parse HEAD) == "$original" ]]
+[[ $(cat "$worktree/user-work") == 'keep this' ]]
+echo 'PASS: stale candidate with unrelated edits is not reset'
+
+fixture stale-signed
+run_case success
+failure=push
 run_case failure true
+original=$(git -C "$worktree" rev-parse HEAD)
+git -C "$checkout" commit -q --allow-empty -m 'test: newer master'
+"$real_git" -C "$checkout" push -q origin HEAD:master
+failure=none
+: >"$events"
+run_case failure
+[[ $(git -C "$worktree" rev-parse HEAD) == "$original" ]]
 [[ ! -s $events ]]
-echo 'PASS: interactive handoff rechecks installed ancestry before signing'
+echo 'PASS: stale unpublished signed candidate is retained'
+
+fixture refresh-generation-retry
+run_case success
+git -C "$checkout" commit -q --allow-empty -m 'test: newer master'
+failure=generation
+run_case failure
+[[ ! -e $(git -C "$worktree" rev-parse --git-path nixconf-built) ]]
+failure=none
+run_case success
+jq -e '.state == "available"' "$status_file" >/dev/null
+echo 'PASS: failed refresh generation retries without reusing the old build'
 
 fixture unchanged
 failure=unchanged

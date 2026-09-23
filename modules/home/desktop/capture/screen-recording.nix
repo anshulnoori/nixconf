@@ -20,7 +20,6 @@ _: {
         ripgrep
         systemd
         uwsm
-        v4l-utils
       ];
       text = ''
         unit="''${CAPTURE_SCREENRECORD_UNIT:-nixconf-screenrecord.service}"
@@ -124,65 +123,17 @@ _: {
             "''${BASH_REMATCH[2]}"
         }
 
-        start_webcam() {
-          local candidate device_name webcam_device=
-          shopt -s nullglob
-          for candidate in /dev/video*; do
-            device_name="$(< "/sys/class/video4linux/''${candidate##*/}/name")" || true
-            if rg --ignore-case --quiet 'OBS Cam|loopback' <<< "$device_name"; then
-              continue
-            fi
-            if v4l2-ctl --all --device "$candidate" 2>/dev/null | rg --quiet 'Video Capture'; then
-              webcam_device="$candidate"
-              break
-            fi
-          done
-          shopt -u nullglob
-
-          if [[ -z "$webcam_device" ]]; then
-            notify "No webcam found"
-            return 1
-          fi
-
-          ffplay \
-            -f v4l2 \
-            -framerate 30 \
-            -i "$webcam_device" \
-            -vf 'scale=360:-1' \
-            -window_title WebcamOverlay \
-            -noborder \
-            -fflags nobuffer \
-            -flags low_delay \
-            -an \
-            -loglevel quiet \
-            >/dev/null 2>&1 &
-          webcam_pid=$!
-          sleep 1
-          if (( stopping )); then
-            kill "$webcam_pid" 2>/dev/null || true
-            wait "$webcam_pid" 2>/dev/null || true
-            return 1
-          fi
-          if ! kill -0 "$webcam_pid" 2>/dev/null; then
-            wait "$webcam_pid" || true
-            notify "Webcam unavailable" "$webcam_device could not be opened"
-            return 1
-          fi
-        }
-
         run_recording_unit() {
           local mode="$1" target="$2" output="$3"
-          local recorder_pid webcam_pid status stopping
+          local recorder_pid status stopping
           local capture_args audio_args
           recorder_pid=
-          webcam_pid=
           status=0
           stopping=0
 
           stop_children() {
             stopping=1
             [[ -z "''${recorder_pid:-}" ]] || kill -INT "$recorder_pid" 2>/dev/null || true
-            [[ -z "$webcam_pid" ]] || kill "$webcam_pid" 2>/dev/null || true
           }
           trap stop_children INT TERM
 
@@ -198,10 +149,6 @@ _: {
             no-audio) ;;
             desktop-audio) audio_args=(-a default_output -ac aac) ;;
             microphone) audio_args=(-a 'default_output|default_input' -ac aac) ;;
-            webcam)
-              audio_args=(-a 'default_output|default_input' -ac aac)
-              start_webcam || return 1
-              ;;
           esac
 
           (( stopping == 0 )) || return 0
@@ -231,10 +178,6 @@ _: {
           done
           trap - INT TERM
 
-          [[ -z "$webcam_pid" ]] || {
-            kill "$webcam_pid" 2>/dev/null || true
-            wait "$webcam_pid" 2>/dev/null || true
-          }
           refresh_waybar
 
           if (( status == 0 )) && [[ -s "$output" ]] &&
@@ -311,11 +254,11 @@ _: {
             fi
             systemctl --user stop "$unit"
             ;;
-          no-audio | desktop-audio | microphone | webcam) start_recording "$1" ;;
+          no-audio | desktop-audio | microphone) start_recording "$1" ;;
           __run) shift; run_recording_unit "$@" ;;
           __notify) shift; notify_recording_saved "$1" ;;
           *)
-            printf 'Usage: capture-screenrecord <no-audio|desktop-audio|microphone|webcam|stop|active|inactive>\n' >&2
+            printf 'Usage: capture-screenrecord <no-audio|desktop-audio|microphone|stop|active|inactive>\n' >&2
             exit 2
             ;;
         esac
