@@ -1,8 +1,6 @@
 {inputs, ...}: {
   flake.modules.homeManager.desktop = {pkgs, ...}: let
-    notionCalendar = pkgs.callPackage ../../../packages/notion-calendar.nix {
-      notionCalendar = inputs.monorepo.packages.${pkgs.stdenv.hostPlatform.system}.notion-calendar;
-    };
+    notionCalendar = inputs.monorepo.packages.${pkgs.stdenv.hostPlatform.system}.notion-calendar;
   in {
     home.packages = [notionCalendar];
 

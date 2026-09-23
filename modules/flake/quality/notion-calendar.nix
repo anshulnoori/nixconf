@@ -7,9 +7,7 @@
   }: let
     home = inputs.self.nixosConfigurations.t1.config.home-manager.users.mvs;
     mimeDefaults = home.xdg.mimeApps.defaultApplications;
-    notionCalendar = pkgs.callPackage ../../../packages/notion-calendar.nix {
-      notionCalendar = inputs.monorepo.packages.${system}.notion-calendar;
-    };
+    notionCalendar = inputs.monorepo.packages.${system}.notion-calendar;
     mainBar = home.programs.waybar.settings.mainBar;
     notionCalendarWaybar = mainBar."tray#notion-calendar";
     notionCalendarIndex = lib.lists.findFirstIndex (module: module == "tray#notion-calendar") null mainBar.modules-right;

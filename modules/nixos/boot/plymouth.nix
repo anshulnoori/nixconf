@@ -14,57 +14,7 @@
         magick ${source} -colorspace gray -negate \
           +level-colors '#${colors.base00}','#${colors.base05}' "$out"
       '';
-      hyprlockBlurSource = pkgs.applyPatches {
-        name = "hyprlock-blur-headless-source";
-        src = "${inputs.monorepo}/src/hyprlock-blur";
-        patches = [./hyprlock-blur-headless.patch];
-      };
-      hyprlockBlur = pkgs.stdenv.mkDerivation {
-        pname = "hyprlock-blur-headless";
-        version = "1.0.0";
-        src = hyprlockBlurSource;
-        nativeBuildInputs = [
-          inputs.monorepo.inputs.zig.packages.${pkgs.stdenv.hostPlatform.system}."0.16.0"
-          pkgs.makeWrapper
-          pkgs.patchelf
-        ];
-        dontConfigure = true;
-        dontPatchELF = true;
-        dontStrip = true;
-        buildPhase = ''
-          runHook preBuild
-          export ZIG_LOCAL_CACHE_DIR="$TMPDIR/zig-local-cache"
-          export ZIG_GLOBAL_CACHE_DIR="$TMPDIR/zig-global-cache"
-          zig build-exe \
-            --name hyprlock-blur-renderer \
-            -femit-bin=hyprlock-blur-renderer \
-            -target x86_64-linux-gnu.2.42 \
-            -O ReleaseSafe \
-            -fstrip \
-            -I ${pkgs.libpng.dev}/include \
-            -I ${pkgs.libglvnd.dev}/include \
-            -lc \
-            ${pkgs.libglvnd}/lib/libEGL.so \
-            ${pkgs.libglvnd}/lib/libGLESv2.so \
-            ${pkgs.libpng}/lib/libpng16.so \
-            -Mroot=main.zig
-          runHook postBuild
-        '';
-        installPhase = ''
-          runHook preInstall
-          install -Dm755 hyprlock-blur-renderer "$out/bin/hyprlock-blur-renderer"
-          patchelf \
-            --set-interpreter ${pkgs.stdenv.cc.bintools.dynamicLinker} \
-            --set-rpath ${lib.makeLibraryPath [pkgs.libglvnd pkgs.libpng pkgs.stdenv.cc.cc.lib]} \
-            "$out/bin/hyprlock-blur-renderer"
-          makeWrapper "$out/bin/hyprlock-blur-renderer" "$out/bin/hyprlock-blur" \
-            --set LIBGL_ALWAYS_SOFTWARE true \
-            --set LIBGL_DRIVERS_PATH ${pkgs.mesa}/lib/dri \
-            --set __EGL_VENDOR_LIBRARY_FILENAMES ${pkgs.mesa}/share/glvnd/egl_vendor.d/50_mesa.json \
-            --set MESA_SHADER_CACHE_DISABLE true
-          runHook postInstall
-        '';
-      };
+      hyprlockBlur = inputs.monorepo.packages.${pkgs.stdenv.hostPlatform.system}.hyprlock-blur;
       toPlymouthColor = color:
         lib.concatMapStringsSep ", " (
           offset:
@@ -283,7 +233,7 @@
           themeDir="$out/share/plymouth/themes/${themeName}"
           mkdir -p "$themeDir"
 
-          hyprlock-blur \
+          LIBGL_ALWAYS_SOFTWARE=true MESA_SHADER_CACHE_DISABLE=true hyprlock-blur \
             --shaders ${pkgs.hyprlock.src}/src/renderer/Shaders.hpp \
             --size 3840 2160 \
             ${wallpaper} \
