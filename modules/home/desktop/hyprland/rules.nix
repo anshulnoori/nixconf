@@ -23,6 +23,10 @@ _: {
         stay_focused = true;
       }
       {
+        match.class = "^gcr-prompter$";
+        stay_focused = true;
+      }
+      {
         match = {
           class = "^1password$";
           float = true;
