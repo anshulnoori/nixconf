@@ -11,6 +11,12 @@ _: {
       pulse.enable = true;
       jack.enable = true;
       wireplumber.enable = true;
+      extraConfig.pipewire-pulse."20-switch-on-connect"."pulse.cmd" = [
+        {
+          cmd = "load-module";
+          args = "module-switch-on-connect";
+        }
+      ];
       extraConfig.pipewire."10-default-clock"."context.properties" = {
         "default.clock.rate" = 48000;
         "default.clock.quantum" = 128;

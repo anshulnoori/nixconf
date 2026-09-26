@@ -72,6 +72,10 @@ _: {
             --anchor-canvas c \
             --anchor-text c \
             --random-effect \
+            --include-effects beams binarypath bouncyballs burn decrypt expand \
+              fireworks highlight laseretch matrix middleout overflow print rain \
+              rings scattered slice slide smoke spotlights swarm sweep synthgrid \
+              vhstape wipe \
             --no-eol \
             --no-restore-cursor &
           effect_pid=$!
