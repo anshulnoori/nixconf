@@ -1,0 +1,103 @@
+diff --git a/src/config/shared/actions/ConfigActions.cpp b/src/config/shared/actions/ConfigActions.cpp
+--- a/src/config/shared/actions/ConfigActions.cpp
++++ b/src/config/shared/actions/ConfigActions.cpp
+@@ -351,6 +351,9 @@ ActionResult Actions::moveToWorkspace(PHLWORKSPACE ws, bool silent, std::optiona
+             else
+                 g_pInputManager->refocus();
+         }
++
++        if (!POLDWS->isVisible() && ws->isVisible() && Desktop::viewState()->query().forceFocus().runWindow() == window)
++            Desktop::focusState()->fullWindowFocus(window, Desktop::FOCUS_REASON_KEYBIND);
+     } else {
+         PHLMONITOR pMonitor = nullptr;
+
+diff --git a/src/desktop/rule/windowRule/WindowRuleApplicator.cpp b/src/desktop/rule/windowRule/WindowRuleApplicator.cpp
+index d1436d6..ac3968b 100644
+--- a/src/desktop/rule/windowRule/WindowRuleApplicator.cpp
++++ b/src/desktop/rule/windowRule/WindowRuleApplicator.cpp
+@@ -595,6 +595,11 @@ void CWindowRuleApplicator::propertiesChanged(std::underlying_type_t<eRuleProper
+         needsRelayout  = needsRelayout || RES.needsRelayout;
+     }
+ 
++    if (!stayFocused().valueOrDefault())
++        m_window->m_focusLockOrder = 0;
++    else if (!m_window->m_focusLockOrder)
++        m_window->m_focusLockOrder = ++Desktop::View::CWindow::s_nextFocusLockOrder;
++
+     m_window->updateWindowData();
+     m_window->presentation().updateDecorations();
+     m_window->presentation().refreshValues();
+diff --git a/src/desktop/state/ViewQuery.cpp b/src/desktop/state/ViewQuery.cpp
+index 3238c74..20668dd 100644
+--- a/src/desktop/state/ViewQuery.cpp
++++ b/src/desktop/state/ViewQuery.cpp
+@@ -240,20 +240,22 @@ PHLWINDOW CViewQuery::urgentWindow() const {
+ }
+ 
+ PHLWINDOW CViewQuery::forceFocusWindow() const {
++    PHLWINDOW newest;
+     for (auto const& w : m_tracker.windows()) {
+         if (!windowMatchesCommon(w))
+             continue;
+ 
+-        if (!w->mapped() || !w->acceptsInput() || !w->m_workspace || !w->m_workspace->isVisible())
++        if (!w->mapped() || w->isHidden() || !w->acceptsInput() || !w->m_workspace || !w->m_workspace->isVisible())
+             continue;
+ 
+         if (!w->m_ruleApplicator->stayFocused().valueOrDefault())
+             continue;
+ 
+-        return w;
++        if (!newest || w->m_focusLockOrder > newest->m_focusLockOrder)
++            newest = w;
+     }
+ 
+-    return nullptr;
++    return newest;
+ }
+ 
+ PHLVIEW CViewQuery::bySurface() const {
+diff --git a/src/desktop/view/window/Window.cpp b/src/desktop/view/window/Window.cpp
+index f3822b9..d31ce38 100644
+--- a/src/desktop/view/window/Window.cpp
++++ b/src/desktop/view/window/Window.cpp
+@@ -1458,6 +1458,9 @@ void CWindow::mapWindow() {
+         m_state &= ~WINDOW_STATE_NO_INITIAL_FOCUS;
+     }
+ 
++    if (m_ruleApplicator->stayFocused().valueOrDefault())
++        m_focusLockOrder = ++s_nextFocusLockOrder;
++
+     // check LS focus grab
+     const auto PFORCEFOCUS  = Desktop::viewState()->query().forceFocus().runWindow();
+     const auto PLSFROMFOCUS = Desktop::viewState()->query().type(VIEW_TYPE_LAYER_SURFACE).surface(Desktop::focusState()->surface()).runLayer();
+@@ -1648,11 +1648,15 @@ void CWindow::unmapWindow() {
+ 
+     // do this after onWindowRemoved because otherwise it'll think the window is invalid
+     m_isMapped = false;
++    m_focusLockOrder = 0;
+ 
+     // refocus on a new window if needed
+     if (wasLastWindow) {
+         static auto FOCUSONCLOSE = CConfigValue<Config::INTEGER>("input:focus_on_close");
+-        PHLWINDOW   candidate    = nextInGroup;
++        PHLWINDOW   candidate    = Desktop::viewState()->query().forceFocus().runWindow();
++
++        if (!candidate)
++            candidate = nextInGroup;
+ 
+         if (!candidate) {
+             if (*FOCUSONCLOSE == 1)
+diff --git a/src/desktop/view/window/Window.hpp b/src/desktop/view/window/Window.hpp
+index 34b434b..604efb7 100644
+--- a/src/desktop/view/window/Window.hpp
++++ b/src/desktop/view/window/Window.hpp
+@@ -172,6 +172,8 @@ namespace Desktop::View {
+ 
+         // Special render data, rules, etc
+         UP<Desktop::Rule::CWindowRuleApplicator> m_ruleApplicator;
++        static inline uint64_t s_nextFocusLockOrder = 0;
++        uint64_t m_focusLockOrder = 0;
+ 
+         // for toplevel monitor events
+         MONITORID m_lastSurfaceMonitorID = -1;
