@@ -104,6 +104,8 @@ _: {
         for monitor in "''${monitors[@]}"; do
           hyprctl dispatch "hl.dsp.focus({ monitor = \"$monitor\" })" >/dev/null
           kitty --class org.nixconf.screensaver \
+            --start-as=fullscreen \
+            --override remember_window_size=no \
             --override font_size=12 \
             --override window_padding_width=0 \
             ${runner}/bin/nixconf-screensaver-run &
