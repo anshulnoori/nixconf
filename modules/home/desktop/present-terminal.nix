@@ -35,6 +35,7 @@ _: {
         shift
 
         exec setsid uwsm app -- kitty --class TUI.float --title "$title" \
+          --override remember_window_size=no \
           ${terminalRunner}/bin/terminal-presentation "$@"
       '';
     };
