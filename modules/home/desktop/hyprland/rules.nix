@@ -15,6 +15,12 @@ _: {
         center = 1;
       }
       {
+        match.title = "^Picture in picture$";
+        float = true;
+        pin = true;
+        keep_aspect_ratio = true;
+      }
+      {
         match.modal = true;
         stay_focused = true;
       }
