@@ -17,6 +17,11 @@
     kernelModules = ["kvm-amd"];
   };
 
+  services.hardware.openrgb = {
+    enable = true;
+    package = pkgs.openrgb.withPlugins [pkgs.openrgb-plugin-effects];
+  };
+
   # Keychron Launcher needs raw HID access. Tag before 73-seat-late.rules
   # so logind grants access only to the active local session.
   services.udev.packages = [
