@@ -26,17 +26,23 @@ _: {
         pkgs.uwsm
       ];
       text = ''
-        if (( $# < 2 )); then
-          printf 'Usage: present-terminal <title> <command> [args...]\n' >&2
-          exit 2
+        runner=(${terminalRunner}/bin/terminal-presentation)
+        if [[ "''${1-}" == --close-on-exit ]]; then
+          runner=()
+          shift
         fi
 
-        title="$1"
-        shift
+          if (( $# < 2 )); then
+            printf 'Usage: present-terminal [--close-on-exit] <title> <command> [args...]\n' >&2
+            exit 2
+          fi
 
-        exec setsid uwsm app -- kitty --class TUI.float --title "$title" \
-          --override remember_window_size=no \
-          ${terminalRunner}/bin/terminal-presentation "$@"
+          title="$1"
+          shift
+
+          exec setsid uwsm app -- kitty --class TUI.float --title "$title" \
+            --override remember_window_size=no \
+            "''${runner[@]}" "$@"
       '';
     };
   in {

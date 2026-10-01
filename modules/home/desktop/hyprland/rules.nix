@@ -10,6 +10,15 @@ _: {
         opacity = 0.93;
       }
       {
+        match = {
+          class = "^brave-origin$";
+          initial_title = "^Untitled - Brave Origin$";
+        };
+        float = true;
+        center = 1;
+        size = [600 720];
+      }
+      {
         match.title = "^(Open|Save) (File|Folder)$";
         float = true;
         center = 1;

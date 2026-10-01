@@ -1,6 +1,6 @@
 _: {
   flake.modules.homeManager.desktop.programs.waybar.settings.mainBar = let
-    floatingTerminal = command: "present-terminal ${command} ${command}";
+    floatingTerminal = command: "present-terminal --close-on-exit ${command} ${command}";
   in {
     cpu = {
       interval = 5;
