@@ -48,6 +48,33 @@
         exec "$bin_dir/amp" "$@"
       '';
     };
+
+    boatCliBinary = pkgs.fetchurl {
+      url = "https://github.com/ariana-dot-dev/agent-server/releases/download/boat-cli-v1.0.36/boat-linux-x64";
+      hash = "sha256-R8sr5CRCuiXVwc9YbZfcMppHe3lXSnEn8ta00inwgLw=";
+    };
+
+    boatCli = pkgs.writeShellApplication {
+      name = "boat";
+      runtimeInputs = [pkgs.coreutils pkgs.util-linux];
+      text = ''
+        bin_dir="$HOME/.ascii/bin"
+        mkdir -p "$bin_dir"
+
+        (
+          flock 9
+          if [[ ! -e "$bin_dir/boat" ]]; then
+            temporary=$(mktemp "$bin_dir/.boat-bootstrap.XXXXXX")
+            trap 'rm -f "$temporary"' EXIT
+            install -m 0755 ${boatCliBinary} "$temporary"
+            mv "$temporary" "$bin_dir/boat"
+          fi
+        ) 9>"$HOME/.ascii/.boat-bootstrap.lock"
+
+        export PATH="$bin_dir:$PATH"
+        exec "$bin_dir/boat" "$@"
+      '';
+    };
   in {
     packages =
       {
@@ -65,6 +92,7 @@
       }
       // lib.optionalAttrs (system == "x86_64-linux") {
         amp-cli = ampCli;
+        boat-cli = boatCli;
       };
 
     apps = {
