@@ -1,6 +1,6 @@
 _: {
   flake.modules.homeManager.desktop.programs.waybar.settings.mainBar = let
-    floatingTerminal = command: "kitty --class TUI.float ${command}";
+    floatingTerminal = command: "present-terminal ${command} ${command}";
   in {
     cpu = {
       interval = 5;
