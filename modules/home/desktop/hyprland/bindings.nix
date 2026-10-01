@@ -22,7 +22,7 @@ _: {
     hl.bind("SUPER + RETURN", hl.dsp.exec_cmd("wlr-which-key --initial-keys Return"))
     hl.bind("SUPER + SPACE", hl.dsp.exec_cmd("wlr-which-key --initial-keys space"))
     hl.bind("SUPER + ALT + SPACE", hl.dsp.exec_cmd("wlr-which-key --initial-keys Alt+space"))
-    hl.bind("SUPER + Q", hl.dsp.exec_cmd("wlr-which-key --initial-keys w"))
+    hl.bind("SUPER + Q", hl.dsp.exec_cmd("wlr-which-key --initial-keys q"))
     hl.bind("SUPER + L", hl.dsp.exec_cmd("wlr-which-key --initial-keys l"))
     hl.bind("SUPER + J", hl.dsp.exec_cmd("wlr-which-key --initial-keys j"))
     hl.bind("SUPER + K", hl.dsp.exec_cmd("wlr-which-key --initial-keys k"))

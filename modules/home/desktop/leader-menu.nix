@@ -78,7 +78,7 @@ _: {
               cmd = "kitty";
             }
             {
-              key = "w";
+              key = "q";
               desc = "Close window";
               cmd = "hyprctl dispatch 'hl.dsp.window.close()'";
             }
