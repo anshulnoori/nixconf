@@ -30,6 +30,12 @@ _: {
       stylePath = swayosdStyle;
     };
 
+    systemd.user.services.swayosd.Unit = {
+      Wants = ["pipewire-pulse.service"];
+      After = ["pipewire-pulse.service"];
+      PartOf = ["pipewire-pulse.service"];
+    };
+
     xdg.configFile."swayosd/config.toml".source = toml.generate "swayosd-config.toml" {
       server = {
         show_percentage = true;
