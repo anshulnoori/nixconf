@@ -333,7 +333,6 @@ theme once in Blender's preferences.
 | Compatibility runtime | Proton-GE      | Exposed declaratively; select as Steam's default once |
 | Minecraft             | Prism Launcher | Per-instance Java and mod management                  |
 | Performance overlay   | MangoHud       | FPS, frame time, and hardware metrics                 |
-| Overlay editor        | GOverlay       | Interactive MangoHud configuration                    |
 | Performance policy    | GameMode       | Game process and I/O tuning; fixed CPU policy stays   |
 | Nested compositor     | Gamescope      | Resolution, scaling, and fullscreen control           |
 | Prefix management     | Protontricks   | Per-game Wine and Proton changes                      |

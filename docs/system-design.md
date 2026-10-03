@@ -342,10 +342,10 @@ measurements; the user may later copy a proven runtime curve into BIOS manually.
 - Nix exposes Proton-GE to Steam. Select it once as Steam's default
   compatibility runtime; declarative activation does not rewrite Steam's VDF
   state.
-- MangoHud provides runtime metrics. GOverlay provides its interactive
-  configuration editor; Home Manager does not own the complete MangoHud
-  configuration. Home activation updates only the shared Stylix palette and
-  typography keys in GOverlay's mutable MangoHud configuration.
+- MangoHud provides runtime metrics. Home Manager does not own the complete
+  MangoHud configuration. Home activation updates only the shared Stylix
+  palette and typography keys in the mutable `MangoHud.conf`; edit other keys
+  by hand.
 - GameMode, Gamescope, and Protontricks are installed.
 - Prism Launcher remains the Minecraft launcher.
 - Steam libraries and all Prism Launcher data use `/home/mvs/games`.

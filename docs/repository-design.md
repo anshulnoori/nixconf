@@ -83,7 +83,7 @@ modules/
     ├── messaging/          Signal, Discord, WhatsApp, and BlueBubbles
     ├── productivity/       Todoist and Obsidian
     ├── media/              Spotify, mpv, yt-dlp, and Blender
-    ├── gaming/             MangoHud, GOverlay, and Prism Launcher
+    ├── gaming/             MangoHud and Prism Launcher
     ├── containers/         container clients and integrations
     ├── update.nix          update timer, notifications, and command
     └── ai/                 Amp
