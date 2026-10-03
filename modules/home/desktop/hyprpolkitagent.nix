@@ -16,8 +16,10 @@ _: {
 
     wayland.windowManager.hyprland.settings.window_rule = [
       {
+        # The dialog has an empty app ID, so match its title.
         match.title = "^Hyprland Polkit Agent$";
         float = true;
+        stay_focused = true;
         rounding = 0;
         no_anim = true;
         move = ["(monitor_w-window_w-20)" "60"];

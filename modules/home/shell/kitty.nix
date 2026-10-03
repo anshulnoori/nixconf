@@ -16,6 +16,8 @@ _: {
         cursor_blink_interval = 0;
         enable_audio_bell = false;
         confirm_os_window_close = 0;
+        # Otherwise a saved maximized state requests maximize on new windows.
+        remember_window_size = "no";
         tab_bar_edge = "bottom";
         tab_bar_style = "powerline";
         tab_powerline_style = "slanted";

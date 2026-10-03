@@ -43,7 +43,7 @@ close_window() {
 }
 
 cleanup() {
-  for class in lifo-lock-a lifo-lock-b lifo-lock-c lifo-ordinary; do
+  for class in lifo-lock-a lifo-lock-b lifo-lock-c lifo-ordinary lifo-early lifo-late; do
     close_window "$class" || true
   done
 }
@@ -51,12 +51,17 @@ trap cleanup EXIT
 
 hyprctl eval 'hl.window_rule({match={class="^lifo-.*$"},float=true,size={300,200}})' >/dev/null
 hyprctl eval 'hl.window_rule({match={class="^lifo-lock-.*$"},stay_focused=true})' >/dev/null
+open_window lifo-early
+expect_focus lifo-early
 open_window lifo-lock-a
 expect_focus lifo-lock-a
 open_window lifo-lock-b
 expect_focus lifo-lock-b
 open_window lifo-lock-c
 expect_focus lifo-lock-c
+open_window lifo-late
+expect_focus lifo-lock-c
+close_window lifo-late
 hyprctl dispatch 'hl.dsp.window.move({workspace="2",follow=false,window="class:lifo-lock-c"})' >/dev/null
 if hyprctl monitors -j | jq -e 'any(.[]; .activeWorkspace.id == 2)' >/dev/null; then
   printf 'FAIL workspace 2 must be invisible for this test\n' >&2
@@ -74,7 +79,11 @@ expect_focus lifo-lock-b
 close_window lifo-lock-b
 expect_focus lifo-lock-a
 close_window lifo-lock-a
-expect_focus lifo-ordinary
+expect_focus lifo-early
+if hyprctl clients -j | jq -e 'any(.[]; (.class | startswith("lifo-")) and .fullscreen != 0)' >/dev/null; then
+  printf 'FAIL a test window opened maximized or fullscreen\n' >&2
+  exit 1
+fi
 open_window lifo-lock-b
 expect_focus lifo-lock-b
 open_window lifo-lock-a

@@ -29,13 +29,10 @@ _: {
         pin = true;
         keep_aspect_ratio = true;
       }
+      # Authentication dialogs keep focus. The patched Hyprland gives focus
+      # to the newest one, so a nested prompt (1Password, then polkit) works.
       {
         match.modal = true;
-        stay_focused = true;
-      }
-      {
-        # hyprpolkitagent maps its dialog with an empty app ID.
-        match.title = "^Hyprland Polkit Agent$";
         stay_focused = true;
       }
       {
