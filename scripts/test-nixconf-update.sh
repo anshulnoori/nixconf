@@ -246,6 +246,14 @@ run_case failure true
 rg -Fx 'Signing failed.' "$scratch/notification"
 echo 'PASS: missing signing credentials never block the background build; only the interactive handoff signs'
 
+fixture unbuilt-apply
+run_case success
+rm -f "$(git -C "$worktree" rev-parse --git-path nixconf-built)"
+run_case failure true
+rg -Fx 'Signing failed. Candidate has not been built, or changed since building. Run the update service first.' "$scratch/notification"
+jq -e '.message | endswith("Run the update service first.")' "$status_file" >/dev/null
+echo 'PASS: refusals name their reason, not only the phase'
+
 for failure_case in switch cancel; do
   fixture "$failure_case-retry"
   original=$(cat "$installed")

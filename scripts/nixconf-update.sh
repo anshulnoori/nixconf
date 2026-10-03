@@ -38,12 +38,16 @@ failed() {
     candidate=$(jq -r '.candidateRevision // ""' "$status_file")
     system=$(jq -r '.candidateSystem // ""' "$status_file")
   fi
-  write_status failed "${phase^} failed." "$candidate" "$system"
-  notify-send --app-name=nixconf-update --expire-time=10000 'Update Failed' "${phase^} failed." || true
+  # Name the reason when a check refused, not only the phase it refused in.
+  local message="${phase^} failed.${failure_reason:+ $failure_reason}"
+  write_status failed "$message" "$candidate" "$system"
+  notify-send --app-name=nixconf-update --expire-time=10000 'Update Failed' "$message" || true
   exit "$code"
 }
 
+failure_reason=
 die() {
+  failure_reason="$*"
   printf '%s\n' "$*" >&2
   return 1
 }
