@@ -7,6 +7,8 @@ _: {
   }: let
     colors = config.lib.stylix.colors;
     lockCommand = "systemctl --user start hyprlock.service";
+    # Lua-config Hyprland only accepts Lua dispatchers.
+    dpms = state: "hyprctl dispatch 'hl.dsp.dpms({ action = \"${state}\" })'";
   in {
     stylix.targets.hyprlock.enable = false;
 
@@ -87,7 +89,7 @@ _: {
       enable = true;
       settings = {
         general = {
-          after_sleep_cmd = "hyprctl dispatch dpms on";
+          after_sleep_cmd = dpms "on";
           before_sleep_cmd = lockCommand;
           ignore_dbus_inhibit = false;
           lock_cmd = lockCommand;
@@ -104,8 +106,8 @@ _: {
           }
           {
             timeout = 1200;
-            on-timeout = "hyprctl dispatch dpms off";
-            on-resume = "hyprctl dispatch dpms on";
+            on-timeout = dpms "off";
+            on-resume = dpms "on";
           }
         ];
       };
