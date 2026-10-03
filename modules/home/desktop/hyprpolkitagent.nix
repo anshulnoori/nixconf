@@ -1,12 +1,31 @@
 _: {
-  flake.modules.homeManager.desktop = {pkgs, ...}: {
-    services.hyprpolkitagent.enable = true;
-
-    systemd.user.services.hyprpolkitagent.Service.Environment = [
-      "QT_QPA_PLATFORMTHEME=qt6ct"
-      "QT_PLUGIN_PATH=${pkgs.qt6Packages.qt6ct}/lib/qt-6/plugins"
-      "QT_SCALE_FACTOR=0.85"
-    ];
+  flake.modules.homeManager.desktop = {
+    config,
+    pkgs,
+    ...
+  }: let
+    colors = config.lib.stylix.colors;
+    # Style the prompt like a mako notification; see notifications.nix.
+    dialog = pkgs.replaceVars ./hyprpolkitagent.qml {
+      fontFamily = config.stylix.fonts.monospace.name;
+      background = "#${colors.base00}";
+      field = "#${colors.base01}";
+      muted = "#${colors.base03}";
+      text = "#${colors.base05}";
+      error = "#${colors.base08}";
+      border = "#${colors.base0D}";
+    };
+  in {
+    services.hyprpolkitagent = {
+      enable = true;
+      package = pkgs.hyprpolkitagent.overrideAttrs (old: {
+        postPatch =
+          (old.postPatch or "")
+          + ''
+            cp ${dialog} qml/main.qml
+          '';
+      });
+    };
 
     xdg.configFile."hypr/application-style.conf".text = ''
       roundness = 0
@@ -20,9 +39,13 @@ _: {
         match.title = "^Hyprland Polkit Agent$";
         float = true;
         stay_focused = true;
+        # The QML draws mako's border; place it where mako draws notifications.
+        border_size = 0;
+        no_shadow = true;
+        opaque = true;
         rounding = 0;
         no_anim = true;
-        move = ["(monitor_w-window_w-20)" "60"];
+        move = ["(monitor_w-window_w-18)" "44"];
       }
     ];
   };
