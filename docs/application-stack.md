@@ -287,7 +287,6 @@ bookmark service rather than copying browser profile files.
 | iMessage         | BlueBubbles client                           | Connect only to the Mac over Tailscale                       |
 | Mail             | Custom client                                | Existing application                                         |
 | Calendar         | Notion Calendar Electron package             | Personal distribution; Waybar integration over a Unix socket |
-| Tasks            | Todoist                                      | Native client or Brave Origin app selected during packaging  |
 | Notes            | Obsidian                                     | Unfree package allowed explicitly                            |
 
 ### iMessage bridge

@@ -28,7 +28,6 @@
           "spotify"
           "steam"
           "steam-unwrapped"
-          "todoist-electron"
         ];
     };
   };

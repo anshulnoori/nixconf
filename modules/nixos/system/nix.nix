@@ -42,7 +42,6 @@
         "steam"
         "steam-unwrapped"
         "synergy-dragon"
-        "todoist-electron"
       ];
   };
 }

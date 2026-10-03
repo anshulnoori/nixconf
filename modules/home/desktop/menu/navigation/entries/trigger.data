@@ -3,30 +3,6 @@
   text = "Trigger";
   children = [
     {
-      id = "reminder";
-      text = "Reminder";
-      children = [
-        {
-          id = "add";
-          text = "Add reminder";
-          keywords = ["todo" "task" "quick add"];
-          action = "nixconf-reminder add";
-        }
-        {
-          id = "upcoming";
-          text = "Upcoming";
-          keywords = ["todo" "tasks"];
-          action = "nixconf-reminder upcoming";
-        }
-        {
-          id = "todoist";
-          text = "Todoist";
-          keywords = ["todo" "tasks"];
-          action = "nixconf-reminder open";
-        }
-      ];
-    }
-    {
       id = "capture";
       text = "Capture";
       children = [

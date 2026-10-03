@@ -81,7 +81,7 @@ modules/
     ├── desktop/            Hyprland session components and desktop actions
     ├── browsers/           Brave Origin, Browsh, and browser applications
     ├── messaging/          Signal, Discord, WhatsApp, and BlueBubbles
-    ├── productivity/       Todoist and Obsidian
+    ├── productivity/       Obsidian, Notion Calendar, KiCad, and Readest
     ├── media/              Spotify, mpv, yt-dlp, and Blender
     ├── gaming/             MangoHud and Prism Launcher
     ├── containers/         container clients and integrations

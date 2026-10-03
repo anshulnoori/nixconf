@@ -16,7 +16,6 @@
   in {
     checks = lib.optionalAttrs (pkgs.stdenv.hostPlatform.system == "x86_64-linux") {
       notion-calendar = assert lib.assertMsg (builtins.elem notionCalendar home.home.packages) "Notion Calendar is not installed";
-      assert lib.assertMsg (builtins.any (package: lib.getName package == "todoist-electron") home.home.packages) "Todoist is not installed";
       assert lib.assertMsg (mimeDefaults."text/calendar" == ["com.cron.electron.desktop"]) "Notion Calendar is not the calendar default";
       assert lib.assertMsg (mimeDefaults."x-scheme-handler/cron" == ["com.cron.electron.desktop"]) "Notion Calendar is not the cron handler";
       assert lib.assertMsg (notionCalendarWaybar
