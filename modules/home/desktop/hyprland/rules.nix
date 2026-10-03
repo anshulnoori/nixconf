@@ -34,7 +34,8 @@ _: {
         stay_focused = true;
       }
       {
-        match.class = "^hyprpolkitagent$";
+        # hyprpolkitagent maps its dialog with an empty app ID.
+        match.title = "^Hyprland Polkit Agent$";
         stay_focused = true;
       }
       {
@@ -43,7 +44,8 @@ _: {
       }
       {
         match = {
-          class = "^1password$";
+          # The native Wayland client reports its app ID, not the X11 class.
+          class = "^(1password|com\\.onepassword\\.OnePassword)$";
           float = true;
         };
         stay_focused = true;
