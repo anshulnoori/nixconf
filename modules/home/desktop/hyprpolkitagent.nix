@@ -47,18 +47,6 @@ _: {
         no_anim = true;
         move = ["(monitor_w-window_w-18)" "44"];
       }
-      {
-        # sudo's askpass prompt (modules/nixos/desktop/sudo-askpass.nix).
-        match.class = "^sudo-askpass$";
-        float = true;
-        stay_focused = true;
-        border_size = 0;
-        no_shadow = true;
-        opaque = true;
-        rounding = 0;
-        no_anim = true;
-        move = ["(monitor_w-window_w-18)" "44"];
-      }
     ];
   };
 }
