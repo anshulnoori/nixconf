@@ -7,6 +7,8 @@
       experimental-features = [
         "nix-command"
         "flakes"
+        # The monorepo input declares `inputs.self.submodules`.
+        "flake-self-attrs"
       ];
       extra-substituters = [
         "https://attic.xuyh0120.win/lantian"
