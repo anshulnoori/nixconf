@@ -8,7 +8,7 @@ _: {
         rev = "9ca09f5f4233517ee986622305d0a4e2faeb5e29";
         hash = "sha256-OIpnu5R5PhxuHGtL/YEPN4pyJsrhrT5VzhJ1WkGJjsI=";
       };
-      patches = (previousAttrs.patches or []) ++ [./luminous-eis-regions.patch ./luminous-eis-scroll.patch];
+      patches = (previousAttrs.patches or []) ++ [./luminous-eis-regions.patch ./luminous-eis-scroll.patch ./luminous-modifier-keys.patch];
       cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
         inherit (finalAttrs) pname version src;
         hash = "sha256-3+h7QqrAz8u4MMycQWJ8ioFSjvzAomEFZBhDSj9xjwU=";

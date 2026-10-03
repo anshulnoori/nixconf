@@ -1,0 +1,17 @@
+diff --git a/src/remotedesktop/state.rs b/src/remotedesktop/state.rs
+index 3448749..89618a3 100644
+--- a/src/remotedesktop/state.rs
++++ b/src/remotedesktop/state.rs
+@@ -256,8 +256,11 @@ impl AppData {
+                     self.virtual_keyboard.modifiers(self.mods, 0, 0, 0)
+                 }
+             }
+-            // Other modifier keys
++            // Other modifier keys. Forward the key before the modifier state,
++            // as a physical keyboard does: compositor bindings on a modifier
++            // tap, such as Super_L, need the key events.
+             Some(modifier) => {
++                self.virtual_keyboard.key(time, keycode as u32, state);
+                 if state == pressed_key {
+                     self.mods |= BitFlags::from_flag(modifier).bits()
+                 } else {
