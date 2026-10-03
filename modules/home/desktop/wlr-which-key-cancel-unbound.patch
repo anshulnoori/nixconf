@@ -1,0 +1,15 @@
+diff --git a/src/main.rs b/src/main.rs
+index 69c5ef5..46862d9 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -431,6 +431,10 @@ impl KeyboardHandler for State {
+                 self.kbd_repeat = Some((Timer::new(repeat.delay, repeat.interval), action.clone()));
+             }
+             self.handle_action(conn, action);
++        } else if !event.keysym.is_modifier_key() {
++            // A key with no binding dismisses the menu instead of being swallowed.
++            // Modifiers alone do not, so chords such as Shift+1 still work.
++            self.handle_action(conn, menu::Action::Quit);
+         }
+     }
+ 
