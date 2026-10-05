@@ -30,7 +30,7 @@ _: {
     programs.wlr-which-key = {
       enable = true;
       package = pkgs.wlr-which-key.overrideAttrs (old: {
-        patches = (old.patches or []) ++ [./wlr-which-key-style.patch ./wlr-which-key-single-instance.patch ./wlr-which-key-groups.patch];
+        patches = (old.patches or []) ++ [./wlr-which-key-style.patch ./wlr-which-key-single-instance.patch ./wlr-which-key-groups.patch ./wlr-which-key-pass-through.patch];
         preCheck =
           (old.preCheck or "")
           + ''
@@ -59,6 +59,8 @@ _: {
         anchor = "bottom-right";
         margin_right = 10;
         margin_bottom = 10;
+        # An unbound key closes the menu and still reaches the focused window.
+        pass_through_unbound = true;
         menu =
           [
             {

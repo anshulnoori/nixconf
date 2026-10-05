@@ -1,0 +1,118 @@
+diff --git a/src/config.rs b/src/config.rs
+index 2876b86..98eb3fd 100644
+--- a/src/config.rs
++++ b/src/config.rs
+@@ -53,6 +53,8 @@ pub struct Config {
+ 
+     pub inhibit_compositor_keyboard_shortcuts: bool,
+     pub auto_kbd_layout: bool,
++    /// Close on an unbound key and replay it to the focused window through Hyprland.
++    pub pass_through_unbound: bool,
+ 
+     pub menu: Vec<Entry>,
+ }
+diff --git a/src/config/compat.rs b/src/config/compat.rs
+index 3cf7f20..3d5b9db 100644
+--- a/src/config/compat.rs
++++ b/src/config/compat.rs
+@@ -111,6 +111,7 @@ impl From<Config> for super::Config {
+             menu: map_entries(value.menu),
+             inhibit_compositor_keyboard_shortcuts: false,
+             auto_kbd_layout: false,
++            pass_through_unbound: false,
+         }
+     }
+ }
+diff --git a/src/main.rs b/src/main.rs
+index 69c5ef5..c08fcd0 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -140,6 +140,8 @@ fn main() -> anyhow::Result<()> {
+         seats,
+         keyboards: Vec::new(),
+         kbd_repeat: None,
++        pass_through: None,
++        pass_through_dispatch: None,
+         outputs: Vec::new(),
+         keyboard_shortcuts_inhibit_manager,
+         keyboard_shortcuts_inhibitors: HashMap::new(),
+@@ -181,6 +183,19 @@ fn main() -> anyhow::Result<()> {
+         }
+     }
+ 
++    if let Some(dispatch) = state.pass_through_dispatch.take() {
++        // Destroy the menu surface first: while it exists it holds keyboard focus, and the
++        // replayed key must reach the window that was focused before the menu opened.
++        // Unmap with a null buffer before destroying, so no stale layer is left behind.
++        state.wl_surface.attach(&mut conn, None, 0, 0);
++        state.wl_surface.commit(&mut conn);
++        state.layer_surface.destroy(&mut conn);
++        state.wl_surface.destroy(&mut conn);
++        conn.blocking_roundtrip()?;
++        drop(instance_lock);
++        let _ = Command::new("hyprctl").args(["dispatch", &dispatch]).stdout(Stdio::null()).status();
++    }
++
+     Ok(())
+ }
+ 
+@@ -189,6 +204,8 @@ struct State {
+     seats: Seats,
+     keyboards: Vec<Keyboard>,
+     kbd_repeat: Option<(Timer, menu::Action)>,
++    pass_through: Option<u32>,
++    pass_through_dispatch: Option<String>,
+     outputs: Vec<Output>,
+     keyboard_shortcuts_inhibit_manager: Option<ZwpKeyboardShortcutsInhibitManagerV1>,
+     keyboard_shortcuts_inhibitors: HashMap<WlSeat, ZwpKeyboardShortcutsInhibitorV1>,
+@@ -431,11 +448,25 @@ impl KeyboardHandler for State {
+                 self.kbd_repeat = Some((Timer::new(repeat.delay, repeat.interval), action.clone()));
+             }
+             self.handle_action(conn, action);
++        } else if self.config.pass_through_unbound && !event.keysym.is_modifier_key() {
++            // Close on the release so the replayed press reaches the previous window whole.
++            self.pass_through = Some(event.keycode.raw());
+         }
+     }
+ 
+-    fn key_released(&mut self, _: &mut Connection<Self>, _: KeyboardEvent) {
++    fn key_released(&mut self, conn: &mut Connection<Self>, event: KeyboardEvent) {
+         self.kbd_repeat = None;
++        if self.pass_through == Some(event.keycode.raw()) {
++            // Replay the unbound key to the window that had focus before the menu opened,
++            // with the modifiers still held, as if the menu had never been shown.
++            let mods = pass_through_mods(&ModifierState::from_xkb_state(&event.xkb_state), &event.xkb_state);
++            // Replay by keysym name, not keycode: the sending keyboard's keymap (for example a
++            // virtual keyboard) need not match the compositor's, so raw codes can mean other keys.
++            let name = xkb::keysym_get_name(event.xkb_state.key_get_one_sym(event.keycode));
++            let dispatch = format!("hl.dsp.send_shortcut({{ mods = \"{mods}\", key = \"{name}\" }})");
++            self.handle_action(conn, menu::Action::Quit);
++            self.pass_through_dispatch = Some(dispatch);
++        }
+     }
+ }
+ 
+@@ -540,6 +571,23 @@ fn poll(fd: RawFd, timeout: Option<Duration>) -> io::Result<()> {
+     }
+ }
+ 
++fn pass_through_mods(mods: &ModifierState, xkb: &xkb::State) -> String {
++    let mut names = Vec::new();
++    if xkb.mod_name_is_active(xkb::MOD_NAME_SHIFT, xkb::STATE_MODS_EFFECTIVE) {
++        names.push("SHIFT");
++    }
++    if mods.mod_ctrl {
++        names.push("CTRL");
++    }
++    if mods.mod_alt {
++        names.push("ALT");
++    }
++    if mods.mod_mod4 {
++        names.push("SUPER");
++    }
++    names.join(" ")
++}
++
+ fn exec(cmd: &str) {
+     let mut proc = Command::new("sh");
+     proc.args(["-c", cmd]);
