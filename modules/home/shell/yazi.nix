@@ -58,7 +58,8 @@ _: {
       [filechooser]
       cmd=${chooser}/bin/yazi-file-chooser
       default_dir=$HOME
-      create_help_file=0
+      # Pre-create the app's suggested file name, so saving is just Enter on it.
+      create_help_file=1
       open_mode=suggested
       save_mode=suggested
     '';
