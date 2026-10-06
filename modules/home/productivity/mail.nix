@@ -1,16 +1,8 @@
-_: {
-  flake.modules.homeManager.desktop = {
-    config,
-    pkgs,
-    ...
-  }: {
-    home.packages = [pkgs.libsecret];
-
-    xdg.desktopEntries.mail = {
-      name = "Mail";
-      exec = "${pkgs.appimage-run}/bin/appimage-run ${config.xdg.dataHome}/mail-desktop/Mail_0.2.0_x86_64.AppImage";
-      terminal = false;
-      categories = ["Network" "Email"];
-    };
+{inputs, ...}: {
+  flake.modules.homeManager.desktop = {pkgs, ...}: {
+    home.packages = [
+      inputs.monorepo.packages.${pkgs.stdenv.hostPlatform.system}.mail-desktop
+      pkgs.libsecret
+    ];
   };
 }
