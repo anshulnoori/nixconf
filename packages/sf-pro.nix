@@ -13,7 +13,6 @@ in
     src = fetchurl {
       inherit (source) url hash;
     };
-    # Current Apple DMGs use APFS, which the older p7zip cannot unpack.
     nativeBuildInputs = [_7zz libarchive];
     unpackPhase = ''
       runHook preUnpack

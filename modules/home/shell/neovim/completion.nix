@@ -2,7 +2,6 @@ _: {
   flake.modules.homeManager.base = {lib, ...}: {
     programs.nvf.settings.vim.autocomplete.blink-cmp = {
       enable = true;
-      # Disable nvf's Tab/select-next overrides; the reference uses Enter acceptance.
       mappings = {
         complete = null;
         close = null;

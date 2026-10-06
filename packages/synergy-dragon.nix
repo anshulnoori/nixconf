@@ -24,7 +24,6 @@ stdenv.mkDerivation {
   pname = "synergy-dragon";
   version = "0.5.0";
 
-  # Keep the installer desktop entry and icons; replace its binaries below.
   src = requireFile {
     name = "synergy-dragon-0.4.0-linux-trixie-x86_64.deb";
     hash = "sha256-rJd+7z62OK1M5a9mfavkR62PO4UziqxhjXfInAAMO0k=";

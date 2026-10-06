@@ -2,7 +2,6 @@
 set -euo pipefail
 shopt -s inherit_errexit
 
-# Run only in the isolated candidate worktree. Nothing here commits or pushes.
 apple_url=https://devimages-cdn.apple.com/design/resources/download/SF-Pro.dmg
 sf_pro_pin=packages/sf-pro-source.json
 workflow=.github/workflows/cache.yml
@@ -32,7 +31,6 @@ github_json() {
 sf_pro_source() {
   local directory=$1 identifier version old_version hash path magic otf=0 ttf=0
   download_apple "$directory/SF-Pro.dmg"
-  # Select one expected installer, never execute it or extract arbitrary DMG paths.
   7zz e -bd -y "-o$directory" "$directory/SF-Pro.dmg" SFProFonts.pkg >&2
   [[ -f $directory/SFProFonts.pkg && ! -L $directory/SFProFonts.pkg ]] || fail 'Expected SFProFonts.pkg is missing.'
   bsdtar -tf "$directory/SFProFonts.pkg" >"$directory/installer-paths"
@@ -193,7 +191,6 @@ refresh_local_sources() (
   sf_pro_source "$directory" >"$directory/sf-pro-source.json"
   action_workflow >"$directory/workflow.yml"
   normalize_devbox_lock "$directory"
-  # Do not modify tracked files until all downloads and checks succeed.
   cp "$directory/sf-pro-source.json" "$sf_pro_pin"
   cp "$directory/workflow.yml" "$workflow"
   cp "$directory/flake.lock" flake.lock

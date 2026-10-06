@@ -17,7 +17,6 @@ _: {
         pkgs.ripgrep
         pkgs.util-linux
       ];
-      # Keep the user's configured Git identity and signing tools available.
       text =
         ''
           export PATH="${config.home.profileDirectory}/bin:/run/wrappers/bin:/run/current-system/sw/bin:$PATH"

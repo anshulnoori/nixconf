@@ -191,7 +191,6 @@ for key, direction in pairs({ ["[q"] = "prev", ["]q"] = "next" }) do
   end, direction .. " Trouble/Quickfix Item")
 end
 
--- Picker root/cwd toggle belongs to the active buffer, not its input buffer.
 Snacks.config.picker = vim.tbl_deep_extend("force", Snacks.config.picker or {}, {
   actions = {
     toggle_cwd = function(p)

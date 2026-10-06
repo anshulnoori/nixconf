@@ -29,8 +29,6 @@ _: {
         pin = true;
         keep_aspect_ratio = true;
       }
-      # Authentication dialogs keep focus. The patched Hyprland gives focus
-      # to the newest one, so a nested prompt (1Password, then polkit) works.
       {
         match.modal = true;
         stay_focused = true;
@@ -41,7 +39,6 @@ _: {
       }
       {
         match = {
-          # The native Wayland client reports its app ID, not the X11 class.
           class = "^(1password|com\\.onepassword\\.OnePassword)$";
           float = true;
         };

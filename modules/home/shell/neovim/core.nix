@@ -63,7 +63,6 @@
           splitright = true;
           tabstop = 2;
           termguicolors = true;
-          # nvf declares the short name; setting timeoutlen alone loses to tm.
           tm = 300;
           undofile = true;
           undolevels = 10000;

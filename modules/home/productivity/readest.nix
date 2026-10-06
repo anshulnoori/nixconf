@@ -6,8 +6,6 @@ _: {
   }: {
     home.packages = [pkgs.readest];
 
-    # The packaged entry omits the file argument. Readest 0.12.1 handles only
-    # one file per invocation when an existing instance is running.
     xdg.desktopEntries.readest = {
       name = "Readest";
       exec = "${lib.getExe pkgs.readest} %f";

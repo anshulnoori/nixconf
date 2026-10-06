@@ -5,10 +5,6 @@ _: {
     ...
   }: {
     programs.nvf.settings.vim = {
-      # Load smart-splits directly at startup, not through lz.n. Its startup
-      # hook must run once so it does not mistake itself for nested Neovim.
-      # VimTeX must also load at startup for inverse search, while TeXpresso's
-      # filetype hook attaches live, unsaved buffer changes to its renderer.
       startPlugins = [
         pkgs.vimPlugins.nvim-nio
         pkgs.vimPlugins.smart-splits-nvim
@@ -21,7 +17,6 @@ _: {
         pkgs.texpresso
         pkgs.tmux
       ];
-      # Extend the editor's window navigation after its generic keymaps load.
       luaConfigRC.tmux-navigation = lib.hm.dag.entryAfter ["editor-interaction"] ''
         for key, direction in pairs({ h = "left", j = "down", k = "up", l = "right" }) do
           vim.keymap.set("n", "<C-" .. key .. ">", function()

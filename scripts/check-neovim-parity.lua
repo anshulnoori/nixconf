@@ -1,6 +1,3 @@
--- Run in an isolated nvf session:
--- nvim --headless -i NONE '+luafile scripts/check-neovim-parity.lua'
--- This checks the loaded configuration, not a second hand-written setup.
 vim.defer_fn(function()
   local ok, err = xpcall(function()
     local function equal(actual, expected, label)
@@ -145,7 +142,6 @@ vim.defer_fn(function()
     equal(mapping("j", "x").expr, 1, "visual wrapped-line navigation")
     equal(mapping("<leader>cr").expr, 1, "rename prefills current word")
 
-    -- Exercise dispatch while avoiding real tests, Git writes, or external tools.
     require("lz.n").trigger_load("neotest")
     local neotest = require("neotest")
     local run, called = neotest.run.run, {}

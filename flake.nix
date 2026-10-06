@@ -50,8 +50,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Waybar still requires the workspace IDs removed by Hyprland's
-    # September 9 address/type IPC refactor. Keep the compatible locked revision.
     hyprland.url = "github:hyprwm/Hyprland/c1239d02e759673977de0389d3945c7c9adbc1ee";
 
     waybar = {
@@ -88,7 +86,6 @@
       inputs.namespace-devbox-release.follows = "namespace-devbox-release";
     };
 
-    # Intentional rice snapshot. Do not advance with routine dependency updates.
     omarchy-rice = {
       url = "github:basecamp/omarchy/a7f8f2495f4990044b7791d8f11a32cf14d34b39";
       flake = false;

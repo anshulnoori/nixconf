@@ -1,4 +1,3 @@
--- Interaction contract from the Mac reference; no LazyVim runtime dependency.
 local function map(mode, lhs, rhs, desc, opts)
   vim.keymap.set(mode, lhs, rhs, vim.tbl_extend("force", { silent = true, desc = desc }, opts or {}))
 end

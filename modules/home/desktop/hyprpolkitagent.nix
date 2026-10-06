@@ -5,7 +5,6 @@ _: {
     ...
   }: let
     colors = config.lib.stylix.colors;
-    # Style the prompt like a mako notification; see notifications.nix.
     dialog = pkgs.replaceVars ./hyprpolkitagent.qml {
       fontFamily = config.stylix.fonts.monospace.name;
       background = "#${colors.base00}";
@@ -35,11 +34,9 @@ _: {
 
     wayland.windowManager.hyprland.settings.window_rule = [
       {
-        # The dialog has an empty app ID, so match its title.
         match.title = "^Hyprland Polkit Agent$";
         float = true;
         stay_focused = true;
-        # The QML draws mako's border; place it where mako draws notifications.
         border_size = 0;
         no_shadow = true;
         opaque = true;

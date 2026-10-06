@@ -1,4 +1,3 @@
--- Shared root selection for navigation and the statusline.
 return function(buf)
   buf = buf or vim.api.nvim_get_current_buf()
   local file = vim.uv.fs_realpath(vim.api.nvim_buf_get_name(buf))

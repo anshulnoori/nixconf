@@ -59,7 +59,6 @@ _: {
         anchor = "bottom-right";
         margin_right = 10;
         margin_bottom = 10;
-        # An unbound key closes the menu and still reaches the focused window.
         pass_through_unbound = true;
         menu =
           [

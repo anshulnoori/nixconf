@@ -1,6 +1,5 @@
 _: {
   flake.modules.homeManager.desktop.wayland.windowManager.hyprland.extraConfig = ''
-    -- Explicit key states avoid Hyprland leaving a synthetic shortcut stuck.
     local function send_shortcut_once(mods, key)
       return function()
         hl.dispatch(hl.dsp.send_key_state({ mods = mods, key = key, state = "down", window = "activewindow" }))

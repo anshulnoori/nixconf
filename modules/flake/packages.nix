@@ -110,7 +110,6 @@
       };
     };
 
-    # Package both binary archives on the native builder; do not execute them.
     checks.proton-ge-aarch64 = pkgs.callPackage ../../packages/proton-ge.nix {arch = "aarch64";};
   };
 }

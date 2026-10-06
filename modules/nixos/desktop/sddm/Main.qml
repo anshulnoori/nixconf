@@ -20,7 +20,6 @@ Rectangle {
 
     Component.onCompleted: {
         for (let i = 0; i < sessionModel.count; ++i) {
-            // SDDM's FileRole is Qt.UserRole + 2 and contains an absolute path.
             const file = sessionModel.data(sessionModel.index(i, 0), Qt.UserRole + 2);
             if (file.split("/").pop() === config.Session) {
                 sessionIndex = i;

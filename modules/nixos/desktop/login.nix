@@ -71,7 +71,6 @@ _: {
 
     services.displayManager = {
       defaultSession = "hyprland-uwsm";
-      # Preserve boot autologin, but require a password after `uwsm stop`.
       autoLogin = {
         enable = true;
         user = "mvs";
@@ -86,7 +85,6 @@ _: {
 
     systemd.services = {
       display-manager = {
-        # Keep the retained splash until the desktop is ready, not vice versa.
         after = lib.mkForce [
           "acpid.service"
           "systemd-logind.service"

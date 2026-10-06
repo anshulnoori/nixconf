@@ -40,7 +40,6 @@ vim.keymap.set("n", "[t", function()
   require("todo-comments").jump_prev()
 end, { desc = "Previous Todo Comment" })
 
--- LazyVim adds these guards around mini.pairs; the plugin alone does not.
 local pairs_plugin = require("mini.pairs")
 local open_pair = pairs_plugin.open
 pairs_plugin.open = function(pair, pattern)

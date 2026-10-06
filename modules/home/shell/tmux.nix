@@ -35,9 +35,7 @@ _: {
         {
           plugin = resurrect;
           extraConfig = ''
-            # Restore layout and directories, never replay arbitrary commands.
             set -g @resurrect-processes 'false'
-            # Save on detach too: continuum's timer needs an attached status bar.
             set-hook -g client-detached 'run-shell "#{@resurrect-save-script-path} quiet"'
           '';
         }
@@ -58,7 +56,6 @@ _: {
         set -g window-status-separator ""
         set -g pane-border-lines single
 
-        # Amp: images, hyperlinks, clipboard, and distinct Shift+Enter.
         set -g allow-passthrough all
         set -as terminal-features ",xterm-kitty:RGB:hyperlinks:extkeys"
         set -s set-clipboard on
@@ -69,12 +66,10 @@ _: {
         bind '|' split-window -h -c "#{pane_current_path}"
         bind '-' split-window -v -c "#{pane_current_path}"
         bind c new-window -c "#{pane_current_path}"
-        # Popups bypass interactive shell hooks, so load the project explicitly.
         bind g display-popup -E -w 90% -h 90% -d "#{pane_current_path}" "${pkgs.direnv}/bin/direnv exec . ${pkgs.lazygit}/bin/lazygit"
         bind t display-popup -E -w 85% -h 80% -d "#{pane_current_path}" "${pkgs.zsh}/bin/zsh"
         bind o display-popup -E -w 70% -h 60% -d "#{pane_current_path}" "${sessionPicker}/bin/tmux-session-picker"
 
-        # smart-splits.nvim marks its pane eagerly; no process-name polling.
         bind -n C-h if -F '#{@pane-is-vim}' 'send-keys C-h' 'select-pane -L'
         bind -n C-j if -F '#{@pane-is-vim}' 'send-keys C-j' 'select-pane -D'
         bind -n C-k if -F '#{@pane-is-vim}' 'send-keys C-k' 'select-pane -U'
@@ -100,9 +95,7 @@ _: {
   }: let
     colors = config.lib.stylix.colors;
   in {
-    # Stylix supplies the palette; this module owns the status-bar layout.
     stylix.targets.tmux.enable = false;
-    # Set status-right before plugins: continuum appends its autosave hook.
     xdg.configFile."tmux/tmux.conf".text = lib.mkBefore ''
       set -g status-style "bg=#${colors.base00},fg=#${colors.base04}"
       set -g status-left "#[bg=#${colors.base0D},fg=#${colors.base00},bold] #S #[default] "

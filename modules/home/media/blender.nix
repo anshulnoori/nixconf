@@ -11,8 +11,6 @@ _: {
     home.packages = [pkgs.blender];
     stylix.targets.blender.enable = true;
 
-    # The pinned Stylix release predates Blender 5.x, so provide its generated
-    # preset at the current version's path as well.
     xdg.configFile."blender/${version}/scripts/presets/interface_theme/Stylix.xml".text = lib.concatLines [
       "<bpy>"
       (indent config.stylix.targets.blender.themeBody)

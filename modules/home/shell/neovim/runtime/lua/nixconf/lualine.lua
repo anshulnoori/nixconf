@@ -1,5 +1,4 @@
 -- Adapted from LazyVim's lualine components (Apache-2.0; see LICENSE.LazyVim).
--- Keep presentation local; project flakes own LSP and debugger integrations.
 local root = require("nixconf.root")
 local M = {}
 

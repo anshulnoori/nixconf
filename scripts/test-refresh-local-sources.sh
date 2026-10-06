@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Offline fixtures exercise validation; no downloads or installer execution.
 # shellcheck source=scripts/refresh-local-sources.sh
 source "$(dirname "${BASH_SOURCE[0]}")/refresh-local-sources.sh"
 scratch=$(mktemp -d)
@@ -103,12 +102,10 @@ for mode in valid annotated; do
   run_refresh success
   grep -q "checkout@$fixture_sha # v7.0.1" "$workflow"
   grep -q "installer-action@$fixture_sha # v2026-06-15" "$workflow"
-  # Expected digest derives from known fixture bytes, independently of helper output.
   expected="sha256-$(printf 'fixture DMG bytes' | openssl dgst -sha256 -binary | openssl base64 -A)"
   jq -e --arg hash "$expected" '.hash == $hash and .version == "27.0.1789118100"' "$sf_pro_pin" >/dev/null
 done
 
-# Devbox normalization uses Nix-verified bytes, and changes only locked.url.
 mode=valid
 latest=https://github.com/namespacelabs/devbox/releases/latest/download/checksums.txt
 jq -n --arg url "$latest" '{nodes:{other:{unchanged:true},"namespace-devbox-release":{flake:false,original:{type:"file",url:$url},locked:{type:"file",url:$url,narHash:"sha256-dW8nIqVP3QAPID+CY0ykFXbCYa/4ohzUZ/9XZR1rbRo="}}}}' >flake.lock

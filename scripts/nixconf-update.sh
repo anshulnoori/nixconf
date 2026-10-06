@@ -38,7 +38,6 @@ failed() {
     candidate=$(jq -r '.candidateRevision // ""' "$status_file")
     system=$(jq -r '.candidateSystem // ""' "$status_file")
   fi
-  # Name the reason when a check refused, not only the phase it refused in.
   local message="${phase^} failed.${failure_reason:+ $failure_reason}"
   write_status failed "$message" "$candidate" "$system"
   notify-send --app-name=nixconf-update --expire-time=10000 'Update Failed' "$message" || true
@@ -52,11 +51,8 @@ die() {
   return 1
 }
 
-# Compare actual commit objects, including installed commits not yet on GitHub.
-# 'ahead' means the target advances the running revision, never the reverse.
 revision_relation() {
   local repository=$1 base=$2 target=$3
-  # Dirty metadata identifies a base commit, not the exact activated configuration.
   base=${base%-dirty}
   if [[ ! $base =~ ^[0-9a-f]{40}$ || ! $target =~ ^[0-9a-f]{40}$ ]] ||
     ! git -C "$repository" cat-file -e "$base^{commit}" 2>/dev/null ||
@@ -105,7 +101,6 @@ prepare_update() {
   *) die "Refusing $relation transition from installed revision $current." ;;
   esac
   git -C "$checkout" worktree add -b "$candidate_branch" "$worktree" "$base"
-  # Git hooks are shared by worktrees, but their generated config is ignored.
   if [[ -r $checkout/.pre-commit-config.yaml ]]; then
     cp --dereference "$checkout/.pre-commit-config.yaml" "$worktree/.pre-commit-config.yaml"
   fi
@@ -126,7 +121,6 @@ generate_pins() {
 
 verify_publication() {
   local revision=$1 commit message
-  # Inspect final messages, including anything appended by hooks or signing tools.
   while read -r commit; do
     message=$(git -C "$worktree" log -1 --format=%B "$commit")
     if rg -iq 'Co-authored-by:|Amp-Thread-ID:|ampcode\.com/threads/|(^|[[:space:]])(generated|authored|written|committed|signed)[[:space:]]+(by|with)[[:space:]]+(AI|Amp|an? agent)' <<<"$message"; then
@@ -148,7 +142,6 @@ finish_update() {
   [[ -e $worktree/.git ]] || die 'No retained candidate.'
   [[ $(git -C "$worktree" symbolic-ref --short HEAD) == "$candidate_branch" ]] || die 'Unexpected candidate branch.'
   if [[ $interactive == false && ! -e $(git -C "$worktree" rev-parse --git-path nixconf-generated) ]]; then generate_pins; fi
-  # Only generated dependency pins may enter the candidate.
   while IFS= read -r -d '' path; do
     case "$path" in
     flake.lock | _sources/generated.nix | _sources/generated.json | packages/sf-pro-source.json | .github/workflows/cache.yml) ;;
@@ -216,7 +209,6 @@ finish_update() {
     [[ -z $(git -C "$worktree" status --porcelain) && $(git -C "$worktree" rev-parse 'HEAD^{tree}') == "$tree" ]] ||
       die 'Candidate changed during signing; refusing publication.'
     candidate=$(git -C "$worktree" rev-parse HEAD)
-    # A push or switch failure can retry this exact signed candidate.
     jq -n --arg revision "$candidate" --arg tree "$tree" '{revision:$revision,tree:$tree}' >"$built"
   fi
   verify_publication "$candidate"
@@ -254,7 +246,6 @@ finish_update() {
   *) die 'Remote changed during build. Candidate retained; reconcile manually, then retry.' ;;
   esac
   verify_publication "$candidate"
-  # Normal fast-forward push only; races fail safely and retain the built commit.
   git -C "$worktree" push origin "$candidate:refs/heads/$default_branch"
   message="Committed ${candidate:0:12}"
   if [[ $(git -C "$checkout" symbolic-ref --quiet --short HEAD || true) == "$default_branch" &&
@@ -278,7 +269,6 @@ run_update() {
   trap 'die "Update interrupted"' TERM INT
   validate_origin
   if [[ $interactive == true && ! -e $worktree ]]; then
-    # Publication can succeed even if the subsequent switch is cancelled.
     local candidate
     candidate=$(jq -r '.candidateRevision // ""' "$status_file")
     [[ $candidate =~ ^[0-9a-f]{40}$ && -e $state_dir/result-system ]] || die 'No built update. Run the update service first.'
@@ -334,7 +324,6 @@ waybar_status() {
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
   case "${1:-scheduled}" in
   scheduled)
-    # Automation must fail rather than invoke an SSH agent or ask for credentials.
     export GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=never
     export GIT_SSH_COMMAND='ssh -oBatchMode=yes -oIdentityAgent=none'
     run_update

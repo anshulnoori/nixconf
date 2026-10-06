@@ -6,8 +6,6 @@ _: {
   }: let
     cfg = config.stylix.targets.nvf;
   in {
-    # Stylix still writes nvf's deprecated lualine.theme option. Keep its
-    # palette integration here until upstream uses setupOpts.options.theme.
     stylix.targets.nvf.enable = false;
     programs.nvf.settings.vim = {
       theme = {

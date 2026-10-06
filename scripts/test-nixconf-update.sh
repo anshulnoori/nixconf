@@ -78,7 +78,6 @@ nh() {
   ln -sfn "$system" "$state_dir/result-system"
   if [[ $failure == build-mutation ]]; then printf 'unbuilt change\n' >"$worktree/flake.lock"; fi
   if [[ $failure == remote-race ]]; then
-    # Another writer advances the remote while the local candidate builds.
     git -C "$checkout" -c commit.gpgSign=false commit --allow-empty -m 'test: concurrent writer'
     "$real_git" -C "$checkout" push origin HEAD:master
   fi
@@ -130,7 +129,6 @@ fixture() {
 
 run_case() {
   local expected=$1 action=${2:-false} result
-  # Do not use an if-condition: it disables Bash errexit inside the function.
   set +e
   (
     set -e
@@ -146,7 +144,6 @@ run_case() {
 
 fixture origin-guard
 if (validate_origin) 2>/dev/null; then die 'Accepted unexpected push destination'; fi
-# All transport below is real Git against a disposable bare repository only.
 validate_origin() { [[ $("$real_git" -C "$checkout" remote get-url origin) == "$scratch/"* ]]; }
 
 fixture summary
@@ -209,7 +206,7 @@ for failure_case in signing validation build attribution remote-race local-sourc
   failure=$failure_case
   if [[ $failure == signing ]]; then git -C "$checkout" config user.signingKey "$scratch/missing-key"; fi
   if [[ $failure == attribution ]]; then
-    # shellcheck disable=SC2016 # The hook expands its own argument.
+    # shellcheck disable=SC2016
     printf '#!%s\nprintf "\\nCo-authored-by: unwanted\\n" >> "$1"\n' "$(command -v bash)" >"$checkout/.git/hooks/commit-msg"
     chmod +x "$checkout/.git/hooks/commit-msg"
   fi

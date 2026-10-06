@@ -6,12 +6,10 @@ _: {
     programs.nvf.settings.vim = {
       additionalRuntimePaths = [./runtime];
       binds.whichKey = {
-        # nvf's modern preset spans most of the screen. The Mac uses helix.
         register = lib.mkForce {};
         setupOpts = {
           preset = "helix";
           replace = lib.mkForce {};
-          # Keep the Linux square-border policy, not the Mac's rounded corners.
           win.border = "single";
           spec = mkLuaInline ''
             {

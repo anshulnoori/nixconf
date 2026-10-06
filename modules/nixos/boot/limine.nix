@@ -15,7 +15,6 @@ _: {
 
   flake.modules.nixos.desktop = {config, ...}: let
     colors = config.lib.stylix.colors;
-    # Reuse the exact build-time Hyprlock render used by the LUKS splash.
     wallpaper = "${builtins.head config.boot.plymouth.themePackages}/share/plymouth/themes/${config.boot.plymouth.theme}/background.png";
   in {
     boot.loader.limine.style = {

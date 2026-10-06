@@ -7,7 +7,6 @@ _: {
   }: let
     colors = config.lib.stylix.colors;
     lockCommand = "systemctl --user start hyprlock.service";
-    # Lua-config Hyprland only accepts Lua dispatchers.
     dpms = state: "hyprctl dispatch 'hl.dsp.dpms({ action = \"${state}\" })'";
   in {
     stylix.targets.hyprlock.enable = false;

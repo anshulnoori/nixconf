@@ -166,8 +166,6 @@ _: {
         }
         trap cleanup EXIT INT TERM
 
-        # Hyprland normally exports a live socket before emitting its start event.
-        # Retrying here also covers unusually slow Wayland socket creation.
         for _ in {1..40}; do
           if [[ -n "''${WAYLAND_DISPLAY:-}" \
             && -S "''${XDG_RUNTIME_DIR:-/run/user/$UID}/$WAYLAND_DISPLAY" ]]; then

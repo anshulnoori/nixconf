@@ -1,5 +1,3 @@
-// Replaces hyprpolkitagent's dialog with one styled like a mako notification.
-// Placeholders are filled from the Stylix palette by hyprpolkitagent.nix.
 import QtQuick
 import QtQuick.Controls
 
@@ -21,8 +19,6 @@ ApplicationWindow {
 
     readonly property int fittedHeight: content.implicitHeight + 2 * (paddingY + borderWidth)
 
-    // Size the window from its laid-out content before mapping it; a floating
-    // window keeps the size it maps with.
     width: 320
     height: fittedHeight
     minimumWidth: 320
@@ -131,7 +127,6 @@ ApplicationWindow {
         Text {
             id: errorText
 
-            // Always reserves one line, so an error never resizes the window.
             width: parent.width
             color: "@error@"
             font.family: window.fontFamily
