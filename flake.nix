@@ -86,6 +86,11 @@
       inputs.namespace-devbox-release.follows = "namespace-devbox-release";
     };
 
+    delta = {
+      url = "github:zed-industries/delta-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     omarchy-rice = {
       url = "github:basecamp/omarchy/a7f8f2495f4990044b7791d8f11a32cf14d34b39";
       flake = false;
