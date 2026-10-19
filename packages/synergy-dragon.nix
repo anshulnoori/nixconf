@@ -22,7 +22,7 @@
 }:
 stdenv.mkDerivation {
   pname = "synergy-dragon";
-  version = "0.5.0";
+  version = "0.6.0";
 
   src = requireFile {
     name = "synergy-dragon-0.4.0-linux-trixie-x86_64.deb";
@@ -31,8 +31,8 @@ stdenv.mkDerivation {
   };
 
   updateBundle = requireFile {
-    name = "synergy-dragon-0.5.0-linux-amd64.tar.gz";
-    hash = "sha256-yNSByniRXkB2WZjBXNRaqwjc39YXQVygQOdWBmuqiVY=";
+    name = "synergy-dragon-0.6.0-linux-amd64.tar.gz";
+    hash = "sha256-Ula+d2SbksdD3QLDNNbf2//ADbDUMDyDrWRJB07CpMA=";
     url = "https://symless.com/synergy/api/update/synergy-dragon-alpha";
   };
 
