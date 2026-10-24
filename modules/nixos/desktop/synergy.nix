@@ -4,6 +4,7 @@ _: {
     binaries = "${dragon}/lib/synergy-dragon";
   in {
     environment.systemPackages = [dragon];
+    system.extraDependencies = [dragon.src dragon.updateBundle];
 
     networking.firewall = {
       allowedTCPPorts = [24801];
