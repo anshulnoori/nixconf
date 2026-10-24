@@ -8,18 +8,18 @@
 {
   proton-ge-aarch64 = {
     pname = "proton-ge-aarch64";
-    version = "GE-Proton11-7";
+    version = "GE-Proton11-11";
     src = fetchurl {
-      url = "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton11-7/GE-Proton11-7-aarch64.tar.gz";
-      sha256 = "sha256-t3rJBhhlaMLzxmZ0uFxxKxRcz3P/JxilDde/Yki2e6M=";
+      url = "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton11-11/GE-Proton11-11-aarch64.tar.gz";
+      sha256 = "sha256-xw6zzBxIpM8XGdZDyG/AaQYPxqH+y0kOwDKV8vdUGtE=";
     };
   };
   proton-ge-x86_64 = {
     pname = "proton-ge-x86_64";
-    version = "GE-Proton11-7";
+    version = "GE-Proton11-11";
     src = fetchurl {
-      url = "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton11-7/GE-Proton11-7-x86_64.tar.gz";
-      sha256 = "sha256-xUSLdqIwOE4te8a+tcy5e6+34sO2xSfLA6GlRrvLAKA=";
+      url = "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton11-11/GE-Proton11-11-x86_64.tar.gz";
+      sha256 = "sha256-qoWYbK2lcJqou/qK3X87+5JcvhVxDJiZWJjTCP8so8E=";
     };
   };
 }
