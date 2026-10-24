@@ -30,7 +30,7 @@ _: {
                 ;;
               update)
                 exec present-terminal "NixOS Update" \
-                  systemctl --user start nixconf-update.service
+                  nh os switch --update /etc/nixos
                 ;;
               clean)
                 exec present-terminal "Nix Store Cleanup" \

@@ -1,9 +1,5 @@
 _: {
-  flake.modules.homeManager.desktop = {
-    config,
-    pkgs,
-    ...
-  }: let
+  flake.modules.homeManager.desktop = {config, ...}: let
     colors = config.lib.stylix.colors;
   in {
     stylix.targets.mako.enable = false;
@@ -28,18 +24,9 @@ _: {
         "mode=do-not-disturb app-name=notify-send".invisible = false;
         "mode=do-not-disturb app-name=nixconf-menu".invisible = false;
         "mode=do-not-disturb app-name=nixconf-capture".invisible = false;
-        "mode=do-not-disturb app-name=nixconf-update".invisible = false;
         "urgency=critical" = {
           default-timeout = 0;
           layer = "overlay";
-        };
-        "app-name=nixconf-update" = {
-          default-timeout = 10000;
-          layer = "overlay";
-        };
-        "app-name=nixconf-update summary=\"Update Available\"" = {
-          on-button-left = "exec ${pkgs.mako}/bin/makoctl dismiss -n \"$id\"; ${config.home.profileDirectory}/bin/present-terminal 'NixOS Update' ${config.services.nixconf-update.package}/bin/nixconf-update apply";
-          on-touch = "exec ${pkgs.mako}/bin/makoctl dismiss -n \"$id\"; ${config.home.profileDirectory}/bin/present-terminal 'NixOS Update' ${config.services.nixconf-update.package}/bin/nixconf-update apply";
         };
         "summary~=\"Screenshot saved\"" = {
           max-icon-size = 64;

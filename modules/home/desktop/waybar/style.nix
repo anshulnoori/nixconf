@@ -57,38 +57,6 @@ _: {
       #custom-screenrecording.active label {
         color: #${colors.base08};
       }
-      #custom-update.updates,
-      #custom-update.unavailable,
-      #custom-update.failed {
-        margin-right: 17px;
-      }
-      #custom-update.updates:not(.running),
-      #custom-update.updates:not(.running) label {
-        color: @warning;
-      }
-      #custom-update.updates {
-        min-width: 18px;
-      }
-      #custom-update.running {
-        background-image: linear-gradient(@foreground, @foreground),
-                          linear-gradient(alpha(@foreground, 0.55), alpha(@foreground, 0.55));
-        background-position: 1.5px calc(80% + 1px);
-        background-repeat: no-repeat;
-        background-size: 0px 2px, 14px 2px;
-      }
-      #custom-update.progress-20 { background-size: 2.8px 2px, 14px 2px; }
-      #custom-update.progress-40 { background-size: 5.6px 2px, 14px 2px; }
-      #custom-update.progress-60 { background-size: 8.4px 2px, 14px 2px; }
-      #custom-update.progress-80 { background-size: 11.2px 2px, 14px 2px; }
-      #custom-update.updates label {
-        min-width: 16px;
-        padding-right: 2px;
-        background-color: transparent;
-      }
-      #custom-update.failed,
-      #custom-update.failed label {
-        color: #${colors.base08};
-      }
       menu {
         padding: 4px;
         border: 1px solid #${colors.base03};

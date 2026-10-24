@@ -18,7 +18,6 @@ _: {
         modules-center = ["clock"];
         modules-right = [
           "custom/screenrecording"
-          "custom/update"
           "group/tray-expander"
           "tray#notion-calendar"
           "bluetooth"

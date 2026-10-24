@@ -57,8 +57,8 @@ jobs:
       - name: Check formatting, lint, and Git conventions
         run: nix build --no-link --no-update-lock-file -L .#checks.x86_64-linux.treefmt .#checks.x86_64-linux.pre-commit .#checks.x86_64-linux.git-conventions
 
-      - name: Test updater states
-        run: nix build --no-link --no-update-lock-file -L .#checks.x86_64-linux.nixconf-update
+      - name: Test the local source refresher
+        run: nix build --no-link --no-update-lock-file -L .#checks.x86_64-linux.refresh-local-sources
 
       - name: Ensure validation did not change committed inputs
         run: git diff --exit-code

@@ -77,18 +77,13 @@ the password in `/etc/shadow`.
   all three are available on both `x86_64-linux` and `aarch64-linux`.
 - Amp CLI has a release/hash-pinned bootstrap. Its writable executable keeps
   Amp's self-updater, independently of NixOS revisions.
-- Local automation updates dependency pins every three days, or on manual
-  request. It preserves user work through an isolated Git worktree.
-- The updater signs, validates, and builds a candidate with stock `nh`, then
-  pushes and notifies the user. The user activates it with stock `nh os switch`.
-  No activation wrapper or automatic switch is used.
+- Updates are manual: `nh os switch --update` updates `flake.lock`, builds,
+  and activates the system. No timer or automatic switch is used.
 - CI runs repository maintenance on GitHub-hosted runners after pushes. System
   validation and builds run locally; CI does not generate updates or publish a
   personal binary cache. Renovate is disabled. Niks3 and R2 are deferred.
 - Garbage collection and generation limits must prevent nightly builds from
   growing the store without bound.
-- The desktop provides the revision-aware Waybar and Mako update notification
-  described below.
 
 Both `system.stateVersion` and `home.stateVersion` are `"26.05"`. These values
 preserve stateful compatibility defaults; they do not pin packages or prevent
@@ -589,22 +584,6 @@ duplicate infrastructure. Hyprland translates `Super+C`, `Super+V`, and
 terminal-safe `Ctrl+Insert` and `Shift+Insert` alternatives, which Kitty handles
 without interrupting the foreground process.
 
-The local update timer starts ten minutes after boot and every three days
-thereafter. It builds without switching. Waybar shows available updates, local
-progress, failure, and stale results. Mako reports when a build is ready.
-Clicking the module opens `nh os switch --ask` through `present-terminal`,
-showing the native package diff and confirmation prompt before activation.
-It does not update inputs again.
-
-The updater fast-forwards clean `master` checkouts after publication, but leaves
-dirty checkouts and experimental branches unchanged. It retains failed candidates
-in its state directory. It compares actual Git objects with the installed revision,
-including unpublished local commits. Unknown or diverged histories stop the
-update. Signing and activation still require the existing 1Password and sudo
-authorization. Automation does not export keys or weaken sudo policy. Recovery
-uses `systemctl --user start nixconf-update.service` to retry preparation and
-publication. Activation is always a separate, manual `nh os switch`.
-
 ## Git identity
 
 Git uses one global identity: `Anshul Noori <anshulnoori@gmail.com>`.
@@ -618,8 +597,7 @@ The GitHub SSH host selects the Anshul public key explicitly.
 `SSH_AUTH_SOCK` and OpenSSH's `IdentityAgent` both point to the 1Password agent.
 SSH reads and writes both require authentication. The 1Password authorization policy controls prompts.
 
-The updater fetches the HTTPS `upstream-read` remote and pushes the SSH `origin`.
-Interactive Git retains `origin`. The monorepo flake input uses HTTPS with the existing GitHub CLI credential helper.
+Interactive Git fetches and pushes the SSH `origin`. The monorepo flake input uses HTTPS with the existing GitHub CLI credential helper.
 Direnv uses standard nix-direnv. No transport wrapper or alternate Git configuration is needed.
 CI retains its read-only monorepo deploy key through a repository-specific HTTPS-to-SSH rule.
 `nh` elevates activation separately. `gh auth switch` changes GitHub API credentials, not commit authorship.

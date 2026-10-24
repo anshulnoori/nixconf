@@ -25,6 +25,5 @@
       homeDirectory = "/home/mvs";
       stateVersion = "26.05";
     };
-    services.nixconf-update.enable = true;
   };
 }

@@ -6,7 +6,7 @@ Use Lix with flakes enabled. Nix inputs use HTTPS for dependency downloads.
 Private GitHub inputs use the existing GitHub CLI credential helper.
 No token is stored in Nix configuration. Run `gh auth status` to check access.
 
-Interactive Git and updater pushes use SSH. Enable the 1Password SSH agent,
+Interactive Git pushes use SSH. Enable the 1Password SSH agent,
 register the authentication key with GitHub, unlock 1Password, and verify access:
 
 ```sh
@@ -40,7 +40,6 @@ git remote add upstream-read https://github.com/anshulnoori/nixconf.git
 ```
 
 If `upstream-read` already exists, use `git remote set-url` instead of `add`.
-The updater fetches `upstream-read` and pushes `origin`.
 Normal `git fetch` and `git push` retain the SSH origin.
 Dependency downloads use the HTTPS URLs declared in `flake.nix`.
 Commit signing and pushes retain 1Password approval requirements.
@@ -69,7 +68,7 @@ transport, and the Notion Calendar integration.
 The pre-push hook validates the branch and evaluates the flake without building
 the host. On pushes, GitHub Actions runs repository maintenance on standard
 `ubuntu-24.04` runners: formatting, lint/security checks, Git-convention tests,
-and updater tests. It does not evaluate systems or build `t1`, Proton, or desktop
+and source-refresher tests. It does not evaluate systems or build `t1`, Proton, or desktop
 packages. Updates, system validation, and activation run locally before clients
 push. CI never updates pins, commits, pushes, or publishes a binary cache.
 
@@ -77,7 +76,6 @@ push. CI never updates pins, commits, pushes, or publishes a binary cache.
 
 The repository is trunk-based. `master` is the default branch. Short-lived
 experimental branches use `type/lowercase-kebab-description`.
-The local updater reserves `build/local-update` for its isolated worktree.
 
 Allowed conventional commit types are:
 
@@ -91,98 +89,20 @@ linear.
 
 ## Dependency updates
 
-Updates originate on `t1`, not in CI. The user timer runs ten minutes after
-boot, then every three days while the user manager runs. To request a build now:
+Update and activate the system from `/etc/nixos` as the login user:
 
 ```sh
-systemctl --user start nixconf-update.service
+nh os switch --update
 ```
 
-The updater creates an isolated worktree under
-`~/.local/state/nixconf/update-worktree`. It uses the newer compatible commit
-from local `master` and remote `master`. It preserves staged, unstaged, and
-untracked files in `/etc/nixos`. Uncommitted configuration changes do not enter
-the update. Diverged histories and unknown installed revisions stop the update.
-An installed revision ending in `-dirty` uses its verified base commit for
-ancestry checks. This does not certify the exact activated configuration.
-The background service preserves local changes and never activates a system.
-
-The background sequence is:
-
-1. Fetch `master` and create the clean `build/local-update` worktree.
-2. Run `nix flake update`, `nix run .#nvfetcher`, and the internal source refresher there.
-3. Validate the candidate and run stock `nh os build` with the uncommitted pins.
-4. Retain the candidate and show **Update Available** after the build succeeds.
-
-The timer does not commit, sign, push, or request sudo. HTTPS reads use existing
-credentials without terminal prompts. SSH subprocesses cannot use the agent.
-
-Clicking the update icon or notification opens an interactive terminal. The
-updater verifies that the candidate still matches the completed build. It then
-signs changed pins as `Anshul Noori <anshulnoori@gmail.com>` with
-`chore(nix): update flake.lock`. It validates and builds the signed revision,
-verifies signatures and final messages, then pushes to `master`.
-Signing changes the revision metadata, so this build reuses packages from the
-background build but produces a system with the signed revision.
-
-After publication, stock `nh os switch` shows the diff and requests confirmation
-for that exact built system. The updater fast-forwards a clean `/etc/nixos`
-checkout on `master`. Dirty checkouts and experimental branches stay unchanged.
-There is no `nh` wrapper. A plain `nh os switch` still uses `/etc/nixos` and does
-not sign or publish the retained candidate.
-
-The updater never force-pushes. Signing, validation, or build failures prevent
-publication. A failed push retains the signed candidate for retry.
-Successful publication removes the worktree and its reserved branch. A failed
-or cancelled switch can retry the published system without another commit or push.
-
-CI checks repository maintenance after publication. CI success is not an
-activation prerequisite in this local-first model. Public upstream caches remain
-available, but there is no personal binary cache. Niks3 and R2 are deferred.
-
-### Authentication and recovery
-
-The updater uses the configured Git signing key and 1Password agent. The SSH
-authentication key and signing key can be different. Signature verification
-requires the matching public key in Git's allowed-signers file. Private monorepo
-fetches use HTTPS credentials. Repository pushes use SSH authentication.
-
-Only the interactive handoff requests signing and push approvals. A locked
-agent does not block the background build. Only an explicit switch requires
-sudo. No private key export or passwordless sudo rule is part of this workflow.
-
-If an update stops, inspect the log and retained candidate:
-
-```sh
-journalctl --user -u nixconf-update
-git -C ~/.local/state/nixconf/update-worktree status
-git -C ~/.local/state/nixconf/update-worktree log -1 --show-signature
-systemctl --user start nixconf-update.service
-```
-
-Retry the service as the login user. Then click the update icon to sign,
-publish, and switch interactively. Approve 1Password requests in that terminal flow.
-When local or remote `master` advances, the updater replaces stale generated pins
-and rebuilds from the newer commit. It does not archive or replay the old pins.
-An interactive refresh stops at **Update Available**. Click again to sign and switch.
-Unpublished candidate commits, unrelated edits, and diverged histories still require manual resolution.
-Do not delete a retained worktree that contains an unpublished commit.
-If the installed revision is unknown, establish a clean committed system revision
-manually before enabling automatic updates.
-
-Waybar shows available updates, local progress, failures, and stale results.
-Mako notifies you when a build is ready, or when an operation succeeds or fails.
-Clicking the indicator opens the interactive handoff. Stock `nh` receives the
-built system path with `--ask --diff always`. It does not regenerate the built inputs.
-The UI does not depend on GitHub comparison or discovery APIs.
-An uncommitted candidate stays visible until its exact built system is installed.
-After publication, the indicator also clears for an installed candidate commit
-or descendant. A `-dirty` suffix does not prove the activated files match.
+The System menu's **Update** entry runs the same command in a terminal.
+`--update` runs `nix flake update` before the build. Commit the changed
+`flake.lock` afterwards as `chore(nix): update flake.lock`.
 
 ### Update sources and CI
 
-Explicit compatibility pins in `flake.nix` remain unchanged. Proton GE uses
-`nvfetcher.toml` and generated files under `_sources/`. The ARM check packages
+Proton GE uses `nvfetcher.toml` and generated files under `_sources/`. Refresh
+them with `nix run .#nvfetcher`. The ARM check packages
 ARM binaries without executing them. Amp keeps its separate self-updater:
 Nix pins its bootstrap, not the mutable executable under `~/.amp/bin`.
 
@@ -195,10 +115,9 @@ Its Nix package supplies modern 7-Zip, libarchive, libxml2, curl, jq, and OpenSS
 The same refresher resolves the latest stable releases of `actions/checkout` and
 `samueldr/lix-gha-installer-action` through GitHub's API. Workflow references remain
 full commit SHA pins with release comments. Moved existing tags, older releases,
-and malformed responses stop generation. API failures also stop the update;
+and malformed responses stop generation. API failures also stop the refresh;
 an optional `GH_TOKEN` can raise the public API rate limit.
-Only the SF Pro JSON and the maintenance workflow join the existing generated
-pin whitelist. All changes enter the same signed, checked, locally built candidate.
+Run `nix run .#refresh-local-sources` to refresh these pins.
 
 Devbox follows the root `namespace-devbox-release` checksum-manifest input.
 After `nix flake update`, the refresher obtains the hash-verified manifest through
@@ -219,7 +138,6 @@ the flake imports the private monorepo, but it needs no Cachix secret or status
 write permission. Native GitHub job results replace the old `nixconf/build`
 status; CI no longer claims to validate a system build.
 
-Run `bash scripts/test-nixconf-update.sh` for isolated Git and SSH-signature tests.
 Run `bash scripts/test-refresh-local-sources.sh` for offline source-validation tests.
 These tests stub builds, activation, and notifications. Their pushes target only
 disposable local repositories, never GitHub.

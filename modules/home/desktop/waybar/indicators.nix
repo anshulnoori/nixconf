@@ -24,13 +24,6 @@ _: {
         signal = 8;
         on-click = "${captureScreenrecord} stop";
       };
-      "custom/update" = {
-        exec = "${config.services.nixconf-update.package}/bin/nixconf-update waybar";
-        return-type = "json";
-        interval = 5;
-        signal = 10;
-        on-click = "${config.home.profileDirectory}/bin/present-terminal 'NixOS Update' ${config.services.nixconf-update.package}/bin/nixconf-update apply";
-      };
     };
   };
 }
