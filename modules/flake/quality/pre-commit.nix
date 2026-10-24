@@ -41,6 +41,7 @@
         name = "Gitleaks";
         package = pkgs.gitleaks;
         entry = "${lib.getExe pkgs.gitleaks} git --staged --redact=100 --no-banner --no-color";
+        args = [];
         pass_filenames = false;
         always_run = true;
         stages = ["pre-commit"];
