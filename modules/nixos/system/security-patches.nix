@@ -1,4 +1,4 @@
-{inputs, ...}: {
+_: {
   flake.modules.nixos.base = {
     lib,
     pkgs,
@@ -72,7 +72,6 @@
       lib.concatMap (packages: replace packages.brotli (brotli packages)) [
         pkgs
         pkgs.pkgsi686Linux
-        inputs.monorepo.inputs.nixpkgs.legacyPackages.${pkgs.stdenv.hostPlatform.system}
       ]
       ++ replace pkgs.nodejs-slim_24 nodejs-slim
       ++ replace pkgs.nodejs_24 (pkgs.nodejs_24.override {inherit nodejs-slim;})

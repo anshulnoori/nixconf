@@ -84,6 +84,7 @@
 
     monorepo = {
       url = "git+https://github.com/anshulnoori/monorepo.git";
+      inputs.nixpkgs.follows = "nixpkgs";
       inputs.namespace-devbox-release.follows = "namespace-devbox-release";
     };
 
