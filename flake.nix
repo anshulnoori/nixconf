@@ -48,7 +48,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    hyprland.url = "github:hyprwm/Hyprland/c1239d02e759673977de0389d3945c7c9adbc1ee";
+    hyprland = {
+      url = "github:hyprwm/Hyprland";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     waybar = {
       url = "github:Alexays/Waybar";

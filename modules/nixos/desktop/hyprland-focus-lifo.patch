@@ -1,21 +1,22 @@
 diff --git a/src/config/shared/actions/ConfigActions.cpp b/src/config/shared/actions/ConfigActions.cpp
+index f3eed12..1254197 100644
 --- a/src/config/shared/actions/ConfigActions.cpp
 +++ b/src/config/shared/actions/ConfigActions.cpp
-@@ -351,6 +351,9 @@ ActionResult Actions::moveToWorkspace(PHLWORKSPACE ws, bool silent, std::optiona
-             else
-                 g_pInputManager->refocus();
+@@ -412,6 +412,9 @@ ActionResult Actions::moveToWorkspace(PHLWORKSPACE ws, bool silent, std::optiona
+                 Desktop::focusState()->fullWindowFocus(PATWS, Desktop::FOCUS_REASON_KEYBIND);
+             }
          }
 +
-+        if (!POLDWS->isVisible() && ws->isVisible() && Desktop::viewState()->query().forceFocus().runWindow() == window)
++        if (!POLDWS->visible() && ws->visible() && Desktop::viewState()->query().forceFocus().runWindow() == window)
 +            Desktop::focusState()->fullWindowFocus(window, Desktop::FOCUS_REASON_KEYBIND);
      } else {
          PHLMONITOR pMonitor = nullptr;
-
+ 
 diff --git a/src/desktop/rule/windowRule/WindowRuleApplicator.cpp b/src/desktop/rule/windowRule/WindowRuleApplicator.cpp
-index d1436d6..ac3968b 100644
+index 18926de..6932503 100644
 --- a/src/desktop/rule/windowRule/WindowRuleApplicator.cpp
 +++ b/src/desktop/rule/windowRule/WindowRuleApplicator.cpp
-@@ -595,6 +595,11 @@ void CWindowRuleApplicator::propertiesChanged(std::underlying_type_t<eRuleProper
+@@ -616,6 +616,11 @@ void CWindowRuleApplicator::propertiesChanged(std::underlying_type_t<eRuleProper
          needsRelayout  = needsRelayout || RES.needsRelayout;
      }
  
@@ -28,7 +29,7 @@ index d1436d6..ac3968b 100644
      m_window->presentation().updateDecorations();
      m_window->presentation().refreshValues();
 diff --git a/src/desktop/state/ViewQuery.cpp b/src/desktop/state/ViewQuery.cpp
-index 3238c74..20668dd 100644
+index 55df542..70efdb6 100644
 --- a/src/desktop/state/ViewQuery.cpp
 +++ b/src/desktop/state/ViewQuery.cpp
 @@ -240,20 +240,22 @@ PHLWINDOW CViewQuery::urgentWindow() const {
@@ -40,8 +41,8 @@ index 3238c74..20668dd 100644
          if (!windowMatchesCommon(w))
              continue;
  
--        if (!w->mapped() || !w->acceptsInput() || !w->m_workspace || !w->m_workspace->isVisible())
-+        if (!w->mapped() || w->isHidden() || !w->acceptsInput() || !w->m_workspace || !w->m_workspace->isVisible())
+-        if (!w->mapped() || !w->acceptsInput() || !w->m_workspace || !w->m_workspace->visible())
++        if (!w->mapped() || w->isHidden() || !w->acceptsInput() || !w->m_workspace || !w->m_workspace->visible())
              continue;
  
          if (!w->m_ruleApplicator->stayFocused().valueOrDefault())
@@ -58,10 +59,10 @@ index 3238c74..20668dd 100644
  
  PHLVIEW CViewQuery::bySurface() const {
 diff --git a/src/desktop/view/window/Window.cpp b/src/desktop/view/window/Window.cpp
-index f3822b9..d31ce38 100644
+index ca285ec..d398582 100644
 --- a/src/desktop/view/window/Window.cpp
 +++ b/src/desktop/view/window/Window.cpp
-@@ -1458,6 +1458,9 @@ void CWindow::mapWindow() {
+@@ -1487,6 +1487,9 @@ void CWindow::mapWindow() {
          m_state &= ~WINDOW_STATE_NO_INITIAL_FOCUS;
      }
  
@@ -71,7 +72,7 @@ index f3822b9..d31ce38 100644
      // check LS focus grab
      const auto PFORCEFOCUS  = Desktop::viewState()->query().forceFocus().runWindow();
      const auto PLSFROMFOCUS = Desktop::viewState()->query().type(VIEW_TYPE_LAYER_SURFACE).surface(Desktop::focusState()->surface()).runLayer();
-@@ -1648,11 +1648,15 @@ void CWindow::unmapWindow() {
+@@ -1679,11 +1682,15 @@ void CWindow::unmapWindow() {
  
      // do this after onWindowRemoved because otherwise it'll think the window is invalid
      m_isMapped = false;
@@ -89,10 +90,10 @@ index f3822b9..d31ce38 100644
          if (!candidate) {
              if (*FOCUSONCLOSE == 1)
 diff --git a/src/desktop/view/window/Window.hpp b/src/desktop/view/window/Window.hpp
-index 34b434b..604efb7 100644
+index 561d21c..1ac2221 100644
 --- a/src/desktop/view/window/Window.hpp
 +++ b/src/desktop/view/window/Window.hpp
-@@ -172,6 +172,8 @@ namespace Desktop::View {
+@@ -181,6 +181,8 @@ namespace Desktop::View {
  
          // Special render data, rules, etc
          UP<Desktop::Rule::CWindowRuleApplicator> m_ruleApplicator;

@@ -71,8 +71,7 @@ the password in `/etc/shadow`.
 - Lix nightly tracks `main`, with its NixOS module pinned to a compatible
   revision.
 - Home Manager tracks `master` and follows the system nixpkgs input.
-- Hyprland and deliberately selected nightly-capable applications track pinned
-  upstream revisions rather than unpinned branches.
+- Hyprland tracks its default branch and follows the system nixpkgs input.
 - `wlr-which-key`, Walker, and Elephant come from the pinned nixpkgs revision;
   all three are available on both `x86_64-linux` and `aarch64-linux`.
 - Amp CLI has a release/hash-pinned bootstrap. Its writable executable keeps

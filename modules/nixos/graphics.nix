@@ -1,14 +1,10 @@
-{inputs, ...}: {
-  flake.modules.nixos.desktop = {pkgs, ...}: let
-    hyprlandPkgs = inputs.hyprland.inputs.nixpkgs.legacyPackages.${pkgs.stdenv.hostPlatform.system};
-  in {
+_: {
+  flake.modules.nixos.desktop = {
     boot.initrd.kernelModules = ["amdgpu"];
 
     hardware.graphics = {
       enable = true;
       enable32Bit = true;
-      package = hyprlandPkgs.mesa;
-      package32 = hyprlandPkgs.pkgsi686Linux.mesa;
     };
   };
 }
