@@ -1,0 +1,66 @@
+# CVEs that NVD matches to a different product with the same name.
+# Each entry lists exact CVE IDs, so new CVEs for the package still report.
+
+["ada"]
+cve = ["CVE-2024-9410"]
+comment = "Ada.cx Sentry configuration, not the Ada URL parser"
+
+["bookshelf"]
+cve = ["CVE-2021-24478"]
+comment = "Bookshelf WordPress plugin, not the TeX package"
+
+["dash"]
+cve = ["CVE-2024-21485"]
+comment = "Plotly Dash components, not the Debian Almquist shell"
+
+["dbus-1"]
+cve = ["CVE-2022-42010", "CVE-2022-42011", "CVE-2022-42012"]
+comment = "NixOS /etc/dbus-1 configuration derivation, not a D-Bus release"
+
+["gcc"]
+cve = ["CVE-2023-4039"]
+comment = "Affects only GCC targeting AArch64"
+
+["git"]
+cve = ["CVE-2021-21684", "CVE-2022-30947", "CVE-2022-36882", "CVE-2022-36883", "CVE-2022-36884", "CVE-2022-38663"]
+comment = "Jenkins Git plugin, not Git"
+
+["impala"]
+cve = ["CVE-2021-28131"]
+comment = "Apache Impala, not the Wi-Fi TUI"
+
+["kitty"]
+cve = ["CVE-2023-48795", "CVE-2024-23749", "CVE-2024-25003", "CVE-2024-25004"]
+comment = "KiTTY (PuTTY fork) and OpenSSH Terrapin, not the kitty terminal"
+
+["lapack-3"]
+cve = ["CVE-2021-4048"]
+comment = "Generic LAPACK API wrapper; the version is the API, not reference LAPACK 3.0"
+
+["malcontent"]
+cve = ["CVE-2026-24845", "CVE-2026-28407"]
+comment = "Chainguard malcontent scanner, not GNOME parental controls"
+
+["markdown"]
+cve = ["CVE-2026-40890"]
+comment = "gomarkdown Go library, not the TeX package"
+
+["obsidian"]
+cve = ["CVE-2023-24044"]
+comment = "Plesk Obsidian, not the Obsidian notes app"
+
+["orc"]
+cve = ["CVE-2025-47436"]
+comment = "Apache ORC, not the GStreamer Oil Runtime Compiler"
+
+["protobuf"]
+cve = ["CVE-2026-0994"]
+comment = "Python protobuf json_format; this derivation is the C++ library"
+
+["snappy"]
+cve = ["CVE-2023-28115", "CVE-2023-41330"]
+comment = "KnpLabs Snappy PHP library, not Google Snappy"
+
+["zlib"]
+cve = ["CVE-2023-6992", "CVE-2026-27820"]
+comment = "Cloudflare zlib fork and the Ruby zlib gem, not upstream zlib"

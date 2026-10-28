@@ -78,6 +78,11 @@ the password in `/etc/shadow`.
   Amp's self-updater, independently of NixOS revisions.
 - Updates are manual: `nh os switch --update` updates `flake.lock`, builds,
   and activates the system. No timer or automatic switch is used.
+- A daily Home Manager timer runs vulnix over the runtime closure of
+  `/run/current-system`. It writes `~/.local/state/vulnix/report.txt` and sends
+  a notification only for CVEs that the previous scan did not report. It never
+  changes inputs or the system. TeX Live packages are skipped, and
+  `modules/home/nix/vulnix-whitelist.toml` lists name collisions by CVE.
 - CI runs repository maintenance on GitHub-hosted runners after pushes. System
   validation and builds run locally; CI does not generate updates or publish a
   personal binary cache. Renovate is disabled. Niks3 and R2 are deferred.
