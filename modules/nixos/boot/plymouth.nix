@@ -305,7 +305,6 @@
   in {
     boot = {
       consoleLogLevel = 0;
-      initrd.verbose = false;
       kernelParams = [
         "quiet"
         "systemd.show_status=false"
