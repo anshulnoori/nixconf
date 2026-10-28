@@ -3,26 +3,13 @@
   stdenv,
   requireFile,
   dpkg,
-  autoPatchelfHook,
   wrapGAppsHook3,
-  qt6,
   webkitgtk_4_1,
   gst_all_1,
-  openssl,
-  libei,
-  libportal,
-  libx11,
-  libxkbfile,
-  libxtst,
-  libxext,
-  libxinerama,
-  libxrandr,
-  libxi,
-  libxkbcommon,
 }:
 stdenv.mkDerivation {
   pname = "synergy-dragon";
-  version = "0.6.0";
+  version = "0.7.0";
 
   src = requireFile {
     name = "synergy-dragon-0.4.0-linux-trixie-x86_64.deb";
@@ -31,41 +18,27 @@ stdenv.mkDerivation {
   };
 
   updateBundle = requireFile {
-    name = "synergy-dragon-0.6.0-linux-amd64.tar.gz";
-    hash = "sha256-Ula+d2SbksdD3QLDNNbf2//ADbDUMDyDrWRJB07CpMA=";
+    name = "synergy-dragon-0.7.0-linux-amd64.tar.gz";
+    hash = "sha256-FhbaBBv3XJRiTPkSR4YzcBWRMWe/EQyOdGkjNjb9s/A=";
     url = "https://symless.com/synergy/api/update/synergy-dragon-alpha";
   };
 
-  nativeBuildInputs = [dpkg autoPatchelfHook wrapGAppsHook3 qt6.wrapQtAppsHook];
+  nativeBuildInputs = [dpkg wrapGAppsHook3];
   buildInputs = [
     webkitgtk_4_1
     gst_all_1.gst-plugins-base
-    qt6.qtbase
-    qt6.qtwayland
-    openssl
-    libei
-    libportal
-    libx11
-    libxkbfile
-    libxtst
-    libxext
-    libxinerama
-    libxrandr
-    libxi
-    libxkbcommon
-    stdenv.cc.cc.lib
   ];
 
   unpackPhase = ''
     runHook preUnpack
     dpkg-deb -x "$src" .
-    rm usr/lib/synergy-dragon/synergy-dragon-launcher
     tar -xzf "$updateBundle" -C usr/lib/synergy-dragon
     runHook postUnpack
   '';
   dontBuild = true;
+  dontStrip = true;
+  dontPatchELF = true;
   dontWrapGApps = true;
-  dontWrapQtApps = true;
   installPhase = ''
     runHook preInstall
     mkdir -p "$out/bin" "$out/lib"
@@ -76,7 +49,6 @@ stdenv.mkDerivation {
   '';
   preFixup = ''
     wrapGApp "$out/bin/synergy-dragon-gui"
-    wrapQtApp "$out/lib/synergy-dragon/synergy-core"
   '';
 
   meta = {
