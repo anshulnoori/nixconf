@@ -46,6 +46,7 @@ _: {
     hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { mouse = true })
 
     hl.bind("PRINT", hl.dsp.exec_cmd("capture-screenshot"))
+    hl.bind("F20", hl.dsp.exec_cmd("capture-screenshot"))
 
     hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("swayosd-client --output-volume raise"))
     hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("swayosd-client --output-volume lower"))
