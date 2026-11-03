@@ -11,19 +11,21 @@ _: {
         position = "top";
         spacing = 0;
         height = 26;
-        modules-left = [
-          "custom/menu"
-          "hyprland/workspaces"
-        ];
+        modules-left = ["group/left-cluster"];
+        # A plain group gets the `expanded` class while the pointer is over it, which style.nix
+        # uses to fade the otherwise hidden logo and workspaces in.
+        "group/left-cluster" = {
+          orientation = "inherit";
+          modules = [
+            "custom/menu"
+            "hyprland/workspaces"
+          ];
+        };
         modules-center = ["clock"];
         modules-right = [
           "custom/screenrecording"
           "group/tray-expander"
           "tray#notion-calendar"
-          "bluetooth"
-          "network"
-          "pulseaudio"
-          "cpu"
         ];
 
         "custom/menu" = {
@@ -64,12 +66,18 @@ _: {
         "group/tray-expander" = {
           orientation = "inherit";
           drawer = {
-            transition-duration = 600;
+            # Matches Hyprland's border animation (speed 5.39) and the fades in style.nix.
+            transition-duration = 539;
             children-class = "tray-group-item";
           };
+          # Static status icons stay in the drawer to limit OLED burn-in; it opens when the pointer nears it.
           modules = [
             "custom/expand-icon"
             "tray"
+            "bluetooth"
+            "network"
+            "pulseaudio"
+            "cpu"
           ];
         };
         "custom/expand-icon" = {
