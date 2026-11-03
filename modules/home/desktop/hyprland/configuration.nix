@@ -15,12 +15,24 @@ _: {
       configType = "lua";
       systemd.enable = false;
       settings = {
-        monitor = {
-          output = "";
-          mode = "preferred";
-          position = "auto";
-          scale = "auto";
-        };
+        monitor = [
+          {
+            output = "";
+            mode = "preferred";
+            position = "auto";
+            scale = "auto";
+          }
+          {
+            # ASUS ROG Strix XG27AQDMGR OLED. 240 Hz over HDMI needs FRL (see hosts/t1/hardware.nix); over TMDS this falls back to 144 Hz.
+            output = "desc:ASUSTek COMPUTER INC XG27AQDMGR";
+            mode = "2560x1440@240";
+            position = "0x0";
+            # Fractional scales must divide 2560x1440 into whole pixels: 1, 1.0666667, or 1.25.
+            scale = 1.0666667;
+            bitdepth = 10;
+            cm = "hdr";
+          }
+        ];
         config = {
           general = {
             gaps_in = 5;

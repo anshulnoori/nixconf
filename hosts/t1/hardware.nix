@@ -15,6 +15,9 @@
       "sd_mod"
     ];
     kernelModules = ["kvm-amd"];
+    # Enable HDMI 2.1 FRL (0x400, opt-in since Linux 7.2) on top of the default mask (0x2),
+    # so the XG27AQDMGR can run 1440p at 240 Hz over HDMI. FRL links do not support VRR yet.
+    kernelParams = ["amdgpu.dcfeaturemask=0x402"];
   };
 
   services.hardware.openrgb = {
