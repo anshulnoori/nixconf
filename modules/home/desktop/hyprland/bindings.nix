@@ -10,14 +10,25 @@ _: {
       end
     end
 
-    hl.bind("F13", hl.dsp.exec_cmd("wlr-which-key"))
+    -- Briefly show Waybar's hidden left cluster (reveal-signal 9 in waybar/core.nix).
+    local function reveal_bar()
+      hl.exec_cmd("systemctl --user kill --kill-whom=main -s RTMIN+9 waybar.service")
+    end
+    hl.on("workspace.active", reveal_bar)
+
+    local function leader_menu()
+      reveal_bar()
+      hl.exec_cmd("wlr-which-key")
+    end
+
+    hl.bind("F13", leader_menu)
     local remote_super = {
       release = true,
       non_consuming = true,
       device = { inclusive = true, list = { "hl-virtual-keyboard-xdg-desktop-portal-luminous" } },
     }
-    hl.bind("SUPER + SUPER_L", hl.dsp.exec_cmd("wlr-which-key"), remote_super)
-    hl.bind("SUPER + SUPER_R", hl.dsp.exec_cmd("wlr-which-key"), remote_super)
+    hl.bind("SUPER + SUPER_L", leader_menu, remote_super)
+    hl.bind("SUPER + SUPER_R", leader_menu, remote_super)
     hl.bind("SUPER + RETURN", hl.dsp.exec_cmd("wlr-which-key --initial-keys Return"))
     hl.bind("SUPER + SPACE", hl.dsp.exec_cmd("wlr-which-key --initial-keys space"))
     hl.bind("SUPER + ALT + SPACE", hl.dsp.exec_cmd("wlr-which-key --initial-keys Alt+space"))

@@ -1,0 +1,89 @@
+diff --git a/include/group.hpp b/include/group.hpp
+index 1e2a5d5..cf0ad44 100644
+--- a/include/group.hpp
++++ b/include/group.hpp
+@@ -11,11 +11,14 @@ namespace waybar {
+ 
+ class Group : public AModule {
+   sigc::connection reveal_timeout_;
++  sigc::connection signal_hide_timeout_;
++  bool hovered_ = false;
+ 
+  public:
+   Group(const std::string&, const std::string&, const Json::Value&, bool);
+   ~Group() override;
+   auto update() -> void override;
++  auto refresh(int sig) -> void override;
+   operator Gtk::Widget&() override;
+ 
+   virtual Gtk::Box& getBox();
+diff --git a/src/group.cpp b/src/group.cpp
+index 5fa0488..0ce847d 100644
+--- a/src/group.cpp
++++ b/src/group.cpp
+@@ -2,6 +2,8 @@
+ 
+ #include <fmt/format.h>
+ 
++#include <csignal>
++
+ #include <util/command.hpp>
+ 
+ #include "gtkmm/enums.h"
+@@ -111,6 +113,33 @@ Group::~Group() {
+   if (reveal_timeout_.connected()) {
+     reveal_timeout_.disconnect();
+   }
++  if (signal_hide_timeout_.connected()) {
++    signal_hide_timeout_.disconnect();
++  }
++}
++
++// "reveal-signal": N shows the group on SIGRTMIN+N for "reveal-duration" ms (default 2000),
++// then hides it unless the pointer is over it.
++auto Group::refresh(int sig) -> void {
++#ifdef SIGRTMIN
++  if (!config_["reveal-signal"].isInt() || sig != SIGRTMIN + config_["reveal-signal"].asInt()) {
++    return;
++  }
++  show_group();
++  if (signal_hide_timeout_.connected()) {
++    signal_hide_timeout_.disconnect();
++  }
++  const int duration =
++      config_["reveal-duration"].isInt() ? config_["reveal-duration"].asInt() : 2000;
++  signal_hide_timeout_ = Glib::signal_timeout().connect(
++      [this]() {
++        if (!hovered_) {
++          hide_group();
++        }
++        return false;
++      },
++      duration);
++#endif
+ }
+ 
+ void Group::show_group() {
+@@ -174,6 +203,7 @@ void Group::hide_group() {
+ }
+ 
+ bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
++  hovered_ = true;
+   if (!click_to_reveal) {
+     if (reveal_delay > 0) {
+       if (reveal_timeout_.connected()) {
+@@ -194,6 +224,14 @@ bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
+ }
+ 
+ bool Group::handleMouseLeave(GdkEventCrossing* const& e) {
++  // A popup menu grabs the pointer, which sends a leave event. Keep the group open so the
++  // menu's widget stays mapped.
++  if (e->mode == GDK_CROSSING_GRAB) {
++    return false;
++  }
++  if (e->detail != GDK_NOTIFY_INFERIOR) {
++    hovered_ = false;
++  }
+   if (!click_to_reveal && e->detail != GDK_NOTIFY_INFERIOR) {
+     if (reveal_delay > 0 && reveal_timeout_.connected()) {
+       reveal_timeout_.disconnect();

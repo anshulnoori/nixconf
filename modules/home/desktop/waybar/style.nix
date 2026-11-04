@@ -34,16 +34,11 @@ _: {
       #workspaces button.active { color: @accent; }
 
       /* Static icons stay hidden to limit OLED burn-in. They fade in while the pointer is
-         near their cluster, and a workspace switch briefly shows the new workspace. The
-         padding widens each cluster's hover area without moving its icons. */
+         near their cluster, and the left cluster also shows briefly on a workspace switch or
+         Super tap. The padding widens each cluster's hover area without moving its icons.
+         Fades match Hyprland's border animation: speed 5.39 (539 ms) on easeOutQuint. */
       #left-cluster { padding-right: 48px; }
       #tray-expander { padding-left: 48px; }
-
-      /* Fades match Hyprland's border animation: speed 5.39 (539 ms) on easeOutQuint. */
-      @keyframes workspace-switch {
-        from { opacity: 1; }
-        to { opacity: 0; }
-      }
 
       #custom-menu,
       #custom-expand-icon,
@@ -59,11 +54,6 @@ _: {
       #tray-expander.expanded #custom-expand-icon,
       #tray-expander.expanded .tray-group-item { opacity: 1; }
       #left-cluster.expanded #workspaces button.empty { opacity: 0.5; }
-
-      /* Hold the new workspace for 2 s, then fade it out. */
-      #workspaces button.active {
-        animation: workspace-switch 539ms cubic-bezier(0.23, 1, 0.32, 1) 2s backwards;
-      }
 
       #cpu,
       #pulseaudio,

@@ -13,9 +13,12 @@ _: {
         height = 26;
         modules-left = ["group/left-cluster"];
         # A plain group gets the `expanded` class while the pointer is over it, which style.nix
-        # uses to fade the otherwise hidden logo and workspaces in.
+        # uses to fade the otherwise hidden logo and workspaces in. Hyprland sends SIGRTMIN+9
+        # on workspace switches and Super taps to show it briefly (group-reveal-signal.patch).
         "group/left-cluster" = {
           orientation = "inherit";
+          reveal-signal = 9;
+          reveal-duration = 2000;
           modules = [
             "custom/menu"
             "hyprland/workspaces"
