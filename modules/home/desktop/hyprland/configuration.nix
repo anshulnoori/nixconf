@@ -40,7 +40,7 @@ _: {
             border_size = 2;
             "col.active_border" = "rgb(${colors.base0D})";
             "col.inactive_border" = "rgba(${colors.base03}aa)";
-            layout = "dwindle";
+            layout = "scrolling";
           };
           decoration = {
             rounding = 0;
