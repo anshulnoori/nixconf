@@ -94,6 +94,11 @@ _: {
               desc = "Apps";
               submenu = [
                 {
+                  key = "a";
+                  desc = "Amp";
+                  cmd = "amp-desktop";
+                }
+                {
                   key = "b";
                   desc = "Brave";
                   cmd = "brave-origin";
